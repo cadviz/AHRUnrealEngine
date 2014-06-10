@@ -212,23 +212,23 @@ static void RenameVariableReferences(UBlueprint* Blueprint, UClass* VariableClas
 			}
 
 			if (OldVarName == CurrentNode->GetVarName())
-			{
+					{
 				CurrentNode->Modify();
 				if (CurrentNode->VariableReference.IsSelfContext())
-				{
+					{
 					CurrentNode->VariableReference.SetSelfMember(NewVarName);
-				}
-				else
-				{
+					}
+					else
+					{
 					CurrentNode->VariableReference.SetExternalMember(NewVarName, NodeRefClass);
-				}
+					}
 
 				if (UEdGraphPin* Pin = CurrentNode->FindPin(OldVarName.ToString()))
-				{
-					Pin->Modify();
-					Pin->PinName = NewVarName.ToString();
+					{
+						Pin->Modify();
+						Pin->PinName = NewVarName.ToString();
+					}
 				}
-			}
 		}
 	}
 }
@@ -467,7 +467,7 @@ public:
 		{
 			check(TargetBlueprint->SkeletonGeneratedClass);
 			check(TargetBlueprint->GeneratedClass);
-			TargetBlueprint->SkeletonGeneratedClass->GetDefaultObject()->Serialize(*this);
+				TargetBlueprint->SkeletonGeneratedClass->GetDefaultObject()->Serialize(*this);
 			TargetBlueprint->GeneratedClass->GetDefaultObject()->Serialize(*this);
 
 			TArray<UObject*> SubObjs;
@@ -498,13 +498,13 @@ protected:
 		{
 			if( UClass* RefClass = Cast<UClass>(Object) )
 			{
-				UClass* AuthClass = RefClass->GetAuthoritativeClass();
+					UClass* AuthClass = RefClass->GetAuthoritativeClass();
 				if( RefClass != AuthClass )
-				{
-					Object = AuthClass;
+					{
+						Object = AuthClass;
+					}
 				}
 			}
-		}
 
 		return *this;
 	}
@@ -638,7 +638,7 @@ struct FRegenerationHelper
 		Blueprint->GetAllGraphs(Graphs);
 		for (auto Graph : Graphs)
 		{
-			if (!FBlueprintEditorUtils::IsGraphIntermediate(Graph))
+			if (Graph && !FBlueprintEditorUtils::IsGraphIntermediate(Graph))
 			{
 				const bool bIsDelegateSignatureGraph = FBlueprintEditorUtils::IsDelegateSignatureGraph(Graph);
 
@@ -646,6 +646,8 @@ struct FRegenerationHelper
 				Graph->GetNodesOfClass(Nodes);
 				for (auto Node : Nodes)
 				{
+					if (Node)
+					{
 					TArray<UStruct*> LocalDependentStructures;
 					if (Node->HasExternalBlueprintDependencies(&LocalDependentStructures))
 					{
@@ -686,14 +688,15 @@ struct FRegenerationHelper
 				}
 			}
 		}
+		}
 		PreloadMacroSources(MacroSources);
 	}
 };
 
 void FBlueprintEditorUtils::RefreshInputDelegatePins(UBlueprint* Blueprint)
 {
-	TArray<UEdGraph*> Graphs;
-	Blueprint->GetAllGraphs(Graphs);
+		TArray<UEdGraph*> Graphs;
+		Blueprint->GetAllGraphs(Graphs);
 	for (auto Graph : Graphs)
 	{
 		if (!FBlueprintEditorUtils::IsGraphIntermediate(Graph))
@@ -701,15 +704,15 @@ void FBlueprintEditorUtils::RefreshInputDelegatePins(UBlueprint* Blueprint)
 			TArray<UK2Node_BaseMCDelegate*> Nodes;
 			Graph->GetNodesOfClass(Nodes);
 			for (auto Node : Nodes)
-			{
+					{
 				if (auto DelegatePin = Node->GetDelegatePin())
-				{
+						{
 					DelegatePin->PinType.PinSubCategoryObject = Node->GetDelegateSignature();
+					}
 				}
 			}
 		}
 	}
-}
 
 UClass* FBlueprintEditorUtils::RegenerateBlueprintClass(UBlueprint* Blueprint, UClass* ClassToRegenerate, UObject* PreviousCDO, TArray<UObject*>& ObjLoaded)
 {
@@ -838,7 +841,7 @@ UClass* FBlueprintEditorUtils::RegenerateBlueprintClass(UBlueprint* Blueprint, U
 			// Flag data only blueprints as being up-to-date
 			Blueprint->Status = BS_UpToDate;
 		}
-		
+
 		// Patch the new CDOs to the old indices in the linker
 		if( Blueprint->SkeletonGeneratedClass )
 		{
@@ -1826,9 +1829,9 @@ void FBlueprintEditorUtils::GetDependentBlueprints(UBlueprint* Blueprint, TArray
 
 	//@TODO PRETEST MERGE:  Swap this when main is merged to pretest!
 #if 0
- 	TArray<UObject*> AllBlueprints;
- 	bool const bIncludeDerivedClasses = true;
- 	GetObjectsOfClass(UBlueprint::StaticClass(), AllBlueprints, bIncludeDerivedClasses );
+	TArray<UObject*> AllBlueprints;
+	bool const bIncludeDerivedClasses = true;
+	GetObjectsOfClass(UBlueprint::StaticClass(), AllBlueprints, bIncludeDerivedClasses );
 
 	for ( auto ObjIt = AllBlueprints.CreateConstIterator(); ObjIt; ++ObjIt )
 #else
@@ -2018,8 +2021,8 @@ bool FBlueprintEditorUtils::DoesBlueprintContainField(const UBlueprint* Blueprin
 	if(TestField)
 	{
 		UClass* TestClass = CastChecked<UClass>(TestField->GetOuter());
-		return FBlueprintEditorUtils::DoesBlueprintDeriveFrom(Blueprint, TestClass);
-	}
+			return FBlueprintEditorUtils::DoesBlueprintDeriveFrom(Blueprint, TestClass);
+		}
 	return false;
 }
 
@@ -2648,7 +2651,9 @@ void FBlueprintEditorUtils::GetHiddenPinsForFunction(UBlueprint const* CallingCo
 void FBlueprintEditorUtils::GetClassVariableList(const UBlueprint* Blueprint, TArray<FName>& VisibleVariables, bool bIncludePrivateVars) 
 {
 	// Existing variables in the parent class and above
-	check(Blueprint->SkeletonGeneratedClass != NULL);
+	check(Blueprint->bIsRegeneratingOnLoad || (Blueprint->SkeletonGeneratedClass != NULL));
+	if (Blueprint->SkeletonGeneratedClass != NULL)
+	{
 	for (TFieldIterator<UProperty> PropertyIt(Blueprint->SkeletonGeneratedClass, EFieldIteratorFlags::IncludeSuper); PropertyIt; ++PropertyIt)
 	{
 		UProperty* Property = *PropertyIt;
@@ -2671,16 +2676,17 @@ void FBlueprintEditorUtils::GetClassVariableList(const UBlueprint* Blueprint, TA
 
 			GetSCSVariableNameList(ParentBP, VisibleVariables);
 
-			for(int32 VariableIndex = 0; VariableIndex < ParentBP->NewVariables.Num(); ++VariableIndex)
+				for (int32 VariableIndex = 0; VariableIndex < ParentBP->NewVariables.Num(); ++VariableIndex)
 			{
 				VisibleVariables.AddUnique(ParentBP->NewVariables[VariableIndex].VarName);
 			}
 
 			for(int32 TimelineIndex = 0; TimelineIndex < ParentBP->Timelines.Num(); ++TimelineIndex)
-			{
+				{
 				VisibleVariables.AddUnique(ParentBP->Timelines[TimelineIndex]->GetFName());
 			}
 		}
+	}
 	}
 
 	// "self" is reserved for all classes
@@ -2732,7 +2738,7 @@ bool FBlueprintEditorUtils::AddMemberVariable(UBlueprint* Blueprint, const FName
 		NewVar.PropertyFlags |= CPF_BlueprintAssignable | CPF_BlueprintCallable;
 	}
 	else if (NewVarType.PinCategory == K2Schema->PC_Object)
-	{
+		{
 		// if it's a PC_Object, then it should have an associated UClass object
 		check(NewVarType.PinSubCategoryObject.IsValid());
 		const UClass* ClassObject = Cast<UClass>(NewVarType.PinSubCategoryObject.Get());
@@ -3771,8 +3777,8 @@ static void ConformInterfaceByName(UBlueprint* Blueprint, FBPInterfaceDescriptio
 			// destroy the old event node (this will also break all pin links and remove it from the graph)
 			EventNode->DestroyNode();
 
-			// have to rename so it doesn't conflict with the graph we're about to add
-			CustomEventNode->RenameCustomEventCloseToName();
+				// have to rename so it doesn't conflict with the graph we're about to add
+				CustomEventNode->RenameCustomEventCloseToName();
 			EventGraph->Nodes.Add(CustomEventNode);
 
 			// warn the user that their old functionality won't work (it's now connected 
@@ -4775,9 +4781,9 @@ TSharedRef<SWidget> FBlueprintEditorUtils::ConstructBlueprintParentClassPicker( 
 
 	if(!bIsLevelScriptActor)
 	{
-		// Don't allow non-LevelScriptActor->LevelScriptActor conversion
-		Filter->DisallowedChildrenOfClasses.Add( ALevelScriptActor::StaticClass() );
-	}
+			// Don't allow non-LevelScriptActor->LevelScriptActor conversion
+			Filter->DisallowedChildrenOfClasses.Add( ALevelScriptActor::StaticClass() );
+		}
 
 	if (bIsAnimBlueprint)
 	{
