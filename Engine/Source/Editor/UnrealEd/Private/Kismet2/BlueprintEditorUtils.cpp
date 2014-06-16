@@ -321,7 +321,11 @@ void FBlueprintEditorUtils::PreloadMembers(UObject* InObject)
 		UObject* CurrentObject = *it;
 		if( CurrentObject->HasAnyFlags(RF_NeedLoad) )
 		{
-			CurrentObject->GetLinker()->Preload(CurrentObject);
+			auto Linker = CurrentObject->GetLinker();
+			if (Linker)
+			{
+				Linker->Preload(CurrentObject);
+			}
 			PreloadMembers(CurrentObject);
 		}
 	}
@@ -795,6 +799,8 @@ UClass* FBlueprintEditorUtils::RegenerateBlueprintClass(UBlueprint* Blueprint, U
 
 		// Make sure all used external classes/functions/structures/macros/etc are loaded and linked
 		FRegenerationHelper::LinkExternalDependencies(Blueprint);
+		FKismetEditorUtilities::GenerateBlueprintSkeleton(Blueprint);
+
 		FBlueprintEditorUtils::RefreshInputDelegatePins(Blueprint);
 
 		if( bHasCode )
@@ -1241,7 +1247,7 @@ UBlueprint* FBlueprintEditorUtils::FindBlueprintForNodeChecked(const UEdGraphNod
 // Helper function to get the blueprint that ultimately owns a graph.
 UBlueprint* FBlueprintEditorUtils::FindBlueprintForGraph(const UEdGraph* Graph)
 {
-	for (UObject* TestOuter = Graph->GetOuter(); TestOuter; TestOuter = TestOuter->GetOuter())
+	for (UObject* TestOuter = Graph ? Graph->GetOuter() : NULL; TestOuter; TestOuter = TestOuter->GetOuter())
 	{
 		if (UBlueprint* Result = Cast<UBlueprint>(TestOuter))
 		{
@@ -3776,14 +3782,19 @@ static void ConformInterfaceByName(UBlueprint* Blueprint, FBPInterfaceDescriptio
 			FName const FunctionName = EventNode->EventSignatureName;
 			// destroy the old event node (this will also break all pin links and remove it from the graph)
 			EventNode->DestroyNode();
-
+			if (InterfaceFunction)
+			{
 				// have to rename so it doesn't conflict with the graph we're about to add
 				CustomEventNode->RenameCustomEventCloseToName();
+			}
 			EventGraph->Nodes.Add(CustomEventNode);
 
 			// warn the user that their old functionality won't work (it's now connected 
 			// to a custom node that isn't triggered anywhere)
-			FText WarningMessageText = LOCTEXT("InterfaceEventNodeReplaced_Warn", "'%s' was promoted from an event to a function - it has been replaced by a custom event, which won't trigger unless you call it manually.");
+			FText WarningMessageText = InterfaceFunction ?
+				LOCTEXT("InterfaceEventNodeReplaced_Warn", "'%s' was promoted from an event to a function - it has been replaced by a custom event, which won't trigger unless you call it manually.") :
+				LOCTEXT("InterfaceEventRemovedNodeReplaced_Warn", "'%s' was removed from its interface - it has been replaced by a custom event, which won't trigger unless you call it manually.");
+
 			Blueprint->Message_Warn(FString::Printf(*WarningMessageText.ToString(), *FunctionName.ToString()));
 		}
 

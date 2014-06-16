@@ -192,20 +192,6 @@ void UBlueprint::Serialize(FArchive& Ar)
 		}
 	}
 
-	// If we don't have a skeleton class via compile-on-load, generate one now
-	if( Ar.IsLoading() && (SkeletonGeneratedClass == NULL) )
-	{
-		bool bWasRegen = bIsRegeneratingOnLoad;
-		bIsRegeneratingOnLoad = true;
-
-		FBlueprintEditorUtils::PreloadMembers(this);
-		FBlueprintEditorUtils::PreloadConstructionScript(this);
-		FBlueprintEditorUtils::RefreshInputDelegatePins(this);
-		FKismetEditorUtilities::GenerateBlueprintSkeleton(this);
-
-		bIsRegeneratingOnLoad = bWasRegen;
-	}
-
 	if (Ar.UE4Ver() < VER_UE4_BP_ACTOR_VARIABLE_DEFAULT_PREVENTING)
 	{
 		// Actor variables can't have default values (because Blueprint templates are library elements that can 
