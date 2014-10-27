@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+	<ItemGroup>
+		<None Include="..\..\Source\Programs\BlankProgram\BlankProgram.Target.cs" />
+		<None Include="..\..\Source\Programs\BlankProgram\BlankProgram.Build.cs" />
+		<Filter Include="Private">
+			<UniqueIdentifier>{1B4F4A4A-8AA3-45BE-8627-7658EB9DB04E}</UniqueIdentifier>
+		</Filter>
+		<ClCompile Include="..\..\Source\Programs\BlankProgram\Private\BlankProgram.cpp">
+			<Filter>Private</Filter>
+		</ClCompile >
+		<ClInclude Include="..\..\Source\Programs\BlankProgram\Private\BlankProgram.h">
+			<Filter>Private</Filter>
+		</ClInclude >
+	</ItemGroup>
+</Project>

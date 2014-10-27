@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+	<ItemGroup>
+		<None Include="..\..\Source\Programs\UnrealSync\UnrealSync.Target.cs" />
+		<None Include="..\..\Source\Programs\UnrealSync\UnrealSync.Build.cs" />
+		<Filter Include="Private">
+			<UniqueIdentifier>{B2AA7CE0-1993-41E9-9CBA-2A67D14EED30}</UniqueIdentifier>
+		</Filter>
+		<ClCompile Include="..\..\Source\Programs\UnrealSync\Private\GUI.cpp">
+			<Filter>Private</Filter>
+		</ClCompile >
+		<ClInclude Include="..\..\Source\Programs\UnrealSync\Private\GUI.h">
+			<Filter>Private</Filter>
+		</ClInclude >
+		<ClCompile Include="..\..\Source\Programs\UnrealSync\Private\P4DataCache.cpp">
+			<Filter>Private</Filter>
+		</ClCompile >
+		<ClInclude Include="..\..\Source\Programs\UnrealSync\Private\P4DataCache.h">
+			<Filter>Private</Filter>
+		</ClInclude >
+		<ClCompile Include="..\..\Source\Programs\UnrealSync\Private\P4Env.cpp">
+			<Filter>Private</Filter>
+		</ClCompile >
+		<ClInclude Include="..\..\Source\Programs\UnrealSync\Private\P4Env.h">
+			<Filter>Private</Filter>
+		</ClInclude >
+		<ClCompile Include="..\..\Source\Programs\UnrealSync\Private\ProcessHelper.cpp">
+			<Filter>Private</Filter>
+		</ClCompile >
+		<ClInclude Include="..\..\Source\Programs\UnrealSync\Private\ProcessHelper.h">
+			<Filter>Private</Filter>
+		</ClInclude >
+		<ClCompile Include="..\..\Source\Programs\UnrealSync\Private\UnrealSync.cpp">
+			<Filter>Private</Filter>
+		</ClCompile >
+		<ClInclude Include="..\..\Source\Programs\UnrealSync\Private\UnrealSync.h">
+			<Filter>Private</Filter>
+		</ClInclude >
+		<Filter Include="Private\Windows">
+			<UniqueIdentifier>{D28F8828-82B1-4816-B82D-CD9DB18AA5C6}</UniqueIdentifier>
+		</Filter>
+		<ClCompile Include="..\..\Source\Programs\UnrealSync\Private\Windows\UnrealSyncMainWindows.cpp">
+			<Filter>Private\Windows</Filter>
+		</ClCompile >
+	</ItemGroup>
+</Project>
