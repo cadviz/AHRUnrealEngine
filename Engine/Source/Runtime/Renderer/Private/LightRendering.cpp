@@ -550,6 +550,12 @@ void FDeferredShadingSceneRenderer::RenderLights(FRHICommandListImmediate& RHICm
 				RenderLight(RHICmdList, &LightSceneInfo, false, true);
 			}
 		}
+				
+		// @RT
+		// TraceSceneAHR(RHICmdList);
+		// UpsampleAHR(RHICmdList);
+		// Add to the light accumulation buffer by rendering a quad with additive blending 
+		// CompositeAHR(RHICmdList);
 
 		// Do not resolve to scene color texture, this is done lazily
 		GSceneRenderTargets.FinishRenderingSceneColor(RHICmdList, false);
