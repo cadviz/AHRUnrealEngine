@@ -379,6 +379,10 @@ void FSystemTextures::InitializeTextures(FRHICommandListImmediate& RHICmdList, E
 		}
 	}
 
+	// @RyanTorant
+	// Initialize the voxel grids and the textures needed to do the raytracing
+	// InitializeGridsAHR(RHICmdList);
+
 	// Initialize textures only once.
 	bTexturesInitialized = true;
 	FeatureLevelInitializedTo = InFeatureLevel;

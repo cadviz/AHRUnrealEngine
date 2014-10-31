@@ -19,6 +19,8 @@
 #include "SceneUtils.h"
 #include "DistanceFieldSurfaceCacheLighting.h"
 #include "PostProcess/PostProcessing.h"
+// @RyanTorant
+#include "ApproximateHybridRaytracing.h"
 
 TAutoConsoleVariable<int32> CVarEarlyZPass(
 	TEXT("r.EarlyZPass"),
@@ -681,6 +683,16 @@ void FDeferredShadingSceneRenderer::Render(FRHICommandListImmediate& RHICmdList)
 
 	// Find the visible primitives.
 	InitViews(RHICmdList);
+
+	// @RyanTorant
+	if(UseApproximateHybridRaytracingRT(FeatureLevel))
+	{
+		// Rebuild the AHR grids if the size have changed BEFORE we do anything else
+		AHREngine.UpdateSettings();
+
+		// Clear the voxel grids
+		AHREngine.ClearGrids(RHICmdList);
+	}
 
 	if (GRHIThread)
 	{

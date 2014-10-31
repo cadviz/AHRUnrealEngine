@@ -659,7 +659,6 @@ void FD3D11DynamicRHI::InitD3DDevice()
 			}
 		}
 #endif
-
 		FHardwareInfo::RegisterHardwareInfo( NAME_RHI, TEXT( "D3D11" ) );
 
 		GRHISupportsTextureStreaming = true;

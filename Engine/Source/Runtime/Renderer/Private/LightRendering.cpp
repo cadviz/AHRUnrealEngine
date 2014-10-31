@@ -551,7 +551,7 @@ void FDeferredShadingSceneRenderer::RenderLights(FRHICommandListImmediate& RHICm
 			}
 		}
 				
-		// @RT
+		// @RyanTorant
 		// TraceSceneAHR(RHICmdList);
 		// UpsampleAHR(RHICmdList);
 		// Add to the light accumulation buffer by rendering a quad with additive blending 
