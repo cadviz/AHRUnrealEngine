@@ -1,0 +1,18 @@
+#include "Common.usf"
+
+void VS(
+	in float2 InPosition : ATTRIBUTE0,
+	in float2 InUV       : ATTRIBUTE1,
+	out float2 OutTexCoord : TEXCOORD0,
+	out float3 OutScreenVector : TEXCOORD1,
+	out float4 OutPosition : SV_POSITION
+	)
+{	
+	DrawRectangle(float4(InPosition.xy, 0, 1), InUV, OutPosition, OutTexCoord);
+	OutScreenVector = mul(float4(OutPosition.xy, 1, 0), View.ScreenToTranslatedWorld).xyz;
+}
+
+float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
+{
+	return float4(1,1,1,1);
+}

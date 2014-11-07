@@ -12,7 +12,8 @@
 #include "LightRendering.h"
 #include "LightPropagationVolume.h"
 #include "SceneUtils.h"
-
+// @RyanTorant
+#include "ApproximateHybridRaytracing.h"
 
 IMPLEMENT_UNIFORM_BUFFER_STRUCT(FDeferredLightUniformStruct,TEXT("DeferredLightUniforms"));
 
@@ -552,10 +553,11 @@ void FDeferredShadingSceneRenderer::RenderLights(FRHICommandListImmediate& RHICm
 		}
 				
 		// @RyanTorant
-		// TraceSceneAHR(RHICmdList);
-		// UpsampleAHR(RHICmdList);
+		GSceneRenderTargets.BeginRenderingSceneColor(RHICmdList);
+		AHREngine.TraceScene(RHICmdList);
+		AHREngine.Upsample(RHICmdList);
 		// Add to the light accumulation buffer by rendering a quad with additive blending 
-		// CompositeAHR(RHICmdList);
+		AHREngine.Composite(RHICmdList,Views[0]);
 
 		// Do not resolve to scene color texture, this is done lazily
 		GSceneRenderTargets.FinishRenderingSceneColor(RHICmdList, false);

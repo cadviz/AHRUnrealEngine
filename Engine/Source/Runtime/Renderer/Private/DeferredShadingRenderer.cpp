@@ -681,9 +681,6 @@ void FDeferredShadingSceneRenderer::Render(FRHICommandListImmediate& RHICmdList)
 	// Allocate the maximum scene render target space for the current view family.
 	GSceneRenderTargets.Allocate(ViewFamily);
 
-	// Find the visible primitives.
-	InitViews(RHICmdList);
-
 	// @RyanTorant
 	if(UseApproximateHybridRaytracingRT(FeatureLevel))
 	{
@@ -694,6 +691,9 @@ void FDeferredShadingSceneRenderer::Render(FRHICommandListImmediate& RHICmdList)
 		AHREngine.ClearGrids(RHICmdList);
 	}
 
+	// Find the visible primitives.
+	InitViews(RHICmdList);
+
 	if (GRHIThread)
 	{
 		// we will probably stall on occlusion queries, so might as well have the RHI thread and GPU work while we wait.
@@ -701,6 +701,12 @@ void FDeferredShadingSceneRenderer::Render(FRHICommandListImmediate& RHICmdList)
 		FRHICommandListExecutor::GetImmediateCommandList().ImmediateFlush(EImmediateFlushType::FlushRHIThreadFlushResources);
 	}
 
+	// @RyanTorant
+	// Initialize the targets to the size of the view
+	if(UseApproximateHybridRaytracingRT(FeatureLevel))
+	{
+		AHREngine.InitializeViewTargets(ViewFamily.FamilySizeX,ViewFamily.FamilySizeY);
+	}
 
 	const bool bIsWireframe = ViewFamily.EngineShowFlags.Wireframe;
 	static const auto ClearMethodCVar = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("r.ClearSceneMethod"));

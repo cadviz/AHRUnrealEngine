@@ -11,6 +11,8 @@
 #include "../../Engine/Private/SkeletalRenderGPUSkin.h"		// GPrevPerBoneMotionBlur
 #include "SceneUtils.h"
 #include "PostProcessing.h"
+// @RyanTorant
+#include "ApproximateHybridRaytracing.h"
 
 /*------------------------------------------------------------------------------
 	Globals
@@ -2215,7 +2217,7 @@ void FDeferredShadingSceneRenderer::InitViews(FRHICommandListImmediate& RHICmdLi
 	// @RyanTorant
 	// Do the voxelization before any culling takes place
 	// For now (29/10/2014) both static and dynamic objects get voxelized on the same pass. Also, no emissive (plain binary grid)
-	// VoxelizeSceneAHR(RHICmdList);
+	AHREngine.VoxelizeScene(RHICmdList);
 
 	PreVisibilityFrameSetup(RHICmdList);
 	ComputeViewVisibility(RHICmdList);

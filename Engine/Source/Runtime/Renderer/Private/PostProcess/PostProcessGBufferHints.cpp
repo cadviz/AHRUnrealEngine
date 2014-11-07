@@ -175,7 +175,9 @@ void FRCPassPostProcessGBufferHints::Process(FRenderingCompositePassContext& Con
 	Line = FString::Printf(TEXT("Yellow: Unrealistic material (In nature even black materials reflect quite some light)"));
 	Canvas.DrawShadowedString( X, Y += YStep, *Line, GetStatsFont(), FLinearColor(0.8f, 0.8f, 0));
 
-	Line = FString::Printf(TEXT("Red: Impossive material (this material emits more light than it receives)"));
+	// @RyanTorant
+	// Corrected typo. Changed "Impossive" to "Impossible"
+	Line = FString::Printf(TEXT("Red: Impossible material (this material emits more light than it receives)"));
 	Canvas.DrawShadowedString( X, Y += YStep, *Line, GetStatsFont(), FLinearColor(1, 0, 0));
 
 	Canvas.Flush_RenderThread(Context.RHICmdList);
