@@ -3,11 +3,10 @@
 Texture2D<float4> tGI;
 SamplerState samLinear;
 
-RWTexture2D<float4> output;
-
-[numthreads(16,16,1)]
-void main(uint3 DTid : SV_DispatchThreadID)
+float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 {
-	float2 uv = float2(DTid.xy) / float2(AHRUpCB.ScreenX,AHRUpCB.ScreenY);
-	output[DTid.xy] = tGI.SampleLevel(samLinear,uv,0) + 1;
+	/*float SceneDepth = CalcSceneDepth(InUV);
+	float3 WorldPosition = ScreenVector * SceneDepth + View.ViewOrigin.xyz;*/
+
+	return tGI.SampleLevel(samLinear,InUV,0);
 }

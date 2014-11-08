@@ -10,14 +10,22 @@ TAutoConsoleVariable<int32> CVarApproximateHybridRaytracing = TAutoConsoleVariab
 	TEXT("r.ApproximateHybridRaytracing"),
 	0,
 	TEXT("Project setting of the work in progress feature Approximate Hybrid Raytracing. Cannot be changed at runtime.\n")
-	TEXT(" 0: off (default)\n")
-	TEXT(" 1: on"),
+	TEXT(" 0 : off (default)\n")
+	TEXT(" 1 : on"),
 	ECVF_RenderThreadSafe | ECVF_ReadOnly);
 
 TAutoConsoleVariable<int32> CVarAHRVoxelSliceSize = TAutoConsoleVariable<int32>(
 	TEXT("r.AHRSliceSize"),
 	512,
-	TEXT("Slice size for the voxel grids. Default value is 512\n"),
+	TEXT("Slice size for the voxel grids. Default value is 512"),
+	ECVF_RenderThreadSafe);
+
+TAutoConsoleVariable<int32> CVarAHRTraceReflections = TAutoConsoleVariable<int32>(
+	TEXT("r.AHRTraceReflections"),
+	0,
+	TEXT("Trace reflections or not using AHR.\n")
+	TEXT(" 0 : off (default)\n")
+	TEXT(" 1 : on"),
 	ECVF_RenderThreadSafe);
 
 void FApproximateHybridRaytracer::UpdateSettings()

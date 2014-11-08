@@ -40324,13 +40324,19 @@
     <Filter Include="Source\Runtime\Renderer\AHR">
       <UniqueIdentifier>{d545c9e2-9cb1-45ff-ac9e-fb74434de815}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shaders\AHR">
+      <UniqueIdentifier>{0eef36d6-d557-4af4-8b94-58ea397123a2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Shaders\AHRComposite.usf">
-      <Filter>Shaders</Filter>
+      <Filter>Shaders\AHR</Filter>
     </None>
     <None Include="..\..\Shaders\AHRUpsample.usf">
-      <Filter>Shaders</Filter>
+      <Filter>Shaders\AHR</Filter>
+    </None>
+    <None Include="..\..\Shaders\AHRTraceScene.usf">
+      <Filter>Shaders\AHR</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

@@ -580,6 +580,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Shaders\AHRComposite.usf" />
+    <None Include="..\..\Shaders\AHRTraceScene.usf" />
     <None Include="..\..\Shaders\AHRUpsample.usf" />
     <None Include="C:\UnrealEngine\Engine\Saved\UnrealBuildTool\BuildConfiguration.Schema.xsd" />
     <None Include="C:\UnrealEngine\Engine\Programs\UnrealBuildTool\BuildConfiguration.xml" />

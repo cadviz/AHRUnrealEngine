@@ -4,8 +4,9 @@
 // small macro
 #define _DEBUG_MSG(msg) ::MessageBoxA(nullptr,__FUNCTION__##" "##msg,"DEBUG",MB_ICONWARNING)
 
-extern "C++" TAutoConsoleVariable<int32> CVarApproximateHybridRaytracing;
-extern "C++" TAutoConsoleVariable<int32> CVarAHRVoxelSliceSize;
+extern TAutoConsoleVariable<int32> CVarApproximateHybridRaytracing;
+extern TAutoConsoleVariable<int32> CVarAHRVoxelSliceSize;
+extern TAutoConsoleVariable<int32> CVarAHRTraceReflections;
 
 // Main class
 class FApproximateHybridRaytracer : public FRenderResource
@@ -39,8 +40,6 @@ private:
 	FTexture2DRHIRef UpsampledTarget;
 	FShaderResourceViewRHIRef RaytracingTargetSRV;
 	FShaderResourceViewRHIRef UpsampledTargetSRV;
-	FUnorderedAccessViewRHIRef RaytracingTargetUAV;
-	FUnorderedAccessViewRHIRef UpsampledTargetUAV;
 
 	uint32 ResX,ResY;
 };
