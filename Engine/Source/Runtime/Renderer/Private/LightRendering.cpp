@@ -554,8 +554,8 @@ void FDeferredShadingSceneRenderer::RenderLights(FRHICommandListImmediate& RHICm
 				
 		// @RyanTorant
 		GSceneRenderTargets.BeginRenderingSceneColor(RHICmdList);
-		AHREngine.TraceScene(RHICmdList);
-		AHREngine.Upsample(RHICmdList);
+		AHREngine.TraceScene(RHICmdList,Views[0]);
+		AHREngine.Upsample(RHICmdList,Views[0]);
 		// Add to the light accumulation buffer by rendering a quad with additive blending 
 		AHREngine.Composite(RHICmdList,Views[0]);
 

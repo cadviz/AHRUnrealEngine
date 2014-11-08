@@ -12,7 +12,13 @@ void VS(
 	OutScreenVector = mul(float4(OutPosition.xy, 1, 0), View.ScreenToTranslatedWorld).xyz;
 }
 
+Texture2D<float4> tGI;
+SamplerState samLinear;
+
 float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 {
-	return float4(1,1,1,1);
+	/*float SceneDepth = CalcSceneDepth(InUV);
+	float3 WorldPosition = ScreenVector * SceneDepth + View.ViewOrigin.xyz;*/
+
+	return float4(tGI.SampleLevel(samLinear,InUV,0).xyz,1);
 }
