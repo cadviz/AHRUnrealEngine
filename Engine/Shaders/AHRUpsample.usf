@@ -1,3 +1,5 @@
+#include "Common.usf"
+
 Texture2D<float4> tGI;
 SamplerState samLinear;
 
@@ -6,5 +8,6 @@ RWTexture2D<float4> output;
 [numthreads(16,16,1)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
-	output[DTid.xy] = 1;//tGI[DTid.xy/2];
+	float2 uv = float2(DTid.xy) / float2(AHRUpCB.ScreenX,AHRUpCB.ScreenY);
+	output[DTid.xy] = tGI.SampleLevel(samLinear,uv,0) + 1;
 }

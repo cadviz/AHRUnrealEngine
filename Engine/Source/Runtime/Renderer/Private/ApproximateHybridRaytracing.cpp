@@ -40,8 +40,6 @@ void FApproximateHybridRaytracer::UpdateSettings()
 	}
 }
 
-
-
 void FApproximateHybridRaytracer::ClearGrids(FRHICommandListImmediate& RHICmdList)
 {
 	SCOPED_DRAW_EVENT(RHICmdList,AHRInternalClearGrids, DEC_SCENE_ITEMS);

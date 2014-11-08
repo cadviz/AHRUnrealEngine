@@ -30,15 +30,31 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 {
 	SCOPED_DRAW_EVENT(RHICmdList,AHRVoxelizeScene, DEC_SCENE_ITEMS);
 
-	// Draw the objects into a binary voxel grid
+	// Voxelize the objects to the binary grid
+	// For now (8/11/2014) the grid is fixed to the origin, and both static and dynamic objects get voxelized every frame
 }
 
+///
+/// Tracing
+///
 void FApproximateHybridRaytracer::TraceScene(FRHICommandListImmediate& RHICmdList,FViewInfo& View)
 {
 	SCOPED_DRAW_EVENT(RHICmdList,AHRTraceScene, DEC_SCENE_ITEMS);
 
 	// Dispatch a compute shader that computes indirect illumination on a half resolution buffer
 }
+
+
+///
+/// Upsampling and composite
+///
+// Constant buffers
+BEGIN_UNIFORM_BUFFER_STRUCT( AHRUpsampleConstantBuffer, )
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER( float, ScreenX )
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER( float, ScreenY )
+END_UNIFORM_BUFFER_STRUCT( AHRUpsampleConstantBuffer )
+IMPLEMENT_UNIFORM_BUFFER_STRUCT(AHRUpsampleConstantBuffer,TEXT("AHRUpCB"));
+typedef TUniformBuffer<AHRUpsampleConstantBuffer> FAHRUpsampleCB;
 
 class AHRUpsampleCS : public FGlobalShader
 {
@@ -74,6 +90,18 @@ public:
 		const FComputeShaderRHIParamRef ShaderRHI = GetComputeShader();
 		FGlobalShader::SetParameters(RHICmdList, ShaderRHI, View);
 
+		AHRUpsampleConstantBuffer cbparams;
+		cbparams.ScreenX = View.Family->FamilySizeX;
+		cbparams.ScreenY = View.Family->FamilySizeY;
+
+		if ( !cb.IsInitialized() )
+		{
+			cb.InitResource();
+		}
+		cb.SetContents( cbparams );
+		
+		SetUniformBufferParameter(RHICmdList, ShaderRHI, GetUniformBufferParameter<AHRUpsampleConstantBuffer>(), cb );
+
 		if(GIBufferTexture.IsBound())
 			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,GIBufferTexture.GetBaseIndex(),giSRV);
 		if(LinearSampler.IsBound())
@@ -108,9 +136,9 @@ public:
 	FShaderResourceParameter GIBufferTexture;
 	FShaderResourceParameter LinearSampler;
 	FShaderResourceParameter OutBuff;
+	FAHRUpsampleCB cb;
 };
 IMPLEMENT_SHADER_TYPE(,AHRUpsampleCS,TEXT("AHRUpsample"),TEXT("main"),SF_Compute);
-
 
 void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,FViewInfo& View)
 {
@@ -121,7 +149,7 @@ void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,
 	//SetRenderTarget(RHICmdList, FTextureRHIRef(), FTextureRHIRef());
 
 	// Bind the full resolution target as output
-	ComputeShader->BindOutput(RHICmdList,RaytracingTargetUAV);
+	ComputeShader->BindOutput(RHICmdList,UpsampledTargetUAV);
 
 	// Bind the targets
 	ComputeShader->SetCS(RHICmdList,View,RaytracingTargetSRV);

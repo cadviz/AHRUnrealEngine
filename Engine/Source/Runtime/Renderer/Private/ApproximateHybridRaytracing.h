@@ -7,6 +7,7 @@
 extern "C++" TAutoConsoleVariable<int32> CVarApproximateHybridRaytracing;
 extern "C++" TAutoConsoleVariable<int32> CVarAHRVoxelSliceSize;
 
+// Main class
 class FApproximateHybridRaytracer : public FRenderResource
 {
 public:
