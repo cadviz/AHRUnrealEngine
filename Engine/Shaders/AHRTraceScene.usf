@@ -1,12 +1,248 @@
 #include "Common.usf"
+#include "DeferredShadingCommon.usf"
+#include "AHRCommon.usf"
+
+float3 to_vlocal(float3 worldPos)
+{
+	// Let's get mad!
+	// (x - a)/b		   : add + div
+	// (x - a)*c , c = 1/b : add + mul
+	// x*c + d, d = -a/b   : mad
+	return worldPos*AHRTraceCB.InvSceneBounds + AHRTraceCB.WorldToVoxelOffset;
+}
 
 ByteAddressBuffer SceneVolume;
 SamplerState samLinear;
 
+static const uint seedkernel[16] = 
+{ 
+	906459532, 72893876, 492795701, 532344103,
+	326635764, 417976112, 293516711, 189627760,
+	705480491, 423810863, 187018483, 239779822,
+	1740361530, 226519499, 1570237062, 389231761
+};
+
 float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 {
 	float SceneDepth = CalcSceneDepth(InUV);
-	float3 WorldPosition = ScreenVector * SceneDepth + View.ViewOrigin.xyz;
+	float3 wPos = ScreenVector * SceneDepth + View.ViewOrigin.xyz;
 
-	return float4(saturate(WorldPosition*0.001f),1);
+	return saturate(to_vlocal(wPos).xyzz);
+
+	// Exit early if we are out of bounds
+	if(magnitudeSquared(to_vlocal(wPos)) > 3) 
+		return float4(0,0,0,1);
+
+	FScreenSpaceData ScreenSpaceData = GetScreenSpaceData(InUV);
+
+	float3 normal = ScreenSpaceData.GBuffer.WorldNormal;
+	float3 reflectVec = normalize(-reflect(-normalize(ScreenVector), normal));
+
+	uint2 DTid = InUV * AHRTraceCB.ScreenRes;
+
+	uint2 quadUV = (DTid.xy) % 4;
+	uint seed = seedkernel[quadUV.x + quadUV.y*4];
+	NumberGenerator rng;
+	rng.SetSeed( seed );
+
+	uint bvox = -1;
+	uint prevbidx = -1;
+	float3 rkernel = {-0.721016, 0.692918, -1.0};
+
+	// Construct normal space
+	float3 tangent = normalize(rkernel - normal * dot(rkernel, normal));
+	float3 bitangent = cross(normal, tangent);
+
+
+
+#define _GLOSSY
+
+
+
+	// Construct reflection space
+#ifdef _GLOSSY
+	float3 tangentR = normalize(rkernel - reflectVec * dot(rkernel, reflectVec));
+	float3 bitangentR = cross(reflectVec, tangentR);
+#endif
+
+	float3 diffuse = 0;
+	float3 glossy = 0;
+	float acc = 1;
+
+#ifdef _GLOSSY
+	for (uint r = 0; r < AHRTraceCB.GlossyRayCount; r++)
+	{
+		float3 dir = 0;
+
+		dir.x = rng.GetRandomFloat(0, 1)*2-1;
+		dir.y = rng.GetRandomFloat(0, 1)*2-1;
+		dir.z = 1;
+
+		// Apply dispersion based on the material roughness
+		// Disabled for now (8/11/2014)
+		dir.xy *= 0.01; // totally fake. something around a kinda polished stone? 0 is a perfect mirror
+
+		// Convert to vector space
+		dir = dir.x * tangentR + (dir.y * bitangentR + (dir.z * reflectVec));
+
+		float angleCos = saturate(dot(dir,normal));
+		// tan(acos(x)) = sqrt(1 - x*x)/x;
+		float dispAngleMult = sqrt(1 - angleCos*angleCos)/(angleCos + 0.01) + 1;
+
+		float3 step = dir * AHRTraceCB.invVoxel;
+		float3 spos = wPos + step*AHRTraceCB.InitialDispMult*dispAngleMult;
+		step *= AHRTraceCB.SamplesDispMultiplier;
+
+		// Rework this when enabling transparency
+		// Instead of breaking on hit, accumulate alpha and break when it's big enough
+		for (uint i = 0; i < AHRTraceCB.GlossySamplesCount; i++)
+		{
+			// If the magnitude of the vector in local voxel space is more than 3, we are out of the bounds
+			// This is because local voxel space goes from (-1,-1,-1) to (1,1,1), so if we take the magnitude of that vector, we end up with this
+			// sqrt(1^2 + 1^2 + 1^2) = sqrt(3). saying a > b, with a,b >= 0 is the same that saying a^2 > b^2, so we can take the squared magnitudes
+			// and from there we can see that any point that has a magnitude grater than 3 is outside the bounds
+			if(magnitudeSquared(to_vlocal(spos)) > 3) 
+			{
+				// Here we could intersect the ray with the sky sphere and take that color...
+				glossy += AHRTraceCB.LostRayColor;//float3(0.4f, 0.675f, 0.99f);
+				acc++;
+				break;
+			}
+
+			uint3 vpos = floor((to_vlocal(spos)*0.5 + 0.5)*AHRTraceCB.SliceSize);
+			uint vidx = vpos.y + vpos.x*AHRTraceCB.SliceSize + vpos.z*AHRTraceCB.SliceSize*AHRTraceCB.SliceSize;
+
+#define ONE_OVER_32 0.03125f
+			uint bidx = floor(float(vidx) * ONE_OVER_32);
+			uint offset = vidx - 32 * bidx;
+
+			if (bidx != prevbidx)
+			{
+				bvox = SceneVolume.Load(bidx*4);
+				prevbidx = bidx;
+			}
+			bool hit = bvox & (1 << offset);
+
+			if (hit)
+			{
+				/* This will depend on how does RSM work on UE4
+				float4 lpos = fmul(spos,LightVP);
+
+				//re-homogenize position after interpolation
+				lpos.xyz /= lpos.w;
+
+				//transform clip space coords to texture space coords (-1:1 to 0:1)
+				lpos.x = lpos.x*0.5 + 0.5;
+				lpos.y = -lpos.y*0.5 + 0.5;
+
+				float4 albedo = shadowAlbedo.SampleLevel(samLinear,lpos.xy,0);
+				float biasAngleMult = sqrt(1 - albedo.w*albedo.w)/(albedo.w + 0.01) + 1; // the w component stores the dot of the sun dir and normal
+				float shadowFactor = shadowZ.SampleCmpLevelZero(cmpSampler, lpos.xy, lpos.z-ShadowBias*biasAngleMult*0.01f);
+				*/
+				float4 albedo = 0;
+				float biasAngleMult = 0;
+				float shadowFactor = 0;
+
+				glossy += shadowFactor*albedo.rgb*albedo.w;
+				acc += 1;
+
+				break;
+			}
+			spos += step;
+		}
+	}
+	glossy /= acc;
+#endif
+
+	float ao = 0;
+	for (uint r = 0; r < AHRTraceCB.DiffuseRayCount; r++)
+	{
+		float3 dir = 0;
+
+		dir.x = rng.GetRandomFloat(0, 1)*2-1;
+		dir.y = rng.GetRandomFloat(0, 1)*2-1;
+		dir.z = 1;
+
+		// Apply dispersion
+		// Extremely fake. While a proper BRDF integrates over the entire hemisphere, restricting it to a narrower cone does the trick, and looks better
+		// Adds some "normal influence". Totally fake, but looks better
+		dir.xy *= 0.63; 
+
+		// Convert to vector space
+		dir = normalize(dir.x * tangent + (dir.y * bitangent + (dir.z * normal)));
+
+		float angleCos = saturate(dot(dir,normal));
+		float dispAngleMult = sqrt(1 - angleCos*angleCos)/(angleCos + 0.01) + 1;//tan(clamp(dispAngle,0,MAX_ANGLE)) + 1;
+
+		float3 step = dir*AHRTraceCB.invVoxel;
+		float3 spos = wPos + step*AHRTraceCB.InitialDispMult*dispAngleMult;
+
+		step *= AHRTraceCB.SamplesDispMultiplier;
+
+		for (uint i = 0; i < AHRTraceCB.DiffuseSamplesCount; i++)
+		{
+			if(magnitudeSquared(to_vlocal(spos)) > 3) 
+			{
+				// Here we could intersect the ray with the sky sphere and take that color...
+				diffuse += AHRTraceCB.LostRayColor;//float3(0.4f, 0.675f, 0.99f);
+				acc++;
+				break;
+			}
+
+			uint3 vpos = floor((to_vlocal(spos)*0.5 + 0.5)*AHRTraceCB.SliceSize);
+			uint vidx = vpos.y + vpos.x*AHRTraceCB.SliceSize + vpos.z*AHRTraceCB.SliceSize*AHRTraceCB.SliceSize;
+
+#define ONE_OVER_32 0.03125f
+			uint bidx = floor(float(vidx) * ONE_OVER_32);
+			uint offset = vidx - 32 * bidx;
+
+			if (bidx != prevbidx)
+			{
+				bvox = SceneVolume.Load(bidx*4);
+				prevbidx = bidx;
+			}
+			bool hit = bvox & (1 << offset);
+
+			if (hit)
+			{
+				/* This will depend on how does RSM work on UE4
+				float4 lpos = fmul(spos,LightVP);
+
+				//re-homogenize position after interpolation
+				lpos.xyz /= lpos.w;
+
+				//transform clip space coords to texture space coords (-1:1 to 0:1)
+				lpos.x = lpos.x*0.5 + 0.5;
+				lpos.y = -lpos.y*0.5 + 0.5;
+
+				float4 albedo = shadowAlbedo.SampleLevel(samLinear,lpos.xy,0);
+				float biasAngleMult = sqrt(1 - albedo.w*albedo.w)/(albedo.w + 0.01) + 1; // the w component stores the dot of the sun dir and normal
+				float shadowFactor = shadowZ.SampleCmpLevelZero(cmpSampler, lpos.xy, lpos.z-ShadowBias*biasAngleMult*0.01f);
+				*/
+				float4 albedo = 0;
+				float biasAngleMult = 0;
+				float shadowFactor = 0;
+
+				diffuse += shadowFactor*albedo.rgb*albedo.w;
+				acc += 1;
+
+				break;
+			}
+			spos += step;
+		}
+	}
+
+	ao /= acc;
+	ao = 1.0f - saturate(ao);
+
+	diffuse /= acc;
+
+#ifdef _GLOSSY
+	// Should be based on the material roughness
+	float4 traced = float4(lerp(glossy,diffuse,0.85),ao);
+#else
+	float4 traced = float4(diffuse,ao);
+#endif
+
+	return traced;
 }

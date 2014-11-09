@@ -40338,6 +40338,9 @@
     <None Include="..\..\Shaders\AHRTraceScene.usf">
       <Filter>Shaders\AHR</Filter>
     </None>
+    <None Include="..\..\Shaders\AHRCommon.usf">
+      <Filter>Shaders\AHR</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\Source\Runtime\Renderer\Private\AHR_Pipeline.cpp">

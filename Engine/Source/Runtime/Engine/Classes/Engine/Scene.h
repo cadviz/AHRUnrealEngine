@@ -256,6 +256,45 @@ struct FPostProcessSettings
 	UPROPERTY(BlueprintReadWrite, Category=Overrides, meta=(PinHiddenByDefault))
 	uint32 bOverride_LPVTransmissionIntensity:1;
 
+	// @RyanTorant
+	// ------------------------
+	UPROPERTY(BlueprintReadWrite, Category=Overrides, meta=(PinHiddenByDefault))
+	uint32 bOverride_AHRIntensity:1;
+
+	UPROPERTY(BlueprintReadWrite, Category=Overrides, meta=(PinHiddenByDefault))
+	uint32 bOverride_AHRDiffuseRayCount:1;
+
+	UPROPERTY(BlueprintReadWrite, Category=Overrides, meta=(PinHiddenByDefault))
+	uint32 bOverride_AHRGlossyRayCount:1;
+
+	UPROPERTY(BlueprintReadWrite, Category=Overrides, meta=(PinHiddenByDefault))
+	uint32 bOverride_AHRDiffuseSamplesCount:1;
+
+	UPROPERTY(BlueprintReadWrite, Category=Overrides, meta=(PinHiddenByDefault))
+	uint32 bOverride_AHRGlossySamplesCount:1;
+
+	UPROPERTY(BlueprintReadWrite, Category=Overrides, meta=(PinHiddenByDefault))
+	uint32 bOverride_AHRSamplesDisplacement:1;
+
+	UPROPERTY(BlueprintReadWrite, Category=Overrides, meta=(PinHiddenByDefault))
+	uint32 bOverride_AHRInitialDisplacement:1;
+
+	UPROPERTY(BlueprintReadWrite, Category=Overrides, meta=(PinHiddenByDefault))
+	uint32 bOverride_AHRSceneCenterX:1;
+
+	UPROPERTY(BlueprintReadWrite, Category=Overrides, meta=(PinHiddenByDefault))
+	uint32 bOverride_AHRSceneCenterY:1;
+
+	UPROPERTY(BlueprintReadWrite, Category=Overrides, meta=(PinHiddenByDefault))
+	uint32 bOverride_AHRSceneCenterZ:1;
+
+	UPROPERTY(BlueprintReadWrite, Category=Overrides, meta=(PinHiddenByDefault))
+	uint32 bOverride_AHRSceneScale:1;
+
+	UPROPERTY(BlueprintReadWrite, Category=Overrides, meta=(PinHiddenByDefault))
+	uint32 bOverride_AHRLostRayColor:1;
+	// ---------------------------
+
 	UPROPERTY(BlueprintReadWrite, Category=Overrides, meta=(PinHiddenByDefault))
 	uint32 bOverride_IndirectLightingColor:1;
 
@@ -492,6 +531,58 @@ struct FPostProcessSettings
 	/** How strong light transmission from the LPV should be. 0.0 is off, 1.0 is the "normal" value, but higher values can be used to boost the effect*/
 	UPROPERTY(interp, BlueprintReadWrite, Category=LightPropagationVolume, meta=(editcondition = "bOverride_LPVTransmissionIntensity", UIMin = "0", UIMax = "2", DisplayName = "Transmission Intensity") )
 	float LPVTransmissionIntensity;
+
+	// @RyanTorant
+	// ---------------------
+	/** How strong is the indirect illumination from AHR. 0.0 is off, 1.0 is the "normal" value, but higher values can be used to boost the effect*/
+	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRIntensity", UIMin = "0", UIMax = "10", DisplayName = "Intensity") )
+	float AHRIntensity;
+
+	/** How many rays to trace when tracing the diffuse component. */
+	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRDiffuseRayCount", UIMin = "0", UIMax = "64", DisplayName = "Diffuse Ray Count") )
+	uint32 AHRDiffuseRayCount;
+
+	/** How many rays to trace when tracing the glossy component. */
+	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRGlossyRayCount", UIMin = "0", UIMax = "64", DisplayName = "Glossy Ray Count") )
+	uint32 AHRGlossyRayCount;
+
+	/** How many samples to take per ray when tracing the diffuse component. Global maximum, each ray finishes when it hits something, so the effective number can be lower */
+	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRDiffuseSamplesCount", UIMin = "0", UIMax = "256", DisplayName = "Diffuse Samples Count") )
+	uint32 AHRDiffuseSamplesCount;
+
+	/** How many rays to trace when tracing the glossy component. */
+	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRGlossySamplesCount", UIMin = "0", UIMax = "256", DisplayName = "Glossy Samples Count") )
+	uint32 AHRGlossySamplesCount;
+
+	/** Displacement of the samples, in voxels */
+	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRSamplesDisplacement", UIMin = "0", UIMax = "5", DisplayName = "Samples Displacement") )
+	float AHRSamplesDisplacement;
+
+	/** Initial displacement multiplier, in voxels */
+	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRInitialDisplacement", UIMin = "0", UIMax = "5", DisplayName = "Initial Displacement") )
+	float AHRInitialDisplacement;
+
+	/** Scene bounds scale */
+	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRSceneScale", UIMin = "10", UIMax = "20000", DisplayName = "Scene Bounds Scale") )
+	float AHRSceneScale;
+
+	/** Scene bounds scale */
+	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRSceneCenterX", UIMin = "10", UIMax = "20000", DisplayName = "Scene Bounds Center X") )
+	float AHRSceneCenterX;
+
+	/** Scene bounds scale */
+	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRSceneCenterY", UIMin = "10", UIMax = "20000", DisplayName = "Scene Bounds Center Y") )
+	float AHRSceneCenterY;
+
+	/** Scene bounds scale */
+	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRSceneCenterZ", UIMin = "10", UIMax = "20000", DisplayName = "Scene Bounds Center Z") )
+	float AHRSceneCenterZ;
+
+	/** Lost ray color. Should be something similar to the color of the sky */
+	UPROPERTY(interp, Category=ApproximateHybridRaytracing, AdvancedDisplay, meta=(editcondition = "bOverride_AHRLostRayColor", DisplayName = "Lost Ray Color"))
+	FLinearColor AHRLostRayColor;
+
+	// ---------------------
 
 	/** AmbientCubemap tint color */
 	UPROPERTY(interp, BlueprintReadWrite, Category=AmbientCubemap, AdvancedDisplay, meta=(editcondition = "bOverride_AmbientCubemapTint", DisplayName = "Tint", HideAlphaChannel))
@@ -829,6 +920,21 @@ struct FPostProcessSettings
 		LPVGeometryVolumeBias = 0.384f;
 		LPVEmissiveInjectionIntensity = 1.0f;
 		LPVTransmissionIntensity = 1.0f;
+
+		// @RyanTorant
+		AHRIntensity = 1.0f;
+		AHRDiffuseRayCount = 9;
+		AHRGlossyRayCount = 2;
+		AHRDiffuseSamplesCount = 32;
+		AHRGlossySamplesCount = 32;
+		AHRSamplesDisplacement = 2.2;
+		AHRInitialDisplacement = 1.98;
+		AHRSceneScale = 1000.0f;
+		AHRSceneCenterX = 0.0f;
+		AHRSceneCenterY = 0.0f;
+		AHRSceneCenterZ = 0.0f;
+		AHRLostRayColor = FLinearColor(0.4f, 0.675f, 0.99f);
+
 		AutoExposureLowPercent = 80.0f;
 		AutoExposureHighPercent = 98.3f;
 		// next value might get overwritten by r.DefaultFeature.AutoExposure

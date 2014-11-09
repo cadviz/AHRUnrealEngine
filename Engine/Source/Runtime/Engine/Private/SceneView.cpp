@@ -675,6 +675,9 @@ void FSceneView::OverridePostProcessSettings(const FPostProcessSettings& Src, fl
 	LERP_PP(LPVIntensity);
 	LERP_PP(LPVWarpIntensity);
 	LERP_PP(LPVTransmissionIntensity);
+	// @RyanTorant
+	LERP_PP(AHRIntensity);
+
 	LERP_PP(AutoExposureLowPercent);
 	LERP_PP(AutoExposureHighPercent);
 	LERP_PP(AutoExposureMinBrightness);

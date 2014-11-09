@@ -68,6 +68,26 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 ///
 /// Tracing
 ///
+BEGIN_UNIFORM_BUFFER_STRUCT(AHRTraceSceneCB,)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector2D,ScreenRes)
+
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(uint32,SliceSize)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector,InvSceneBounds)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector,WorldToVoxelOffset) // -SceneCenter/SceneBounds
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector,invVoxel)
+
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(float,InitialDispMult)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(float,SamplesDispMultiplier)
+
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(uint32,GlossyRayCount)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(uint32,GlossySamplesCount)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(uint32,DiffuseRayCount)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(uint32,DiffuseSamplesCount)
+
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector,LostRayColor)
+END_UNIFORM_BUFFER_STRUCT(AHRTraceSceneCB)
+IMPLEMENT_UNIFORM_BUFFER_STRUCT(AHRTraceSceneCB,TEXT("AHRTraceCB"));
+
 class AHRTraceScenePS : public FGlobalShader
 {
 	DECLARE_SHADER_TYPE(AHRTraceScenePS,Global)
@@ -89,8 +109,9 @@ public:
 	:	FGlobalShader(Initializer)
 	{
 		DeferredParameters.Bind(Initializer.ParameterMap);
-		SceneVolume.Bind(Initializer.ParameterMap, TEXT("tGI"));
+		SceneVolume.Bind(Initializer.ParameterMap, TEXT("SceneVolume"));
 		LinearSampler.Bind(Initializer.ParameterMap, TEXT("samLinear"));
+		cb.Bind(Initializer.ParameterMap, TEXT("AHRTraceCB"));
 	}
 
 	AHRTraceScenePS()
@@ -102,6 +123,27 @@ public:
 		const FPixelShaderRHIParamRef ShaderRHI = GetPixelShader();
 		FGlobalShader::SetParameters(RHICmdList, ShaderRHI,View);
 		DeferredParameters.Set(RHICmdList, ShaderRHI, View);
+
+		AHRTraceSceneCB cbdata;
+
+		cbdata.SliceSize = CVarAHRVoxelSliceSize.GetValueOnRenderThread();
+		cbdata.ScreenRes.X = View.Family->FamilySizeX/2;
+		cbdata.ScreenRes.Y = View.Family->FamilySizeY/2;
+		cbdata.invVoxel = FVector(1.0f / float(cbdata.SliceSize));
+
+		cbdata.InvSceneBounds = FVector(1.0f) / View.FinalPostProcessSettings.AHRSceneScale;
+		cbdata.WorldToVoxelOffset = -FVector(View.FinalPostProcessSettings.AHRSceneCenterX,View.FinalPostProcessSettings.AHRSceneCenterY,View.FinalPostProcessSettings.AHRSceneCenterZ)*cbdata.InvSceneBounds; // -SceneCenter/SceneBounds
+		cbdata.GlossyRayCount = View.FinalPostProcessSettings.AHRGlossyRayCount;
+		cbdata.GlossySamplesCount = View.FinalPostProcessSettings.AHRGlossySamplesCount;
+		cbdata.DiffuseRayCount = View.FinalPostProcessSettings.AHRDiffuseRayCount;
+		cbdata.DiffuseSamplesCount = View.FinalPostProcessSettings.AHRDiffuseSamplesCount;
+		cbdata.LostRayColor.X = View.FinalPostProcessSettings.AHRLostRayColor.R;
+		cbdata.LostRayColor.Y = View.FinalPostProcessSettings.AHRLostRayColor.G;
+		cbdata.LostRayColor.Z = View.FinalPostProcessSettings.AHRLostRayColor.B;
+		cbdata.InitialDispMult = View.FinalPostProcessSettings.AHRInitialDisplacement;
+		cbdata.SamplesDispMultiplier = View.FinalPostProcessSettings.AHRSamplesDisplacement;
+
+		SetUniformBufferParameterImmediate(RHICmdList, ShaderRHI,cb,cbdata);
 
 		if(SceneVolume.IsBound())
 			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,SceneVolume.GetBaseIndex(),sceneVolumeSRV);
@@ -115,6 +157,7 @@ public:
 		Ar << DeferredParameters;
 		Ar << SceneVolume;
 		Ar << LinearSampler;
+		Ar << cb;
 		return bShaderHasOutdatedParameters;
 	}
 
@@ -129,6 +172,7 @@ private:
 	FDeferredPixelShaderParameters DeferredParameters;
 	FShaderResourceParameter SceneVolume;
 	FShaderResourceParameter LinearSampler;
+	TShaderUniformBufferParameter<AHRTraceSceneCB> cb;
 };
 IMPLEMENT_SHADER_TYPE(,AHRTraceScenePS,TEXT("AHRTraceScene"),TEXT("PS"),SF_Pixel);
 
@@ -170,18 +214,6 @@ void FApproximateHybridRaytracer::TraceScene(FRHICommandListImmediate& RHICmdLis
 		GSceneRenderTargets.GetBufferSizeXY(),
 		*VertexShader,
 		EDRF_UseTriangleOptimization);
-	/*
-	// Draw!
-	DrawRectangle( 
-				RHICmdList,
-				0, 0,
-				View.ViewRect.Width()/2, View.ViewRect.Height()/2,
-				View.ViewRect.Min.X, View.ViewRect.Min.Y, 
-				View.ViewRect.Width()/2, View.ViewRect.Height()/2,
-				View.ViewRect.Size()/2,
-				GSceneRenderTargets.GetBufferSizeXY()/2,
-				*VertexShader,
-				EDRF_UseTriangleOptimization);*/
 }
 
 
@@ -357,7 +389,8 @@ void FApproximateHybridRaytracer::Composite(FRHICommandListImmediate& RHICmdList
 	// Only one view at a time for now (1/11/2014)
 
 	// Set additive blending
-	RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_One, BO_Add, BF_One, BF_One>::GetRHI());
+	//RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_One, BO_Add, BF_One, BF_One>::GetRHI());
+	RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_Zero, BO_Add, BF_One, BF_Zero>::GetRHI());
 
 	// Set the viewport, raster state and depth stencil
 	RHICmdList.SetViewport(View.ViewRect.Min.X, View.ViewRect.Min.Y, 0.0f, View.ViewRect.Max.X, View.ViewRect.Max.Y, 1.0f);
