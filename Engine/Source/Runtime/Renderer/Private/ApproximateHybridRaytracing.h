@@ -21,7 +21,7 @@ public:
 
 	// Main pipeline functions
 	void InitializeViewTargets(uint32 ResX,uint32 ResY);
-	void VoxelizeScene(FRHICommandListImmediate& RHICmdList);
+	void VoxelizeScene(FRHICommandListImmediate& RHICmdList,FViewInfo& View);
 	void TraceScene(FRHICommandListImmediate& RHICmdList,FViewInfo& View);
 	void Upsample(FRHICommandListImmediate& RHICmdList,FViewInfo& View);
 	void Composite(FRHICommandListImmediate& RHICmdList,FViewInfo& View);

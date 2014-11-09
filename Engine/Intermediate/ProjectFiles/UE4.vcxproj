@@ -1388,6 +1388,7 @@
     <None Include="..\..\Documentation\Source\Shared\Types\UWidgetBlueprint\UWidgetBlueprint.INT.udn" />
     <None Include="..\..\Documentation\Source\Shared\Types\UWorld\UWorld.INT.udn" />
     <None Include="..\..\Source\Developer\Android\AndroidDeviceDetection\AndroidDeviceDetection.Build.cs" />
+    <ClCompile Include="..\..\Shaders\AHRVoxelizationShader.usf" />
     <ClCompile Include="..\..\Source\Developer\Android\AndroidDeviceDetection\Private\AndroidDeviceDetectionModule.cpp" />
     <ClInclude Include="..\..\Source\Developer\Android\AndroidDeviceDetection\Private\AndroidDeviceDetectionPrivatePCH.h" />
     <ClInclude Include="..\..\Source\Developer\Android\AndroidDeviceDetection\Public\AndroidDeviceDetection.h" />

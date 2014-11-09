@@ -553,12 +553,15 @@ void FDeferredShadingSceneRenderer::RenderLights(FRHICommandListImmediate& RHICm
 		}
 				
 		// @RyanTorant
-		// No need to set the render target before, as both functions set they own rt
-		AHREngine.TraceScene(RHICmdList,Views[0]);
-		AHREngine.Upsample(RHICmdList,Views[0]);
-		// Add to the light accumulation buffer by rendering a quad with additive blending
-		GSceneRenderTargets.BeginRenderingSceneColor(RHICmdList);
-		AHREngine.Composite(RHICmdList,Views[0]);
+		if(UseApproximateHybridRaytracingRT(Views[0].FeatureLevel))
+		{
+			// No need to set the render target before, as both functions set they own rt
+			AHREngine.TraceScene(RHICmdList,Views[0]);
+			AHREngine.Upsample(RHICmdList,Views[0]);
+			// Add to the light accumulation buffer by rendering a quad with additive blending
+			GSceneRenderTargets.BeginRenderingSceneColor(RHICmdList);
+			AHREngine.Composite(RHICmdList,Views[0]);
+		}
 
 		// Do not resolve to scene color texture, this is done lazily
 		GSceneRenderTargets.FinishRenderingSceneColor(RHICmdList, false);

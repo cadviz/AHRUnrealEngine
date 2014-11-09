@@ -540,19 +540,19 @@ struct FPostProcessSettings
 
 	/** How many rays to trace when tracing the diffuse component. */
 	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRDiffuseRayCount", UIMin = "0", UIMax = "64", DisplayName = "Diffuse Ray Count") )
-	uint32 AHRDiffuseRayCount;
+	int32 AHRDiffuseRayCount;
 
 	/** How many rays to trace when tracing the glossy component. */
 	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRGlossyRayCount", UIMin = "0", UIMax = "64", DisplayName = "Glossy Ray Count") )
-	uint32 AHRGlossyRayCount;
+	int32 AHRGlossyRayCount;
 
 	/** How many samples to take per ray when tracing the diffuse component. Global maximum, each ray finishes when it hits something, so the effective number can be lower */
 	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRDiffuseSamplesCount", UIMin = "0", UIMax = "256", DisplayName = "Diffuse Samples Count") )
-	uint32 AHRDiffuseSamplesCount;
+	int32 AHRDiffuseSamplesCount;
 
 	/** How many rays to trace when tracing the glossy component. */
 	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRGlossySamplesCount", UIMin = "0", UIMax = "256", DisplayName = "Glossy Samples Count") )
-	uint32 AHRGlossySamplesCount;
+	int32 AHRGlossySamplesCount;
 
 	/** Displacement of the samples, in voxels */
 	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRSamplesDisplacement", UIMin = "0", UIMax = "5", DisplayName = "Samples Displacement") )
@@ -563,19 +563,19 @@ struct FPostProcessSettings
 	float AHRInitialDisplacement;
 
 	/** Scene bounds scale */
-	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRSceneScale", UIMin = "10", UIMax = "20000", DisplayName = "Scene Bounds Scale") )
+	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRSceneScale", UIMin = "10", UIMax = "2000", DisplayName = "Scene Bounds Scale") )
 	float AHRSceneScale;
 
 	/** Scene bounds scale */
-	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRSceneCenterX", UIMin = "10", UIMax = "20000", DisplayName = "Scene Bounds Center X") )
+	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRSceneCenterX", UIMin = "-5000", UIMax = "5000", DisplayName = "Scene Bounds Center X") )
 	float AHRSceneCenterX;
 
 	/** Scene bounds scale */
-	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRSceneCenterY", UIMin = "10", UIMax = "20000", DisplayName = "Scene Bounds Center Y") )
+	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRSceneCenterY", UIMin = "-5000", UIMax = "5000", DisplayName = "Scene Bounds Center Y") )
 	float AHRSceneCenterY;
 
 	/** Scene bounds scale */
-	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRSceneCenterZ", UIMin = "10", UIMax = "20000", DisplayName = "Scene Bounds Center Z") )
+	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRSceneCenterZ", UIMin = "-5000", UIMax = "5000", DisplayName = "Scene Bounds Center Z") )
 	float AHRSceneCenterZ;
 
 	/** Lost ray color. Should be something similar to the color of the sky */

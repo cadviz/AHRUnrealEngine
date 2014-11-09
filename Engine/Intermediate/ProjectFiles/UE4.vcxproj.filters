@@ -40349,6 +40349,9 @@
     <ClCompile Include="..\..\Source\Runtime\Renderer\Private\ApproximateHybridRaytracing.cpp">
       <Filter>Source\Runtime\Renderer\AHR</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Shaders\AHRVoxelizationShader.usf">
+      <Filter>Shaders\AHR</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\Source\Runtime\Renderer\Private\ApproximateHybridRaytracing.h">

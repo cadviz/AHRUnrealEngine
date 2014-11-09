@@ -668,6 +668,8 @@ public:
 			Result.bStaticRelevance = true;
 		}
 		Result.bShadowRelevance = IsShadowCast(View);
+		// @RyanTorant
+		Result.bNeedsVoxelization = bAffectDynamicIndirectLighting;
 		MaterialRelevance.SetPrimitiveViewRelevance(Result);
 		return Result;
 	}

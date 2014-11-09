@@ -1873,6 +1873,18 @@ void FSceneRenderer::ComputeViewVisibility(FRHICommandListImmediate& RHICmdList)
 		HasDynamicEditorMeshElementsMasks.AddZeroed(NumPrimitives);
 	}
 
+	// @RyanTorant
+	// Store all the primitives that need to be voxelized
+	if(UseApproximateHybridRaytracingRT(Views[0].FeatureLevel))
+	{
+		for(auto primitive : Scene->Primitives)
+		{
+			FPrimitiveViewRelevance ViewRelevance = primitive->Proxy->GetViewRelevance(&Views[0]);
+			if(ViewRelevance.bNeedsVoxelization && ViewRelevance.bRenderInMainPass && !ViewRelevance.bEditorPrimitiveRelevance)
+				Views[0].PrimitivesToVoxelize.Add(primitive);
+		}
+	}
+
 	uint8 ViewBit = 0x1;
 	for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ++ViewIndex, ViewBit <<= 1)
 	{
@@ -2214,14 +2226,15 @@ void FDeferredShadingSceneRenderer::InitViews(FRHICommandListImmediate& RHICmdLi
 		}
 	}
 
-	// @RyanTorant
-	// Do the voxelization before any culling takes place
-	// For now (29/10/2014) both static and dynamic objects get voxelized on the same pass. Also, no emissive (plain binary grid)
-	AHREngine.VoxelizeScene(RHICmdList);
-
 	PreVisibilityFrameSetup(RHICmdList);
 	ComputeViewVisibility(RHICmdList);
 	PostVisibilityFrameSetup();
+
+	// @RyanTorant
+	// After this point we have the PrimitivesToVoxelize array filled, so we can start voxelization
+	// For now (29/10/2014) both static and dynamic objects get voxelized on the same pass. Also, no emissive (plain binary grid)
+	if(UseApproximateHybridRaytracingRT(Views[0].FeatureLevel))
+		AHREngine.VoxelizeScene(RHICmdList,Views[0]);
 
 	FVector AverageViewPosition(0);
 

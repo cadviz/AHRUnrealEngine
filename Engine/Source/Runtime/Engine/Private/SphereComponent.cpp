@@ -174,6 +174,8 @@ FPrimitiveSceneProxy* USphereComponent::CreateSceneProxy()
 			Result.bDynamicRelevance = true;
 			Result.bShadowRelevance = IsShadowCast(View);
 			Result.bEditorPrimitiveRelevance = UseEditorCompositing(View);
+			// @RyanTorant
+			Result.bNeedsVoxelization = bAffectDynamicIndirectLighting;
 			return Result;
 		}
 

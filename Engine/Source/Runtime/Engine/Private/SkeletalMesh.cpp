@@ -4669,6 +4669,8 @@ FPrimitiveViewRelevance FSkeletalMeshSceneProxy::GetViewRelevance(const FSceneVi
 	Result.bRenderCustomDepth = ShouldRenderCustomDepth();
 	Result.bRenderInMainPass = ShouldRenderInMainPass();
 	MaterialRelevance.SetPrimitiveViewRelevance(Result);
+	// @RyanTorant
+	Result.bNeedsVoxelization = bAffectDynamicIndirectLighting;
 	return Result;
 }
 

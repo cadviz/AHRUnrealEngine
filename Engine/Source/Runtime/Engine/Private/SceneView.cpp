@@ -675,8 +675,20 @@ void FSceneView::OverridePostProcessSettings(const FPostProcessSettings& Src, fl
 	LERP_PP(LPVIntensity);
 	LERP_PP(LPVWarpIntensity);
 	LERP_PP(LPVTransmissionIntensity);
+
 	// @RyanTorant
 	LERP_PP(AHRIntensity);
+	LERP_PP(AHRDiffuseRayCount);
+	LERP_PP(AHRGlossyRayCount);
+	LERP_PP(AHRDiffuseSamplesCount);
+	LERP_PP(AHRGlossySamplesCount);
+	LERP_PP(AHRSamplesDisplacement);
+	LERP_PP(AHRInitialDisplacement);
+	LERP_PP(AHRSceneScale);
+	LERP_PP(AHRSceneCenterX);
+	LERP_PP(AHRSceneCenterY);
+	LERP_PP(AHRSceneCenterZ);
+	LERP_PP(AHRLostRayColor);
 
 	LERP_PP(AutoExposureLowPercent);
 	LERP_PP(AutoExposureHighPercent);

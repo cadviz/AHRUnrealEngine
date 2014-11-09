@@ -88,7 +88,9 @@ ACharacter::ACharacter(const FObjectInitializer& ObjectInitializer)
 		Mesh->bOwnerNoSee = false;
 		Mesh->MeshComponentUpdateFlag = EMeshComponentUpdateFlag::AlwaysTickPose;
 		Mesh->bCastDynamicShadow = true;
-		Mesh->bAffectDynamicIndirectLighting = true;
+		// @RyanTorant
+		// AHR disabled by default
+		Mesh->bAffectDynamicIndirectLighting = false;
 		Mesh->PrimaryComponentTick.TickGroup = TG_PrePhysics;
 		Mesh->bChartDistanceFactor = true;
 		Mesh->AttachParent = CapsuleComponent;

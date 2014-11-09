@@ -57,12 +57,29 @@ void  FApproximateHybridRaytracer::InitializeViewTargets(uint32 _resX,uint32 _re
 	}
 }
 
-void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmdList)
+void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmdList,FViewInfo& View)
 {
 	SCOPED_DRAW_EVENT(RHICmdList,AHRVoxelizeScene, DEC_SCENE_ITEMS);
 
 	// Voxelize the objects to the binary grid
-	// For now (8/11/2014) the grid is fixed to the origin, and both static and dynamic objects get voxelized every frame
+	if( View.PrimitivesToVoxelize.Num( ) > 0 )
+	{
+		_DEBUG_MSG("primitive ready to go!");
+		/*THairElementPDI<FHairDrawingPolicyFactory> Drawer(
+			&View, FHairDrawingPolicyFactory::ContextType( EHairDrawingMode::KBuffer ) );
+
+		for( int32 PrimitiveIndex = 0, Num = View.PrimitivesToVoxelize.Num( ); PrimitiveIndex < Num; PrimitiveIndex++ )
+		{
+			// VisibleHairPrimitives added to FViewInfo in SceneRendering.h to allow objects to opt in to this Drawing Policy
+			const FPrimitiveSceneInfo* PrimitiveSceneInfo = View.PrimitivesToVoxelize[ PrimitiveIndex ];
+			
+			FScopeCycleCounter Context( PrimitiveSceneInfo->Proxy->GetStatId( ) );
+			Drawer.SetPrimitive( PrimitiveSceneInfo->Proxy );
+				
+			// Calls SceneProxy DrawDynamicElements function
+			PrimitiveSceneInfo->Proxy->DrawDynamicElements(&Drawer,&View);
+		}*/
+	}
 }
 
 ///

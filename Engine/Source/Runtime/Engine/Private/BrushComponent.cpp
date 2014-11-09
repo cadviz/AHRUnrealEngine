@@ -427,6 +427,8 @@ public:
 			FPrimitiveViewRelevance Result;
 			Result.bDrawRelevance = true;
 			Result.bDynamicRelevance = true;
+			// @RyanTorant
+			Result.bNeedsVoxelization = bAffectDynamicIndirectLighting;
 			return Result;
 		}
 
@@ -490,6 +492,8 @@ public:
 		Result.bDrawRelevance = bVisible;
 		Result.bDynamicRelevance = true;
 		Result.bShadowRelevance = IsShadowCast(View);
+		// @RyanTorant
+		Result.bNeedsVoxelization = bAffectDynamicIndirectLighting;
 		if(bInManipulation)
 		{
 			Result.bEditorNoDepthTestPrimitiveRelevance = true;

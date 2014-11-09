@@ -17,7 +17,8 @@ APaperCharacter::APaperCharacter(const FObjectInitializer& ObjectInitializer)
 		Sprite->AlwaysLoadOnClient = true;
 		Sprite->AlwaysLoadOnServer = true;
 		Sprite->bOwnerNoSee = false;
-		Sprite->bAffectDynamicIndirectLighting = true;
+		// @RyanTorant
+		Sprite->bAffectDynamicIndirectLighting = false; // wtf? why was this true as default
 		Sprite->PrimaryComponentTick.TickGroup = TG_PrePhysics;
 		Sprite->AttachParent = GetCapsuleComponent();
 		static FName CollisionProfileName(TEXT("CharacterMesh"));

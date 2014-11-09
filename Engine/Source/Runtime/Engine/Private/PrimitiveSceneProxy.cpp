@@ -168,7 +168,7 @@ HHitProxy* FPrimitiveSceneProxy::CreateHitProxies(UPrimitiveComponent* Component
 
 FPrimitiveViewRelevance FPrimitiveSceneProxy::GetViewRelevance(const FSceneView* View)
 {
-	return FPrimitiveViewRelevance();
+	return FPrimitiveViewRelevance(bAffectDynamicIndirectLighting);
 }
 
 void FPrimitiveSceneProxy::UpdateActorPosition(FVector InActorPosition)

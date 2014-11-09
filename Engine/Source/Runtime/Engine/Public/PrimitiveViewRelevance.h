@@ -42,6 +42,10 @@ struct FPrimitiveViewRelevance
 	/** The primitive has one or more elements that have the SubsurfaceProfile shading model. */
 	uint32 bSubsurfaceProfileRelevance : 1;
 
+	// @RyanTorant
+	/** The primitive needs to be voxelized */
+	uint32 bNeedsVoxelization : 1;
+
 	/** 
 	 * Whether this primitive view relevance has been initialized this frame.  
 	 * Primitives that have not had ComputeRelevanceForView called on them (because they were culled) will not be initialized,
@@ -72,7 +76,31 @@ struct FPrimitiveViewRelevance
 		bSeparateTranslucencyRelevance(false),
 		bNormalTranslucencyRelevance(false),
 		bSubsurfaceProfileRelevance(false),
-		bInitializedThisFrame(false)
+		bInitializedThisFrame(false),
+		bNeedsVoxelization(false)
+	{}
+
+	// @RyanTorant
+	/** Initialization constructor that takes as an input if it needs voxelization. */
+	FPrimitiveViewRelevance(bool needsVoxelization):
+		bStaticRelevance(false),
+		bDynamicRelevance(false),
+		bDrawRelevance(false),
+		bShadowRelevance(false),
+		bRenderCustomDepth(false),
+		bRenderInMainPass(true),
+		bEditorPrimitiveRelevance(false),
+		bEditorNoDepthTestPrimitiveRelevance(false),
+		bNeedsPreRenderView(false),
+		bHasSimpleLights(false),
+		bOpaqueRelevance(true),
+		bMaskedRelevance(false),
+		bDistortionRelevance(false),
+		bSeparateTranslucencyRelevance(false),
+		bNormalTranslucencyRelevance(false),
+		bSubsurfaceProfileRelevance(false),
+		bInitializedThisFrame(false),
+		bNeedsVoxelization(needsVoxelization)
 	{}
 
 	/** Bitwise OR operator.  Sets any relevance bits which are present in either FPrimitiveViewRelevance. */
@@ -95,6 +123,7 @@ struct FPrimitiveViewRelevance
 		bNormalTranslucencyRelevance |= B.bNormalTranslucencyRelevance != 0;
 		bInitializedThisFrame |= B.bInitializedThisFrame;
 		bSubsurfaceProfileRelevance |= B.bSubsurfaceProfileRelevance != 0;
+		bNeedsVoxelization |= B.bNeedsVoxelization != 0;
 		return *this;
 	}
 

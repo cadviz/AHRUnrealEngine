@@ -1161,6 +1161,8 @@ FPrimitiveViewRelevance FStaticMeshSceneProxy::GetViewRelevance(const FSceneView
 	{
 		Result.bOpaqueRelevance = true;
 	}
+	// @RyanTorant
+	Result.bNeedsVoxelization = bAffectDynamicIndirectLighting;
 	return Result;
 }
 

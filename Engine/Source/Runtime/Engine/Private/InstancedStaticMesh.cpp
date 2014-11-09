@@ -925,6 +925,8 @@ public:
 			}
 #endif
 		}
+		// @RyanTorant
+		Result.bNeedsVoxelization = bAffectDynamicIndirectLighting;
 		return Result;
 	}
 

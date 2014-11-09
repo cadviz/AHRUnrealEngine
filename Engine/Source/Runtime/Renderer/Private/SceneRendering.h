@@ -375,6 +375,10 @@ public:
 	/** The dynamic editor primitives visible in this view. */
 	TArray<const FPrimitiveSceneInfo*,SceneRenderingAllocator> VisibleEditorPrimitives;
 
+	// @RyanTorant
+	/** The primitives sent to the voxelization stage */
+	TArray<const FPrimitiveSceneInfo*,SceneRenderingAllocator> PrimitivesToVoxelize;
+
 	/** Set of translucent prims for this view */
 	FTranslucentPrimSet TranslucentPrimSet;
 
