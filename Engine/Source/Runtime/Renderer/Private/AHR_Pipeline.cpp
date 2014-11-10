@@ -4,6 +4,7 @@
 #include "ApproximateHybridRaytracing.h"
 #include "SceneUtils.h"
 #include "SceneFilterRendering.h"
+#include "AHR_Voxelization.h"
 
 // Using a full screen quad at every stage instead of a quad as the targets are already setted for a quad. Also, not using groupshared memory.
 class AHRPassVS : public FGlobalShader
@@ -64,9 +65,8 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 	// Voxelize the objects to the binary grid
 	if( View.PrimitivesToVoxelize.Num( ) > 0 )
 	{
-		_DEBUG_MSG("primitive ready to go!");
-		/*THairElementPDI<FHairDrawingPolicyFactory> Drawer(
-			&View, FHairDrawingPolicyFactory::ContextType( EHairDrawingMode::KBuffer ) );
+		TAHRVoxelizerElementPDI<FAHRVoxelizerDrawingPolicyFactory> Drawer(
+			&View, FAHRVoxelizerDrawingPolicyFactory::ContextType() );
 
 		for( int32 PrimitiveIndex = 0, Num = View.PrimitivesToVoxelize.Num( ); PrimitiveIndex < Num; PrimitiveIndex++ )
 		{
@@ -78,7 +78,7 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 				
 			// Calls SceneProxy DrawDynamicElements function
 			PrimitiveSceneInfo->Proxy->DrawDynamicElements(&Drawer,&View);
-		}*/
+		}
 	}
 }
 

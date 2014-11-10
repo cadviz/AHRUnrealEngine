@@ -1,0 +1,624 @@
+float rand(float2 co)
+{
+	co = cos(co)*0.5 + 0.5; // change it to [0,1]
+	return 0.5 + (frac(sin(dot(co.xy, float2(12.9898, 78.233))) * 43758.5453))*0.5;
+}
+
+float triangleArea(float3 A,float3 B,float3 C)
+{
+	return length(cross(B - A, C - A)) *0.5;
+}
+
+float4 barycentricInterpolation(float3 P, float3 pos0,float3 pos1,float3 pos2, float4 val0,float4 val1,float4 val2)
+{
+	float A = triangleArea(pos0, pos1, pos2);
+
+	float3 areas = float3(triangleArea(pos1, pos2, P),
+						  triangleArea(pos0, pos2, P),
+						  triangleArea(pos0, pos1, P));
+	areas /= A;
+
+	float4 v0 = val0*areas.x; 
+	float4 v1 = val1*areas.y;
+	float4 v2 = val2*areas.z;
+
+	float4 final = v0 + v1 + v2;
+	return final;
+}
+
+// Binary number representation, taken from here: http://bytes.com/topic/c/answers/219656-literal-binary
+// Binary constant generator macro
+//By Tom Torfs - donated to the public domain
+//
+
+// All macro's evaluate to compile-time constants 
+
+// *** helper macros *** 
+
+// turn a numeric literal into a hex constant
+//(avoids problems with leading zeroes)
+//8-bit constants max value 0x11111111, always fits in unsigned long
+//
+#define HEX__(n) 0x##n##LU
+
+// 8-bit conversion function
+#define B8__(x) ((x&0x0000000FLU)?1:0) \
+	+ ((x & 0x000000F0LU) ? 2 : 0) \
+	+ ((x & 0x00000F00LU) ? 4 : 0) \
+	+ ((x & 0x0000F000LU) ? 8 : 0) \
+	+ ((x & 0x000F0000LU) ? 16 : 0) \
+	+ ((x & 0x00F00000LU) ? 32 : 0) \
+	+ ((x & 0x0F000000LU) ? 64 : 0) \
+	+ ((x & 0xF0000000LU) ? 128 : 0)
+
+// *** user macros **
+
+// for upto 8-bit binary constants
+#define B8(d) ((uint)B8__(HEX__(d)))
+
+// for upto 16-bit binary constants, MSB first 
+#define B16(dmsb,dlsb) (((uint)B8(dmsb)<<8) \
+	+ B8(dlsb))
+
+// for upto 32-bit binary constants, MSB first 
+#define B32(dmsb,db2,db3,dlsb) (((uint)B8(dmsb)<<24) \
+	+ ((uint)B8(db2) << 16) \
+	+ ((uint)B8(db3) << 8) \
+	+ B8(dlsb))
+
+float4 fmul(float3 v,float4x4 m)
+{
+	return v.x * m[0] + (v.y * m[1] + (v.z * m[2] + m[3]));;
+}
+
+
+// From here: http://www.reedbeta.com/blog/2013/01/12/quick-and-easy-gpu-random-numbers-in-d3d11/
+uint hash0(uint seed)
+{
+	seed = (seed ^ 61) ^ (seed >> 16);
+	seed *= 9;
+	seed = seed ^ (seed >> 4);
+	seed *= 0x27d4eb2d;
+	seed = seed ^ (seed >> 15);
+	return seed;
+}
+
+// From here: http://www.burtleburtle.net/bob/hash/integer.html
+uint hash1(uint a)
+{
+	a = (a + 0x7ed55d16) + (a << 12);
+	a = (a ^ 0xc761c23c) ^ (a >> 19);
+	a = (a + 0x165667b1) + (a << 5);
+	a = (a + 0xd3a2646c) ^ (a << 9);
+	a = (a + 0xfd7046c5) + (a << 3);
+	a = (a ^ 0xb55a4f09) ^ (a >> 16);
+	return a;
+}
+#define MAX_IRRADIANCE 1
+
+#define YCbCr_RED_COEFF 0.2125f
+#define YCbCr_GREEN_COEFF 0.7154f
+#define YCbCr_BLUE_COEFF 0.0721f
+#define YCbCr_GREEN_RCP_COEFF 0.1398f
+
+float3 YCbCrtoRGB(float luma,float chromaB, float chromaR)
+{
+	float3 color = 0;
+
+	color.r = chromaR + luma;
+	color.b = chromaB + luma;
+	color.g = (luma - YCbCr_RED_COEFF*color.r - YCbCr_BLUE_COEFF*color.b)*YCbCr_GREEN_RCP_COEFF;
+
+	return color;
+}
+
+float3 RGBtoYCbCr(float r,float g, float b)
+{
+	float3 final = 0;
+
+	final.x = YCbCr_RED_COEFF*r + YCbCr_BLUE_COEFF*b + YCbCr_GREEN_COEFF*g;
+	final.y = b - final.x;
+	final.z = r - final.x;
+
+	return final;
+}
+
+uint PackR5G5B5A1(float4 unpacked)
+{
+	uint packed = 0;
+
+	unpacked.xyz *= 31.0f;
+	unpacked = floor(unpacked);
+
+	uint4 i = unpacked;
+	packed = i.w | (i.x << 1) | (i.y << 6) | (i.z << 11);
+
+	return packed;
+}
+
+float4 UnpackR5G5B5A1(uint npacked)
+{
+	float4 unpacked = 0;
+	unpacked.w =        npacked & B16(00000000, 00000001);
+
+	unpacked.x = float((npacked & B16(00000000, 00111110)) >> 1) / 31.0f;
+	unpacked.y = float((npacked & B16(00000111, 11000000)) >> 6) / 31.0f;
+	unpacked.z = float((npacked & B16(11111000, 00000001)) >> 11) / 31.0f;
+
+	return unpacked;
+}
+
+uint PackR10G10B10A2(float4 unpacked)
+{
+	uint packed = 0;
+	unpacked = saturate(unpacked);
+
+	unpacked.xyz *= 1023;
+	unpacked.w *= 3;
+
+	unpacked = floor(unpacked);
+
+	uint4 i = unpacked;
+	packed = i.w | (i.x << 2) | (i.y << 12) | (i.z << 22);
+
+	return packed;
+}
+
+float4 UnpackR10G10B10A2(uint npacked)
+{
+	float4 unpacked = 0;
+	unpacked.w = float((npacked & B32(00000000, 00000000, 00000000, 00000011))) / 4;
+	unpacked.x = float((npacked & B32(00000000, 00000000, 00001111, 11111100)) >> 2) / 1023.0;
+	unpacked.y = float((npacked & B32(00000000, 00111111, 11110000, 00000000)) >> 12) / 1023.0;
+	unpacked.z = float((npacked & B32(11111111, 11000000, 00000000, 00000000)) >> 22) / 1023.0;
+	
+
+	return unpacked;
+}
+
+// Triangle expansion for conservative rasterization
+void triangleExpansionCR(inout float4 screenPos[3], float PixelDiagonal)
+{
+	//PixelDiagonal it's the length of a single pixel's diagonal in clip space.
+
+	float2 edge[3];
+	edge[0] = screenPos[1].xy - screenPos[0].xy;
+	edge[1] = screenPos[2].xy - screenPos[1].xy;
+	edge[2] = screenPos[0].xy - screenPos[2].xy;
+
+	float2 edgeNormal[3];
+	edgeNormal[0] = normalize(edge[0]);
+	edgeNormal[1] = normalize(edge[1]);
+	edgeNormal[2] = normalize(edge[2]);
+	edgeNormal[0] = float2(-edgeNormal[0].y, edgeNormal[0].x);
+	edgeNormal[1] = float2(-edgeNormal[1].y, edgeNormal[1].x);
+	edgeNormal[2] = float2(-edgeNormal[2].y, edgeNormal[2].x);
+
+	// Flip back facing triangles to avoid shrinking
+	float3 a = normalize(screenPos[1].xyz - screenPos[0].xyz);
+	float3 b = normalize(screenPos[2].xyz - screenPos[0].xyz);
+	float3 clipSpaceNormal = cross(a, b);
+	if (clipSpaceNormal.z < 0.0)
+	{
+		edgeNormal[0] *= -1.0;
+		edgeNormal[1] *= -1.0;
+		edgeNormal[2] *= -1.0;
+	}
+
+	float3 edgeDist;
+	edgeDist.x = dot(edgeNormal[0], screenPos[0].xy);
+	edgeDist.y = dot(edgeNormal[1], screenPos[1].xy);
+	edgeDist.z = dot(edgeNormal[2], screenPos[2].xy);
+
+	screenPos[0].xy = screenPos[0].xy - PixelDiagonal * (edge[2] / dot(edge[2], edgeNormal[0]) + edge[0] / dot(edge[0], edgeNormal[2]));
+	screenPos[1].xy = screenPos[1].xy - PixelDiagonal * (edge[0] / dot(edge[0], edgeNormal[1]) + edge[1] / dot(edge[1], edgeNormal[0]));
+	screenPos[2].xy = screenPos[2].xy - PixelDiagonal * (edge[1] / dot(edge[1], edgeNormal[2]) + edge[2] / dot(edge[2], edgeNormal[1]));
+}
+
+float3 RayAABBTest(float3 rayOrigin, float3 rayDir, float3 aabbMin, float3 aabbMax)
+{
+	float tMin, tMax;
+
+	// Project ray through aabb
+	float3 invRayDir = 1.0 / rayDir;
+	float3 t1 = (aabbMin - rayOrigin) * invRayDir;
+	float3 t2 = (aabbMax - rayOrigin) * invRayDir;
+
+	float3 tmin = min(t1, t2);
+	float3 tmax = max(t1, t2);
+
+	tMin = max(tmin.x, max(tmin.y, tmin.z));
+	tMax = min(min(99999.0, tmax.x), min(tmax.y, tmax.z));
+
+	if (tMin < 0.0) tMin = 0.0;
+
+	float3 result;
+	result.x = (tMax > tMin) ? 1.0 : 0.0;
+	result.y = tMin;
+	result.z = tMax;
+	return result;
+}
+
+// The first 3 components are the position, the last one is the distance from the origin
+float4 RayPlaneIntersection(float3 RayOrigin, float3 RayDirection, float3 PlaneNormal, float3 PlanePoint)
+{
+	float lambda = dot(RayDirection, PlaneNormal);
+
+	// Check if the vectors are parallel. If they are, return -1 as distance
+	if(lambda == 0)
+		return float4(0,0,0,-1);
+
+	// Compute distance from ray origin of the intersection point
+	float d = dot((PlanePoint - RayOrigin), PlaneNormal);
+	d /= lambda;
+
+	// Compute intersection point position
+	float4 result;
+	result.w = d;
+	result.xyz = RayOrigin + d*RayDirection;
+
+	return result;
+}
+
+
+// Source http://gamedev.stackexchange.com/questions/32681/random-number-hlsl
+// http://www.gamedev.net/topic/592001-random-number-generation-based-on-time-in-hlsl/
+// Supposebly from the NVidia Direct3D10 SDK
+// Slightly modified for my purposes
+#define RANDOM_IA 16807
+#define RANDOM_IM 2147483647
+#define RANDOM_AM (1.0f/float(RANDOM_IM))
+#define RANDOM_IQ 127773u
+#define RANDOM_IR 2836
+#define RANDOM_MASK 123459876
+
+struct NumberGenerator {
+	int seed; // Used to generate values.
+
+	// Returns the current random float.
+	float GetCurrentFloat() {
+		Cycle();
+		return RANDOM_AM * seed;
+	}
+
+	// Returns the current random int.
+	int GetCurrentInt() {
+		Cycle();
+		return seed;
+	}
+
+	// Generates the next number in the sequence.
+	void Cycle() {
+		seed ^= RANDOM_MASK;
+		int k = seed / RANDOM_IQ;
+		seed = RANDOM_IA * (seed - k * RANDOM_IQ) - RANDOM_IR * k;
+
+		if (seed < 0)
+			seed += RANDOM_IM;
+
+		seed ^= RANDOM_MASK;
+	}
+
+	// Cycles the generator based on the input count. Useful for generating a thread unique seed.
+	// PERFORMANCE - O(N)
+	void Cycle(const uint _count) {
+		for (uint i = 0; i < _count; ++i)
+			Cycle();
+	}
+
+	// Returns a random float within the input range.
+	float GetRandomFloat(const float low, const float high) {
+		float v = GetCurrentFloat();
+		return low * (1.0f - v) + high * v;
+	}
+	
+	// Returns a random int within the input range.
+	int GetRandomInt(const int low, const int high) {
+		int v = GetCurrentFloat();
+		return low * (1 - v) + high * v;
+	}
+
+	// Sets the seed
+	void SetSeed(const uint value) {
+		seed = int(value);
+		Cycle();
+	}
+};
+uint wang_hash(uint seed)
+{
+	seed = (seed ^ 61) ^ (seed >> 16);
+	seed *= 9;
+	seed = seed ^ (seed >> 4);
+	seed *= 0x27d4eb2d;
+	seed = seed ^ (seed >> 15);
+	return seed;
+}
+
+float3 Hue(float H)
+{
+	float R = abs(H * 6 - 3) - 1;
+	float G = 2 - abs(H * 6 - 2);
+	float B = 2 - abs(H * 6 - 4);
+	return saturate(float3(R, G, B));
+}
+
+float3 HSVToRGB(in float3 HSV)
+{
+	return ((Hue(HSV.x) - 1) * HSV.y + 1) * HSV.z;
+}
+
+float3 RGBToHSV(in float3 RGB)
+{
+	float3 HSV = 0;
+
+	HSV.z = max(RGB.r, max(RGB.g, RGB.b));
+	float M = min(RGB.r, min(RGB.g, RGB.b));
+	float C = HSV.z - M;
+
+	if (C != 0)
+	{
+		HSV.y = C / HSV.z;
+		float3 Delta = (HSV.z - RGB) / C;
+			Delta.rgb -= Delta.brg;
+		Delta.rg += float2(2, 4);
+		if (RGB.r >= HSV.z)
+			HSV.x = Delta.b;
+		else if (RGB.g >= HSV.z)
+			HSV.x = Delta.r;
+		else
+			HSV.x = Delta.g;
+		HSV.x = frac(HSV.x / 6);
+	}
+	return HSV;
+}
+
+float SmoothLerp(float min, float max, float a)
+{
+	return 0.5f*(min + max + (min - max)*cos(3.1416f*pow(a, 1.2)));
+}
+float2 SmoothLerp(float2 min, float2 max, float2 a)
+{
+	return 0.5f*(min + max + (min - max)*cos(3.1416f*pow(a, 1.2)));
+}
+float3 SmoothLerp(float3 min, float3 max, float3 a)
+{
+	return 0.5f*(min + max + (min - max)*cos(3.1416f*pow(a, 1.2)));
+}
+float4 SmoothLerp(float4 min, float4 max, float4 a)
+{
+	return 0.5f*(min + max + (min - max)*cos(3.1416f*pow(a, 1.2)));
+}
+
+float SmoothLerp(float min, float max, float a,float exponent)
+{
+	return 0.5f*(min + max + (min - max)*cos(3.1416f*pow(a, exponent)));
+}
+float2 SmoothLerp(float2 min, float2 max, float2 a,float exponent)
+{
+	return 0.5f*(min + max + (min - max)*cos(3.1416f*pow(a, exponent)));
+}
+float3 SmoothLerp(float3 min, float3 max, float3 a,float exponent)
+{
+	return 0.5f*(min + max + (min - max)*cos(3.1416f*pow(a, exponent)));
+}
+float4 SmoothLerp(float4 min, float4 max, float4 a,float exponent)
+{
+	return 0.5f*(min + max + (min - max)*cos(3.1416f*pow(a, exponent)));
+}
+
+float GaussianWeight(float x,float sigmaSquared)
+{
+	float alpha = 1.0f / sqrt(2.0f * 3.1416f * sigmaSquared);
+	float beta = (x*x) / (2*sigmaSquared);
+
+	return alpha*exp(-beta);
+}
+
+struct Material
+{
+	// Standard
+	float SpecularAmmount;
+	float SpecularPower;
+	float EmissiveAmmount;
+	float Alpha;
+
+	// AHR
+	float GlossySpread;
+	float IrradianceMultiplier;
+
+	float DiffuseSpread;
+	float GlossyDiffuseLerp;
+	float GlossyAngleContribution;
+	float DiffuseAngleContribution;
+
+	uint DiffuseRayCountPercentage;
+	uint DiffuseSamplesCountPercentage;
+	uint GlossyRayCountPercentage;
+	uint GlossySamplesCountPercentage;
+
+	// Composite
+	float HueMultiplier;
+	float SaturationMultiplier;
+	float ValueMultiplier;
+	float DirectIndirectLerp;
+	
+	// Padding
+	uint _padding0;
+	uint _padding1;
+};
+
+// Change the range of x from [alpha,beta] to [gamma,lambda]
+float RangeChange(float x, float alpha, float beta,float gamma, float lambda)
+{
+	return gamma + ( (x-alpha) / (beta - alpha) ) * (lambda - gamma);
+}
+float2 RangeChange(float2 x, float2 alpha, float2 beta,float2 gamma, float2 lambda)
+{
+	return gamma + ( (x-alpha) / (beta - alpha) ) * (lambda - gamma);
+}
+float3 RangeChange(float3 x, float3 alpha, float3 beta,float3 gamma, float3 lambda)
+{
+	return gamma + ( (x-alpha) / (beta - alpha) ) * (lambda - gamma);
+}
+float4 RangeChange(float4 x, float4 alpha, float4 beta,float4 gamma, float4 lambda)
+{
+	return gamma + ( (x-alpha) / (beta - alpha) ) * (lambda - gamma);
+}
+
+// Taken from here: http://and-what-happened.blogspot.com/2011/08/fast-2d-and-3d-hilbert-curves-and.html
+
+uint Morton_3D_Encode_10bit(uint index1, uint index2, uint index3)
+{ // pack 3 10-bit indices into a 30-bit Morton code
+	index1 &= 0x000003ff;
+	index2 &= 0x000003ff;
+	index3 &= 0x000003ff;
+	index1 |= (index1 << 16);
+	index2 |= (index2 << 16);
+	index3 |= (index3 << 16);
+	index1 &= 0x030000ff;
+	index2 &= 0x030000ff;
+	index3 &= 0x030000ff;
+	index1 |= (index1 << 8);
+	index2 |= (index2 << 8);
+	index3 |= (index3 << 8);
+	index1 &= 0x0300f00f;
+	index2 &= 0x0300f00f;
+	index3 &= 0x0300f00f;
+	index1 |= (index1 << 4);
+	index2 |= (index2 << 4);
+	index3 |= (index3 << 4);
+	index1 &= 0x030c30c3;
+	index2 &= 0x030c30c3;
+	index3 &= 0x030c30c3;
+	index1 |= (index1 << 2);
+	index2 |= (index2 << 2);
+	index3 |= (index3 << 2);
+	index1 &= 0x09249249;
+	index2 &= 0x09249249;
+	index3 &= 0x09249249;
+
+	return(index1 | (index2 << 1) | (index3 << 2));
+}
+
+uint3 Morton_3D_Decode_10bit(const uint morton)
+{ // unpack 3 10-bit indices from a 30-bit Morton code
+	uint value1 = morton;
+	uint value2 = (value1 >> 1);
+	uint value3 = (value1 >> 2);
+	value1 &= 0x09249249;
+	value2 &= 0x09249249;
+	value3 &= 0x09249249;
+	value1 |= (value1 >> 2);
+	value2 |= (value2 >> 2);
+	value3 |= (value3 >> 2);
+	value1 &= 0x030c30c3;
+	value2 &= 0x030c30c3;
+	value3 &= 0x030c30c3;
+	value1 |= (value1 >> 4);
+	value2 |= (value2 >> 4);
+	value3 |= (value3 >> 4);
+	value1 &= 0x0300f00f;
+	value2 &= 0x0300f00f;
+	value3 &= 0x0300f00f;
+	value1 |= (value1 >> 8);
+	value2 |= (value2 >> 8);
+	value3 |= (value3 >> 8);
+	value1 &= 0x030000ff;
+	value2 &= 0x030000ff;
+	value3 &= 0x030000ff;
+	value1 |= (value1 >> 16);
+	value2 |= (value2 >> 16);
+	value3 |= (value3 >> 16);
+	value1 &= 0x000003ff;
+	value2 &= 0x000003ff;
+	value3 &= 0x000003ff;
+
+	uint3 index;
+	index.x = value1;
+	index.y = value2;
+	index.z = value3;
+}
+
+uint MortonToHilbert3D_10bits(const uint morton)
+{
+	uint hilbert = morton;
+	uint block = 27; // ( ( bits * 3 ) - 3 );
+	uint hcode = ((hilbert >> block) & 7);
+	uint mcode, shift, signs;
+	shift = signs = 0;
+
+	[unroll]
+	while (block)
+	{
+		block -= 3;
+		hcode <<= 2;
+		mcode = ((0x20212021 >> hcode) & 3);
+		shift = ((0x48 >> (7 - shift - mcode)) & 3);
+		signs = ((signs | (signs << 3)) >> mcode);
+		signs = ((signs ^ (0x53560300 >> hcode)) & 7);
+		mcode = ((hilbert >> block) & 7);
+		hcode = mcode;
+		hcode = (((hcode | (hcode << 3)) >> shift) & 7);
+		hcode ^= signs;
+		hilbert ^= ((mcode ^ hcode) << block);
+	}
+
+	hilbert ^= ((hilbert >> 1) & 0x92492492);
+	hilbert ^= ((hilbert & 0x92492492) >> 1);
+	return(hilbert);
+}
+uint HilbertToMorton3D_10bits(const uint hilbert, const uint bits)
+{
+	uint morton = hilbert;
+	morton ^= ((morton & 0x92492492) >> 1);
+	morton ^= ((morton >> 1) & 0x92492492);
+
+	uint block = 27;//((bits * 3) - 3);
+	uint hcode = ((morton >> block) & 7);
+	uint mcode, shift, signs;
+	shift = signs = 0;
+
+	[unroll]
+	while (block)
+	{
+		block -= 3;
+		hcode <<= 2;
+		mcode = ((0x20212021 >> hcode) & 3);
+		shift = ((0x48 >> (4 - shift + mcode)) & 3);
+		signs = ((signs | (signs << 3)) >> mcode);
+		signs = ((signs ^ (0x53560300 >> hcode)) & 7);
+		hcode = ((morton >> block) & 7);
+		mcode = hcode;
+		mcode ^= signs;
+		mcode = (((mcode | (mcode << 3)) >> shift) & 7);
+		morton ^= ((hcode ^ mcode) << block);
+	}
+	return(morton);
+}
+
+float magnitudeSquared(float3 a)
+{
+	//dot(v,v) = |v|^2.
+	return dot(a,a);
+}
+float distanceSquared(float3 a, float3 b)
+{
+	return dot(a-b,a-b);
+}
+
+float4 Ternary(bool Cond,float4 a,float4 b)
+{
+	return a * Cond + b * (1-Cond);
+}
+float3 Ternary(bool Cond,float3 a,float3 b)
+{
+	return a * Cond + b * (1-Cond);
+}
+float2 Ternary(bool Cond,float2 a,float2 b)
+{
+	return a * Cond + b * (1-Cond);
+}
+float Ternary(bool Cond,float a,float b)
+{
+	return a * Cond + b * (1-Cond);
+}

@@ -40341,6 +40341,9 @@
     <None Include="..\..\Shaders\AHRCommon.usf">
       <Filter>Shaders\AHR</Filter>
     </None>
+    <None Include="..\..\Shaders\AHRVoxelizationShader.usf">
+      <Filter>Shaders\AHR</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\Source\Runtime\Renderer\Private\AHR_Pipeline.cpp">
@@ -40349,12 +40352,15 @@
     <ClCompile Include="..\..\Source\Runtime\Renderer\Private\ApproximateHybridRaytracing.cpp">
       <Filter>Source\Runtime\Renderer\AHR</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Shaders\AHRVoxelizationShader.usf">
-      <Filter>Shaders\AHR</Filter>
+    <ClCompile Include="..\..\Source\Runtime\Renderer\Private\AHR_Voxelization.cpp">
+      <Filter>Source\Runtime\Renderer\AHR</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\Source\Runtime\Renderer\Private\ApproximateHybridRaytracing.h">
+      <Filter>Source\Runtime\Renderer\AHR</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\Runtime\Renderer\Private\AHR_Voxelization.h">
       <Filter>Source\Runtime\Renderer\AHR</Filter>
     </ClInclude>
   </ItemGroup>
