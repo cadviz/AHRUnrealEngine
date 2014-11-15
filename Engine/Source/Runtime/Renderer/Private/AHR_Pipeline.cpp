@@ -66,7 +66,7 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 	if( View.PrimitivesToVoxelize.Num( ) > 0 )
 	{
 		TAHRVoxelizerElementPDI<FAHRVoxelizerDrawingPolicyFactory> Drawer(
-			&View, FAHRVoxelizerDrawingPolicyFactory::ContextType() );
+			&View, FAHRVoxelizerDrawingPolicyFactory::ContextType(RHICmdList) );
 
 		for( int32 PrimitiveIndex = 0, Num = View.PrimitivesToVoxelize.Num( ); PrimitiveIndex < Num; PrimitiveIndex++ )
 		{

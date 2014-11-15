@@ -4,7 +4,7 @@
 #include "ApproximateHybridRaytracing.h"
 #include "SceneUtils.h"
 #include "AHR_Voxelization.h"
-
+#include "RHI.h"
 
 template<typename DrawingPolicyFactoryType>
 void TAHRVoxelizerElementPDI<DrawingPolicyFactoryType>::SetPrimitive( const FPrimitiveSceneProxy* NewPrimitiveSceneProxy )
@@ -110,8 +110,8 @@ bool FAHRVoxelizerDrawingPolicyFactory::DrawDynamicMesh(
 	)
 {
 
-	FAHRVoxelizerDrawingPolicy DrawingPolicy( false );
-	DrawingPolicy.DrawShared( &View, DrawingPolicy.CreateBoundShaderState( Mesh, 0 ) );
+	FAHRVoxelizerDrawingPolicy DrawingPolicy( false,&DrawingContext );
+	DrawingPolicy.DrawShared( &View, Mesh);
 
 	int32 BatchElementIndex = 0;
 	uint64 Mask = ( Mesh.Elements.Num( ) == 1 ) ? 1 : ( 1 << Mesh.Elements.Num( ) ) - 1;
@@ -132,12 +132,100 @@ bool FAHRVoxelizerDrawingPolicyFactory::DrawDynamicMesh(
 	return true;
 }
 
-FAHRVoxelizerDrawingPolicy::FHairKBufferDrawingPolicy( bool bIsWireframe )
+FAHRVoxelizerDrawingPolicy::FAHRVoxelizerDrawingPolicy( bool bIsWireframe,FAHRVoxelizerDrawingPolicyFactory::ContextType* _context )
 {
+	context = _context;
 }
 
 // Set shared states here
-void FAHRVoxelizerDrawingPolicy::DrawShared( const FSceneView* View, FBoundShaderStateRHIParamRef BoundShaderState ) const
+void FAHRVoxelizerDrawingPolicy::DrawShared( const FSceneView* View, const FMeshBatch& Mesh) const
 {
-	RHISetBoundShaderState( BoundShaderState );
+	context->RHICmdList->BuildAndSetLocalBoundShaderState(CreateBoundShaderState(Mesh));
+}
+
+// Obtain your shaders here and create the Bound Shader State
+FBoundShaderStateInput FAHRVoxelizerDrawingPolicy::CreateBoundShaderState( const FMeshBatch& Mesh ) const
+{
+	//FHairBatchElementParams* Params = (FHairBatchElementParams*) Mesh.Elements[ BatchElementIndex ].UserData;
+
+	//TShaderMapRef<FHairKBufferVertexShader> VertexShader( GetGlobalShaderMap( ) );
+	//TShaderMapRef<FHairKBufferPixelShader> PixelShader( GetGlobalShaderMap( ) );
+	
+	return FBoundShaderStateInput(
+		Mesh.VertexFactory->GetDeclaration(),	// Vertex Declaration
+		FVertexShaderRHIRef(),		// Vertex Shader
+		FHullShaderRHIRef( ),					// Hull Shader
+		FDomainShaderRHIRef( ),					// Domain Shader
+		FPixelShaderRHIRef(),			// Pixel Shader
+		FGeometryShaderRHIRef( )				// Geometry Shader
+		);
+}
+
+// Set specific states here
+void FAHRVoxelizerDrawingPolicy::SetMeshRenderState(
+	const FSceneView& View,
+	const FPrimitiveSceneProxy* PrimitiveSceneProxy,
+	const FMeshBatch& Mesh,
+	int32 BatchElementIndex,
+	bool bBackFace
+	) const
+{
+	/*FHairBatchElementParams* Params = (FHairBatchElementParams*) Mesh.Elements[ BatchElementIndex ].UserData;
+	FHairLightUniformPixelShaderParameters LightParams;
+
+	LightParams.LightPos = FVector( 0, 0, 0 );
+	LightParams.LightColor = FLinearColor( 0, 0, 0, 0 );
+	LightParams.ViewProjLight = FMatrix( );
+
+	float MinDist = 0.0f;
+	float MaxDist = 0.0f;
+
+	if( PolicyLightSceneInfo )
+	{
+		LightParams.LightPos = PolicyLightSceneInfo->Proxy->GetPosition( );
+		LightParams.LightColor = PolicyLightSceneInfo->Proxy->GetColor( );
+
+		if( PolicyShadowInfo )
+		{
+			LightParams.ViewProjLight = PolicyShadowInfo->GetScreenToShadowMatrix( View );
+			LightParams.ShadowFadeFraction = PolicyShadowInfo->FadeAlphas[ 0 ];
+			LightParams.ShadowSharpen = PolicyShadowInfo->LightSceneInfo->Proxy->GetShadowSharpen( ) * 7.0f + 1.0f;
+		}
+	}
+
+	TShaderMapRef<FHairKBufferVertexShader> VertexShader( GetGlobalShaderMap( ) );
+	TShaderMapRef<FHairKBufferPixelShader> PixelShader( GetGlobalShaderMap( ) );
+
+	RHISetRasterizerState( GetStaticRasterizerState<true>( ( Mesh.bWireframe ) ? FM_Wireframe : FM_Solid, CM_None ) );
+	RHISetStreamSource( 0, Params->VertexBuffer, 32, 0 );
+
+	uint32 InitialCounts[] = { 0, 0 };
+	FUnorderedAccessViewRHIParamRef UAV[] = { NULL, NULL };
+	RHISetRenderTargets( 2, UAV, InitialCounts );
+
+	PixelShader->SetParameters(
+		View,
+		PolicyShadowInfo,
+		Params->HairUniformBuffer,
+		TUniformBufferRef<FHairLightUniformPixelShaderParameters>::CreateUniformBufferImmediate( LightParams, UniformBuffer_SingleUse ),
+		Params->HeadPPLLSRV,
+		Params->PPLLSRV,
+		GSceneRenderTargets.ShadowDepthZ->GetRenderTargetItem().TargetableTexture
+		);*/
+}
+
+// Draw Mesh
+void FAHRVoxelizerDrawingPolicy::DrawMesh( const FMeshBatch& Mesh, int32 BatchElementIndex ) const
+{
+	const FMeshBatchElement& BatchElement = Mesh.Elements[ BatchElementIndex ];
+
+	context->RHICmdList->DrawPrimitive(
+		Mesh.Type,
+		0,
+		2,
+		1
+		);
+
+	//TShaderMapRef<FHairKBufferPixelShader> PixelShader( GetGlobalShaderMap( ) );
+	//PixelShader->UnbindParameters( );
 }

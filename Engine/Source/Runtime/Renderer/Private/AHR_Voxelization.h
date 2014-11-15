@@ -95,9 +95,12 @@ public:
 	enum { bAllowSimpleElements = false };
 	struct ContextType
 	{
-		ContextType()
+		ContextType(FRHICommandListImmediate& _RHICmdList)
 		{
+			RHICmdList = &_RHICmdList;
 		}
+
+		FRHICommandListImmediate* RHICmdList;
 	};
 
 	static bool DrawDynamicMesh(
@@ -120,10 +123,10 @@ class FAHRVoxelizerDrawingPolicy
 {
 public:
 
-	FAHRVoxelizerDrawingPolicy( bool bIsWireframe );
+	FAHRVoxelizerDrawingPolicy( bool bIsWireframe,FAHRVoxelizerDrawingPolicyFactory::ContextType* _context );
 
-	void DrawShared( const FSceneView* View, FBoundShaderStateRHIParamRef BoundShaderState ) const;
-	FBoundShaderStateRHIRef CreateBoundShaderState( const FMeshBatch& Mesh, int32 BatchElementIndex );
+	void DrawShared( const FSceneView* View,const FMeshBatch& Mesh ) const;
+	FBoundShaderStateInput CreateBoundShaderState( const FMeshBatch& Mesh ) const;
 	void SetMeshRenderState(
 		const FSceneView& View,
 		const FPrimitiveSceneProxy* PrimitiveSceneProxy,
@@ -135,4 +138,6 @@ public:
 
 	static const FLightSceneInfo* PolicyLightSceneInfo;
 	static const FProjectedShadowInfo* PolicyShadowInfo;
+private:
+	FAHRVoxelizerDrawingPolicyFactory::ContextType* context;
 };
