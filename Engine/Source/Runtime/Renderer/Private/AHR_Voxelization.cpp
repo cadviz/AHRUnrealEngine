@@ -212,6 +212,8 @@ void FAHRVoxelizerDrawingPolicy::SetMeshRenderState(
 		Params->PPLLSRV,
 		GSceneRenderTargets.ShadowDepthZ->GetRenderTargetItem().TargetableTexture
 		);*/
+	context->RHICmdList->SetRasterizerState(TStaticRasterizerState<FM_Solid,CM_None,false,false>::GetRHI());
+	Mesh.VertexFactory->Set(*context->RHICmdList);
 }
 
 // Draw Mesh

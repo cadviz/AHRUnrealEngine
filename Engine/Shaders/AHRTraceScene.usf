@@ -79,7 +79,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 
 		// Apply dispersion based on the material roughness
 		// Disabled for now (8/11/2014)
-		dir.xy *= 0.01; // totally fake. something around a kinda polished stone? 0 is a perfect mirror
+		dir.xy *= 0.05; // totally fake. something around a kinda polished stone? 0 is a perfect mirror
 
 		// Convert to vector space
 		dir = dir.x * tangentR + (dir.y * bitangentR + (dir.z * reflectVec));
@@ -165,7 +165,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 		// Apply dispersion
 		// Extremely fake. While a proper BRDF integrates over the entire hemisphere, restricting it to a narrower cone does the trick, and looks better
 		// Adds some "normal influence". Totally fake, but looks better
-		dir.xy *= 0.63; 
+		dir.xy *= 0.85; 
 
 		// Convert to vector space
 		dir = normalize(dir.x * tangent + (dir.y * bitangent + (dir.z * normal)));
