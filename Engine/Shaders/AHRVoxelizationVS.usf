@@ -1,0 +1,19 @@
+// @RyanTorant
+#include "AHRCommon.usf"
+#include "AHRVoxelizationCommon.usf"
+
+void Main(
+	FVertexFactoryInput Input,
+	OPTIONAL_VertexID
+	out FAHRVoxelizationVSOut Output
+	)
+{
+	FVertexFactoryIntermediates VFIntermediates = GetVertexFactoryIntermediates(Input);
+	float4 WorldPosition = WorldPositionExcludingWPO;
+
+	float3x3 TangentToLocal = VertexFactoryGetTangentToLocal(Input, VFIntermediates);	
+	FMaterialVertexParameters VertexParameters = GetMaterialVertexParameters(Input, VFIntermediates, WorldPosition.xyz, TangentToLocal);
+
+	Output.FactoryInterpolants = VertexFactoryGetInterpolants(Input, VFIntermediates, VertexParameters);
+	Output.Position = WorldPosition;
+}

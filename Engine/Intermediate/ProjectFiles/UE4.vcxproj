@@ -583,7 +583,9 @@
     <None Include="..\..\Shaders\AHRComposite.usf" />
     <None Include="..\..\Shaders\AHRTraceScene.usf" />
     <None Include="..\..\Shaders\AHRUpsample.usf" />
+    <None Include="..\..\Shaders\AHRVoxelizationCommon.usf" />
     <None Include="..\..\Shaders\AHRVoxelizationShader.usf" />
+    <None Include="..\..\Shaders\AHRVoxelizationVS.usf" />
     <None Include="C:\UnrealEngine\Engine\Saved\UnrealBuildTool\BuildConfiguration.Schema.xsd" />
     <None Include="C:\UnrealEngine\Engine\Programs\UnrealBuildTool\BuildConfiguration.xml" />
     <None Include="C:\UnrealEngine\Engine\Saved\UnrealBuildTool\BuildConfiguration.xml" />
@@ -9939,6 +9941,7 @@
     <ClInclude Include="..\..\Source\Runtime\RenderCore\Public\UniformBuffer.h" />
     <None Include="..\..\Source\Runtime\Renderer\Renderer.Build.cs" />
     <ClInclude Include="..\..\Source\Runtime\Renderer\Private\AHR_Voxelization.h" />
+    <ClInclude Include="..\..\Source\Runtime\Renderer\Private\AHR_Voxelization_Shaders.h" />
     <ClInclude Include="..\..\Source\Runtime\Renderer\Private\AmbientCubemapParameters.h" />
     <ClCompile Include="..\..\Source\Runtime\Renderer\Private\AHR_Pipeline.cpp" />
     <ClCompile Include="..\..\Source\Runtime\Renderer\Private\AHR_Voxelization.cpp" />

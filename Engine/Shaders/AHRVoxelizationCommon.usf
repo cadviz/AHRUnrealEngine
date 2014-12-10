@@ -1,0 +1,12 @@
+// @RyanTorant
+
+#include "Common.usf"
+#include "BasePassCommon.usf"
+#include "Material.usf"
+#include "VertexFactory.usf"
+
+struct FAHRVoxelizationVSOut
+{
+	FVertexFactoryInterpolantsVSToPS FactoryInterpolants;
+	float4 Position : SV_POSITION;
+};

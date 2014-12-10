@@ -29,6 +29,7 @@ public:
 	// Data functions
 	void UpdateSettings(); // Resizes the grid if needed
 	void ClearGrids(FRHICommandListImmediate& RHICmdList);
+	FUnorderedAccessViewRHIRef GetSceneVolumeUAV(){ return SceneVolume->UAV; }
 
 	// FRenderResource code : Mainly, InitDynamicRHI()/ReleaseDynamicRHI(). Also, IsInitialized()
 	void InitDynamicRHI() override final;

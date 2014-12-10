@@ -88,7 +88,7 @@ private:
 /**
 * A drawing policy factory for voxelizing
 */
-class FAHRVoxelizerDrawingPolicyFactory
+class FAHRVoxelizerDrawingPolicyFactory 
 {
 public:
 
@@ -119,11 +119,26 @@ public:
 /**
 * Hair drawing policy to populate K buffer
 */
-class FAHRVoxelizerDrawingPolicy
+class FAHRVoxelizerDrawingPolicy : public FMeshDrawingPolicy
 {
 public:
+	/** The data the drawing policy uses for each mesh element. */
+	class ElementDataType
+	{
+	public:
+		/** Default constructor. */
+		ElementDataType()
+		{}
+	};
 
-	FAHRVoxelizerDrawingPolicy( bool bIsWireframe,FAHRVoxelizerDrawingPolicyFactory::ContextType* _context );
+	FAHRVoxelizerDrawingPolicy( const FVertexFactory* InVertexFactory,
+							    const FMaterialRenderProxy* InMaterialRenderProxy,
+							    const FMaterial& InMaterialResource,
+								ERHIFeatureLevel::Type InFeatureLevel
+	) : FMeshDrawingPolicy(InVertexFactory,InMaterialRenderProxy,InMaterialResource,bOverrideWithShaderComplexity)
+	{
+
+	}
 
 	void DrawShared( const FSceneView* View,const FMeshBatch& Mesh ) const;
 	FBoundShaderStateInput CreateBoundShaderState( const FMeshBatch& Mesh ) const;

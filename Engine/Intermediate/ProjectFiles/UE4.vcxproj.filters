@@ -40344,6 +40344,12 @@
     <None Include="..\..\Shaders\AHRVoxelizationShader.usf">
       <Filter>Shaders\AHR</Filter>
     </None>
+    <None Include="..\..\Shaders\AHRVoxelizationVS.usf">
+      <Filter>Shaders\AHR</Filter>
+    </None>
+    <None Include="..\..\Shaders\AHRVoxelizationCommon.usf">
+      <Filter>Shaders\AHR</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\Source\Runtime\Renderer\Private\AHR_Pipeline.cpp">
@@ -40361,6 +40367,9 @@
       <Filter>Source\Runtime\Renderer\AHR</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\Runtime\Renderer\Private\AHR_Voxelization.h">
+      <Filter>Source\Runtime\Renderer\AHR</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\Runtime\Renderer\Private\AHR_Voxelization_Shaders.h">
       <Filter>Source\Runtime\Renderer\AHR</Filter>
     </ClInclude>
   </ItemGroup>

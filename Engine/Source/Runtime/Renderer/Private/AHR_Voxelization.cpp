@@ -5,6 +5,9 @@
 #include "SceneUtils.h"
 #include "AHR_Voxelization.h"
 #include "RHI.h"
+#include "AHR_Voxelization_Shaders.h"
+
+IMPLEMENT_SHADER_TYPE(,FAHRVoxelizationVertexShader,TEXT("AHRVoxelizationVS"),TEXT("Main"),SF_Vertex);
 
 template<typename DrawingPolicyFactoryType>
 void TAHRVoxelizerElementPDI<DrawingPolicyFactoryType>::SetPrimitive( const FPrimitiveSceneProxy* NewPrimitiveSceneProxy )
@@ -146,18 +149,28 @@ void FAHRVoxelizerDrawingPolicy::DrawShared( const FSceneView* View, const FMesh
 // Obtain your shaders here and create the Bound Shader State
 FBoundShaderStateInput FAHRVoxelizerDrawingPolicy::CreateBoundShaderState( const FMeshBatch& Mesh ) const
 {
-	//FHairBatchElementParams* Params = (FHairBatchElementParams*) Mesh.Elements[ BatchElementIndex ].UserData;
+	/*
+	TShaderMapRef<FAHRVoxelizationVertexShader> VertexShader( GetGlobalShaderMap( ) );
+	TShaderMapRef<FAHRVoxelizationGeometryShader> GeometryShader( GetGlobalShaderMap( ) );
+	TShaderMapRef<FAHRVoxelizationPixelShader> PixelShader( GetGlobalShaderMap( ) );
 
-	//TShaderMapRef<FHairKBufferVertexShader> VertexShader( GetGlobalShaderMap( ) );
-	//TShaderMapRef<FHairKBufferPixelShader> PixelShader( GetGlobalShaderMap( ) );
-	
 	return FBoundShaderStateInput(
 		Mesh.VertexFactory->GetDeclaration(),	// Vertex Declaration
-		FVertexShaderRHIRef(),		// Vertex Shader
+		VertexShader,		// Vertex Shader
+		FHullShaderRHIRef( ),					// Hull Shader
+		FDomainShaderRHIRef( ),					// Domain Shader
+		PixelShader,			// Pixel Shader
+		GeometryShader				// Geometry Shader
+		);*/
+	
+	TShaderMapRef<FAHRVoxelizationVertexShader> VertexShader( GetGlobalShaderMap(ERHIFeatureLevel::SM5) );
+	return FBoundShaderStateInput(
+		Mesh.VertexFactory->GetDeclaration(),	// Vertex Declaration
+		VertexShader->GetVertexShader(),		// Vertex Shader
 		FHullShaderRHIRef( ),					// Hull Shader
 		FDomainShaderRHIRef( ),					// Domain Shader
 		FPixelShaderRHIRef(),			// Pixel Shader
-		FGeometryShaderRHIRef( )				// Geometry Shader
+		FGeometryShaderRHIRef()				// Geometry Shader
 		);
 }
 
@@ -196,13 +209,6 @@ void FAHRVoxelizerDrawingPolicy::SetMeshRenderState(
 	TShaderMapRef<FHairKBufferVertexShader> VertexShader( GetGlobalShaderMap( ) );
 	TShaderMapRef<FHairKBufferPixelShader> PixelShader( GetGlobalShaderMap( ) );
 
-	RHISetRasterizerState( GetStaticRasterizerState<true>( ( Mesh.bWireframe ) ? FM_Wireframe : FM_Solid, CM_None ) );
-	RHISetStreamSource( 0, Params->VertexBuffer, 32, 0 );
-
-	uint32 InitialCounts[] = { 0, 0 };
-	FUnorderedAccessViewRHIParamRef UAV[] = { NULL, NULL };
-	RHISetRenderTargets( 2, UAV, InitialCounts );
-
 	PixelShader->SetParameters(
 		View,
 		PolicyShadowInfo,
@@ -212,8 +218,16 @@ void FAHRVoxelizerDrawingPolicy::SetMeshRenderState(
 		Params->PPLLSRV,
 		GSceneRenderTargets.ShadowDepthZ->GetRenderTargetItem().TargetableTexture
 		);*/
+	TShaderMapRef<FAHRVoxelizationVertexShader> VertexShader( GetGlobalShaderMap(ERHIFeatureLevel::SM5) );
+
 	context->RHICmdList->SetRasterizerState(TStaticRasterizerState<FM_Solid,CM_None,false,false>::GetRHI());
 	Mesh.VertexFactory->Set(*context->RHICmdList);
+
+	VertexShader->SetMesh(context->RHICmdList,Mesh.VertexFactory,View,PrimitiveSceneProxy,Mesh.Elements[0]);
+
+	// Bind the voxels UAV and bind a null depth-stencil buffer
+	FUnorderedAccessViewRHIParamRef uavs[] = { AHREngine.GetSceneVolumeUAV() };
+	context->RHICmdList->SetRenderTargets(0,nullptr,nullptr,1,uavs);
 }
 
 // Draw Mesh
