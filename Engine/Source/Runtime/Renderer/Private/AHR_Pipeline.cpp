@@ -60,7 +60,7 @@ void  FApproximateHybridRaytracer::InitializeViewTargets(uint32 _resX,uint32 _re
 
 void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmdList,FViewInfo& View)
 {
-	SCOPED_DRAW_EVENT(RHICmdList,AHRVoxelizeScene, DEC_SCENE_ITEMS);
+	SCOPED_DRAW_EVENT(RHICmdList,AHRVoxelizeScene);
 
 	// Voxelize the objects to the binary grid
 	if( View.PrimitivesToVoxelize.Num( ) > 0 )
@@ -195,7 +195,7 @@ IMPLEMENT_SHADER_TYPE(,AHRTraceScenePS,TEXT("AHRTraceScene"),TEXT("PS"),SF_Pixel
 
 void FApproximateHybridRaytracer::TraceScene(FRHICommandListImmediate& RHICmdList,FViewInfo& View)
 {
-	SCOPED_DRAW_EVENT(RHICmdList,AHRTraceScene, DEC_SCENE_ITEMS);
+	SCOPED_DRAW_EVENT(RHICmdList,AHRTraceScene);
 
 	// Draw a full screen quad into the half res target
 	// Trace the GI and reflections if they are enabled
@@ -303,7 +303,7 @@ IMPLEMENT_SHADER_TYPE(,AHRUpsamplePS,TEXT("AHRUpsample"),TEXT("PS"),SF_Pixel);
 
 void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,FViewInfo& View)
 {
-	SCOPED_DRAW_EVENT(RHICmdList,AHRUpsample, DEC_SCENE_ITEMS);
+	SCOPED_DRAW_EVENT(RHICmdList,AHRUpsample);
 
 	// Set the viewport, raster state , depth stencil and render target
 	SetRenderTarget(RHICmdList, UpsampledTarget, FTextureRHIRef());
@@ -400,7 +400,7 @@ IMPLEMENT_SHADER_TYPE(,AHRCompositePS,TEXT("AHRComposite"),TEXT("PS"),SF_Pixel);
 
 void FApproximateHybridRaytracer::Composite(FRHICommandListImmediate& RHICmdList,FViewInfo& View)
 {
-	SCOPED_DRAW_EVENT(RHICmdList,AHRComposite, DEC_SCENE_ITEMS);
+	SCOPED_DRAW_EVENT(RHICmdList,AHRComposite);
 
 	// Simply render a full screen quad and sample the upsampled buffer. Use additive blending to mix it with the light accumulation buffer
 	// Only one view at a time for now (1/11/2014)

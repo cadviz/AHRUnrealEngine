@@ -1,0 +1,7 @@
+// @RyanTorant
+#include "AHRCommon.usf"
+#include "AHRVoxelizationCommon.usf"
+
+void Main(FAHRVoxelizationGSOut input)
+{
+}

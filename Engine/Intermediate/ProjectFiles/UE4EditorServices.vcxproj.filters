@@ -5,10 +5,10 @@
 		<None Include="..\..\Source\Programs\Mac\UE4EditorServices\UE4EditorServices.Target.cs" />
 		<None Include="..\..\Source\Programs\Mac\UE4EditorServices\UE4EditorServices.Build.cs" />
 		<Filter Include="Private">
-			<UniqueIdentifier>{A0E43D0A-3AF3-45FF-AC7F-49C60A7E8F0B}</UniqueIdentifier>
+			<UniqueIdentifier>{9FB85721-22E3-44A4-B099-646F9AB58A61}</UniqueIdentifier>
 		</Filter>
 		<Filter Include="Private\Mac">
-			<UniqueIdentifier>{F970586F-2570-4E55-B85A-962F7F6C3666}</UniqueIdentifier>
+			<UniqueIdentifier>{A05E515D-DF65-4DD7-96DB-5141DD644B62}</UniqueIdentifier>
 		</Filter>
 		<ClCompile Include="..\..\Source\Programs\Mac\UE4EditorServices\Private\Mac\UE4EditorServicesAppDelegate.cpp">
 			<Filter>Private\Mac</Filter>
@@ -20,16 +20,16 @@
 			<Filter>Private\Mac</Filter>
 		</ClCompile >
 		<Filter Include="Private\Windows">
-			<UniqueIdentifier>{E3927D25-CD73-426A-8175-D36DF8B72ED2}</UniqueIdentifier>
+			<UniqueIdentifier>{533AD522-8A52-47FD-85B2-24458D3CF3D8}</UniqueIdentifier>
 		</Filter>
 		<ClCompile Include="..\..\Source\Programs\Mac\UE4EditorServices\Private\Windows\UE4EditorServicesMain.cpp">
 			<Filter>Private\Windows</Filter>
 		</ClCompile >
 		<Filter Include="Resources">
-			<UniqueIdentifier>{15D6A85E-350B-4191-8318-813377004669}</UniqueIdentifier>
+			<UniqueIdentifier>{69B3F76F-B6C2-4A01-A128-018F546C444F}</UniqueIdentifier>
 		</Filter>
 		<Filter Include="Resources\Mac">
-			<UniqueIdentifier>{B8D88336-D608-4ADD-B175-BFF602327804}</UniqueIdentifier>
+			<UniqueIdentifier>{012A9F46-0B61-4093-9A9B-FF5F8AA3855D}</UniqueIdentifier>
 		</Filter>
 		<None Include="..\..\Source\Programs\Mac\UE4EditorServices\Resources\Mac\Info.plist">
 			<Filter>Resources\Mac</Filter>

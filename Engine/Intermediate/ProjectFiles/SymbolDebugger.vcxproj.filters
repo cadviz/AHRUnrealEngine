@@ -5,7 +5,7 @@
 		<None Include="..\..\Source\Programs\SymbolDebugger\SymbolDebugger.Target.cs" />
 		<None Include="..\..\Source\Programs\SymbolDebugger\SymbolDebugger.Build.cs" />
 		<Filter Include="Private">
-			<UniqueIdentifier>{7FAA7172-4E0D-4602-996E-471FFA7A9E92}</UniqueIdentifier>
+			<UniqueIdentifier>{7C7F2D6E-37A3-4D5D-A3E3-270160D2C7B6}</UniqueIdentifier>
 		</Filter>
 		<ClCompile Include="..\..\Source\Programs\SymbolDebugger\Private\SSymbolDebugger.cpp">
 			<Filter>Private</Filter>
@@ -23,28 +23,28 @@
 			<Filter>Private</Filter>
 		</ClCompile >
 		<Filter Include="Private\Mac">
-			<UniqueIdentifier>{178CD296-0847-4E1F-9E26-D91AD784FDA5}</UniqueIdentifier>
+			<UniqueIdentifier>{F47B795A-ABE5-46D0-85A2-53009A253E1A}</UniqueIdentifier>
 		</Filter>
 		<ClCompile Include="..\..\Source\Programs\SymbolDebugger\Private\Mac\SymbolDebuggerMainMac.cpp">
 			<Filter>Private\Mac</Filter>
 		</ClCompile >
 		<Filter Include="Private\Windows">
-			<UniqueIdentifier>{4A719407-48C1-4F6E-A2A8-2CE47332AD75}</UniqueIdentifier>
+			<UniqueIdentifier>{CCBE34F3-1F75-4B42-9D74-5C696655AA5F}</UniqueIdentifier>
 		</Filter>
 		<ClCompile Include="..\..\Source\Programs\SymbolDebugger\Private\Windows\SymbolDebuggerMainWindows.cpp">
 			<Filter>Private\Windows</Filter>
 		</ClCompile >
 		<Filter Include="Public">
-			<UniqueIdentifier>{5F82F162-21A0-4216-B27F-6521866F5C05}</UniqueIdentifier>
+			<UniqueIdentifier>{19275B7A-8486-45D2-B060-A90C07C55093}</UniqueIdentifier>
 		</Filter>
 		<ClInclude Include="..\..\Source\Programs\SymbolDebugger\Public\SymbolDebuggerApp.h">
 			<Filter>Public</Filter>
 		</ClInclude >
 		<Filter Include="Resources">
-			<UniqueIdentifier>{31E56474-C81A-416B-868F-F3B104144B3A}</UniqueIdentifier>
+			<UniqueIdentifier>{FF271C36-AFC9-4CE1-BA91-8108DD7AB54E}</UniqueIdentifier>
 		</Filter>
 		<Filter Include="Resources\Windows">
-			<UniqueIdentifier>{F2C5F8E3-479F-4E2A-92C5-76B10C426CB2}</UniqueIdentifier>
+			<UniqueIdentifier>{7941C58F-5BE0-4FDB-884A-E83BAFF0AFC9}</UniqueIdentifier>
 		</Filter>
 		<Manifest Include="..\..\Source\Programs\SymbolDebugger\Resources\Windows\Debug-PCLaunch-Win32.manifest">
 			<Filter>Resources\Windows</Filter>

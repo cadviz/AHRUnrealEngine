@@ -5,28 +5,28 @@
 		<None Include="..\..\Source\Programs\CrashReporter\MinidumpDiagnostics\MinidumpDiagnostics.Target.cs" />
 		<None Include="..\..\Source\Programs\CrashReporter\MinidumpDiagnostics\MinidumpDiagnostics.Build.cs" />
 		<Filter Include="Private">
-			<UniqueIdentifier>{94675A7C-5A13-4536-A164-AD67761E5F21}</UniqueIdentifier>
+			<UniqueIdentifier>{7196DA73-1EA6-4F41-B9A6-5CF7D6B4979E}</UniqueIdentifier>
 		</Filter>
 		<ClCompile Include="..\..\Source\Programs\CrashReporter\MinidumpDiagnostics\Private\MinidumpDiagnosticsApp.cpp">
 			<Filter>Private</Filter>
 		</ClCompile >
 		<Filter Include="Private\Windows">
-			<UniqueIdentifier>{55077D70-686D-477F-84B1-0AFDFE03F7C8}</UniqueIdentifier>
+			<UniqueIdentifier>{31C1EC1A-E8DC-423D-A17C-F15C84FF5DCD}</UniqueIdentifier>
 		</Filter>
 		<ClCompile Include="..\..\Source\Programs\CrashReporter\MinidumpDiagnostics\Private\Windows\MinidumpDiagnosticsMainWindows.cpp">
 			<Filter>Private\Windows</Filter>
 		</ClCompile >
 		<Filter Include="Public">
-			<UniqueIdentifier>{D512440A-DC8A-4931-B85E-9ECD47C41B42}</UniqueIdentifier>
+			<UniqueIdentifier>{67AD3DBD-8FF4-4F9D-884B-54F99012F996}</UniqueIdentifier>
 		</Filter>
 		<ClInclude Include="..\..\Source\Programs\CrashReporter\MinidumpDiagnostics\Public\MinidumpDiagnosticsApp.h">
 			<Filter>Public</Filter>
 		</ClInclude >
 		<Filter Include="Resources">
-			<UniqueIdentifier>{A40CA4E1-9874-4384-9936-42D60A0C7F6C}</UniqueIdentifier>
+			<UniqueIdentifier>{6BBAA322-44DB-4243-BE47-2B36FF2693A7}</UniqueIdentifier>
 		</Filter>
 		<Filter Include="Resources\Windows">
-			<UniqueIdentifier>{CEFFD932-3970-4EEB-BC08-96FEB2F539F7}</UniqueIdentifier>
+			<UniqueIdentifier>{D27EB17E-C6D9-46C7-9DF9-F9A5193BB354}</UniqueIdentifier>
 		</Filter>
 		<Manifest Include="..\..\Source\Programs\CrashReporter\MinidumpDiagnostics\Resources\Windows\Debug-PCLaunch-Win32.manifest">
 			<Filter>Resources\Windows</Filter>

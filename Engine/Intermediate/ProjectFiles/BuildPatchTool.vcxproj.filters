@@ -6,7 +6,7 @@
 		<None Include="..\..\Source\Programs\BuildPatchTool\BuildPatchTool.Automation.cs" />
 		<None Include="..\..\Source\Programs\BuildPatchTool\BuildPatchTool.Build.cs" />
 		<Filter Include="Private">
-			<UniqueIdentifier>{8561101A-1F23-4F2F-8C7E-908B1B13C111}</UniqueIdentifier>
+			<UniqueIdentifier>{7BB57B02-3273-4926-AB94-9349EA5D26BE}</UniqueIdentifier>
 		</Filter>
 		<ClCompile Include="..\..\Source\Programs\BuildPatchTool\Private\BuildPatchToolMain.cpp">
 			<Filter>Private</Filter>

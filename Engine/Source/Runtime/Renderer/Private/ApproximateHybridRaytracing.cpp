@@ -50,7 +50,7 @@ void FApproximateHybridRaytracer::UpdateSettings()
 
 void FApproximateHybridRaytracer::ClearGrids(FRHICommandListImmediate& RHICmdList)
 {
-	SCOPED_DRAW_EVENT(RHICmdList,AHRInternalClearGrids, DEC_SCENE_ITEMS);
+	SCOPED_DRAW_EVENT(RHICmdList,AHRInternalClearGrids);
 
 	uint32 cls[4] = { 0,0,0,0 };
 	RHICmdList.ClearUAV(SceneVolume->UAV, cls);
@@ -58,7 +58,7 @@ void FApproximateHybridRaytracer::ClearGrids(FRHICommandListImmediate& RHICmdLis
 
 bool UseApproximateHybridRaytracingRT(ERHIFeatureLevel::Type InFeatureLevel)
 {
-	if(!IsFeatureLevelSupported(GRHIShaderPlatform, ERHIFeatureLevel::SM5) || !AHREngine.IsInitialized())
+	if(InFeatureLevel < ERHIFeatureLevel::SM5 || !AHREngine.IsInitialized())
 	{
 		_DEBUG_MSG("oops, cant use AHR. What are you trying to do?");
 		return false;

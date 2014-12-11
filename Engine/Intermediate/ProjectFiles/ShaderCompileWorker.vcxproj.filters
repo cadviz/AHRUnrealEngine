@@ -4,20 +4,20 @@
 	<ItemGroup>
 		<None Include="..\..\Source\Programs\ShaderCompileWorker\ShaderCompileWorker.Target.cs" />
 		<Filter Include="Config">
-			<UniqueIdentifier>{38309BBB-119B-4E20-BF4D-51AE6D8A77E2}</UniqueIdentifier>
+			<UniqueIdentifier>{6DD507E0-D6A0-48AD-9F96-97FD8C6FC028}</UniqueIdentifier>
 		</Filter>
 		<None Include="..\..\Programs\ShaderCompileWorker\Config\DefaultEngine.ini">
 			<Filter>Config</Filter>
 		</None >
 		<None Include="..\..\Source\Programs\ShaderCompileWorker\ShaderCompileWorker.Build.cs" />
 		<Filter Include="Private">
-			<UniqueIdentifier>{0D1707DE-36EF-45E2-8390-546A0EBFB5F5}</UniqueIdentifier>
+			<UniqueIdentifier>{7A356310-319C-40F2-B4D8-A29E48846D75}</UniqueIdentifier>
 		</Filter>
 		<ClCompile Include="..\..\Source\Programs\ShaderCompileWorker\Private\ShaderCompileWorker.cpp">
 			<Filter>Private</Filter>
 		</ClCompile >
 		<Filter Include="Resources">
-			<UniqueIdentifier>{F4A06372-B15F-4C26-B008-3B8C811ECBA8}</UniqueIdentifier>
+			<UniqueIdentifier>{70ED593A-CAAF-421F-B9D5-47BE6EB03BDF}</UniqueIdentifier>
 		</Filter>
 		<Manifest Include="..\..\Source\Programs\ShaderCompileWorker\Resources\Debug-Win32.manifest">
 			<Filter>Resources</Filter>

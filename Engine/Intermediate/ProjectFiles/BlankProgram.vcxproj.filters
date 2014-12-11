@@ -5,7 +5,7 @@
 		<None Include="..\..\Source\Programs\BlankProgram\BlankProgram.Target.cs" />
 		<None Include="..\..\Source\Programs\BlankProgram\BlankProgram.Build.cs" />
 		<Filter Include="Private">
-			<UniqueIdentifier>{1B4F4A4A-8AA3-45BE-8627-7658EB9DB04E}</UniqueIdentifier>
+			<UniqueIdentifier>{6BB285F5-5BC7-4E7C-B533-97B0CA69773E}</UniqueIdentifier>
 		</Filter>
 		<ClCompile Include="..\..\Source\Programs\BlankProgram\Private\BlankProgram.cpp">
 			<Filter>Private</Filter>
