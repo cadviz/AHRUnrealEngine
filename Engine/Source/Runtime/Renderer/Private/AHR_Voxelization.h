@@ -191,6 +191,7 @@ public:
 		GeometryShader->SetMesh(RHICmdList, VertexFactory,View,PrimitiveSceneProxy,BatchElement);
 		PixelShader->SetMesh(RHICmdList, VertexFactory,View,PrimitiveSceneProxy,BatchElement);
 
+		context->RHICmdList->SetDepthStencilState(TStaticDepthStencilState<false, CF_Always>::GetRHI());
 		context->RHICmdList->SetRasterizerState(TStaticRasterizerState<FM_Solid,CM_None,false,false>::GetRHI());
 		Mesh.VertexFactory->Set(*context->RHICmdList);
 	
@@ -198,7 +199,7 @@ public:
 		FUnorderedAccessViewRHIParamRef uavs[] = { AHREngine.GetSceneVolumeUAV() };
 		context->RHICmdList->SetRenderTargets(0,nullptr,nullptr,1,uavs);
 
-		FMeshDrawingPolicy::SetMeshRenderState(RHICmdList, View,PrimitiveSceneProxy,Mesh,BatchElementIndex,bBackFace,FMeshDrawingPolicy::ElementDataType(),PolicyContext);
+		//FMeshDrawingPolicy::SetMeshRenderState(RHICmdList, View,PrimitiveSceneProxy,Mesh,BatchElementIndex,bBackFace,FMeshDrawingPolicy::ElementDataType(),PolicyContext);
 	}
 
 	friend int32 CompareDrawingPolicy(const FAHRVoxelizerDrawingPolicy& A,const FAHRVoxelizerDrawingPolicy& B)

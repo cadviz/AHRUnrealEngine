@@ -8,7 +8,13 @@ float3 to_vlocal(float3 worldPos)
 	// (x - a)/b		   : add + div
 	// (x - a)*c , c = 1/b : add + mul
 	// x*c + d, d = -a/b   : mad
-	return worldPos*AHRTraceCB.InvSceneBounds + AHRTraceCB.WorldToVoxelOffset;
+	//return worldPos*AHRTraceCB.InvSceneBounds + AHRTraceCB.WorldToVoxelOffset;
+
+	// HARDCODED DEBUG!
+	const float invSceneBounds = 1.0f/1545.92919f;
+	const float3 worldTovoxelOffset = float3(-265.486847f,0.0f,0.0f);
+
+	return worldPos*invSceneBounds + worldTovoxelOffset;
 }
 
 ByteAddressBuffer SceneVolume;
@@ -54,7 +60,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 
 
 
-#define _GLOSSY
+//#define _GLOSSY
 
 
 
@@ -66,7 +72,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 
 	float3 diffuse = 0;
 	float3 glossy = 0;
-	float acc = 1;
+	uint acc = 1;
 
 #ifdef _GLOSSY
 	for (uint r = 0; r < AHRTraceCB.GlossyRayCount; r++)
@@ -154,7 +160,9 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 #endif
 
 	float ao = 0;
-	for (uint r = 0; r < AHRTraceCB.DiffuseRayCount; r++)
+	// HARDCODED DEBUG!
+	//for (uint r = 0; r < AHRTraceCB.DiffuseRayCount; r++)
+	for (uint r = 0; r < 8; r++)
 	{
 		float3 dir = 0;
 
@@ -173,12 +181,19 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 		float angleCos = saturate(dot(dir,normal));
 		float dispAngleMult = sqrt(1 - angleCos*angleCos)/(angleCos + 0.01) + 1;//tan(clamp(dispAngle,0,MAX_ANGLE)) + 1;
 
-		float3 step = dir*AHRTraceCB.invVoxel;
-		float3 spos = wPos + step*AHRTraceCB.InitialDispMult*dispAngleMult;
+		// HARDCODED DEBUG!
+		//float3 step = dir*AHRTraceCB.invVoxel;
+		//float3 spos = wPos + step*AHRTraceCB.InitialDispMult*dispAngleMult;
+		float3 step = dir*(1.0f/512.0f);
+		float3 spos = wPos + step*1.9f*dispAngleMult;
 
-		step *= AHRTraceCB.SamplesDispMultiplier;
+		// HARDCODED DEBUG!
+		//step *= AHRTraceCB.SamplesDispMultiplier;
+		step *= 2.1f;
 
-		for (uint i = 0; i < AHRTraceCB.DiffuseSamplesCount; i++)
+		// HARDCODED DEBUG!
+		//for (uint i = 0; i < AHRTraceCB.DiffuseSamplesCount; i++)
+		for (uint i = 0; i < 32; i++)
 		{
 			if(magnitudeSquared(to_vlocal(spos)) > 3) 
 			{
@@ -222,6 +237,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 				float biasAngleMult = 0;
 				float shadowFactor = 0;
 
+				ao += 1;//(i <= 8);
 				diffuse += shadowFactor*albedo.rgb*albedo.w;
 				acc += 1;
 
@@ -231,7 +247,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 		}
 	}
 
-	ao /= acc;
+	//ao /= acc;
 	ao = 1.0f - saturate(ao);
 
 	diffuse /= acc;
@@ -242,6 +258,22 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 #else
 	float4 traced = float4(diffuse,ao);
 #endif
+
+
+
+	traced = ao;
+
+
+	//DEBUG!
+	//uint vidxD = InUV.x*1000 + InUV.y*1000*1000;
+	//traced = SceneVolume.Load((vidxD + 1000000)*4);
+
+	/*uint3 vposD = floor((to_vlocal(wPos)*0.5 + 0.5)*AHRTraceCB.SliceSize);
+	uint vidxD = vposD.y + vposD.x*AHRTraceCB.SliceSize + vposD.z*AHRTraceCB.SliceSize*AHRTraceCB.SliceSize;
+	uint bidxD = floor(float(vidxD) * ONE_OVER_32);
+	uint offsetD = vidxD - 32 * bidxD;
+	uint bvoxD = SceneVolume.Load(bidxD*4);
+	traced = bvoxD & (1 << offsetD);*/
 
 	return traced;
 }

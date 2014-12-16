@@ -15,4 +15,5 @@ struct FAHRVoxelizationGSOut
 {
 	FVertexFactoryInterpolantsVSToPS FactoryInterpolants;
 	float4 Position : SV_POSITION;
+	float3 wPos : TEXCOORD7;
 };

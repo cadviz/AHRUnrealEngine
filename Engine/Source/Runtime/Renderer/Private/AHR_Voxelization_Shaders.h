@@ -1,6 +1,7 @@
 // @RyanTorant
 #pragma once
 #include "ShaderBaseClasses.h"
+#include "ApproximateHybridRaytracing.h"
 
 class FAHRVoxelizationVertexShader : public FMeshMaterialShader
 {
@@ -85,12 +86,12 @@ public:
 		const FSceneView& View
 		)
 	{
-		FMeshMaterialShader::SetParameters(RHICmdList, GetVertexShader(),MaterialRenderProxy,InMaterialResource,View,ESceneRenderTargetsMode::DontSet);
+		//FMeshMaterialShader::SetParameters(RHICmdList, GetVertexShader(),MaterialRenderProxy,InMaterialResource,View,ESceneRenderTargetsMode::DontSet);
 	}
 
 	void SetMesh(FRHICommandList& RHICmdList, const FVertexFactory* VertexFactory,const FSceneView& View,const FPrimitiveSceneProxy* Proxy,const FMeshBatchElement& BatchElement)
 	{
-		FMeshMaterialShader::SetMesh(RHICmdList, GetVertexShader(),VertexFactory,View,Proxy,BatchElement);
+		//FMeshMaterialShader::SetMesh(RHICmdList, GetVertexShader(),VertexFactory,View,Proxy,BatchElement);
 	}
 
 private:

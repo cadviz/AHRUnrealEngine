@@ -7,14 +7,56 @@ void Main(triangle FAHRVoxelizationVSOut input[3], inout TriangleStream<FAHRVoxe
 {
 	FAHRVoxelizationGSOut output[3];
 
-	output[0].Position = input[0].Position;
+	
+	output[0].wPos = input[0].Position;
 	output[0].FactoryInterpolants = input[0].FactoryInterpolants;
 
-	output[1].Position = input[1].Position;
+	
+	output[1].wPos = input[1].Position;
 	output[1].FactoryInterpolants = input[1].FactoryInterpolants;
 
-	output[2].Position = input[2].Position;
+	
+	output[2].wPos = input[2].Position;
 	output[2].FactoryInterpolants = input[2].FactoryInterpolants;
+
+
+	float3 eyeSpaceV1 = normalize(input[1].Position.xyz - input[0].Position.xyz);
+	float3 eyeSpaceV2 = normalize(input[2].Position.xyz - input[0].Position.xyz);
+	float3 eyeSpaceNormal = abs(cross(eyeSpaceV1, eyeSpaceV2));
+	float dominantAxis = max(eyeSpaceNormal.x, max(eyeSpaceNormal.y, eyeSpaceNormal.z));
+	float3x3 swizzleMatrix;
+	if (dominantAxis == eyeSpaceNormal.x)
+	{
+		swizzleMatrix = float3x3(float3(0.0, 0.0, 1.0),
+								 float3(0.0, 1.0, 0.0),
+								 float3(1.0, 0.0, 0.0));
+
+	}
+	else if (dominantAxis == eyeSpaceNormal.y)
+	{
+		swizzleMatrix = float3x3(float3(1.0, 0.0, 0.0),
+								 float3(0.0, 0.0, 1.0),
+								 float3(0.0, 1.0, 0.0));
+	}
+	else if (dominantAxis == eyeSpaceNormal.z)
+	{
+		swizzleMatrix = float3x3(float3(1.0, 0.0, 0.0),
+								 float3(0.0, 1.0, 0.0),
+								 float3(0.0, 0.0, 1.0));
+	}
+
+	//	float2 screenFit = float2(vSliceSizeX,vSliceSizeX) / float2(ScreenX,ScreenY);
+	//		Send the Voxel triangles
+	//output[0].Position = float4(mul(input[0].Position, swizzleMatrix), 1);//float4(0, 0, 0, 1);//mul(input[0].localPos, VoxelProj);//mul(input[0].localPos, WorldViewProj);
+
+	//output[1].Position = float4(mul(input[1].Position, swizzleMatrix), 1);///float4(0.5, 0, 0, 1);// mul(input[1].localPos, WorldViewProj);//mul(input[1].localPos, VoxelProj);
+
+	//output[2].Position = float4(mul(input[2].Position, swizzleMatrix), 1);//float4(0.5, 0.5, 0, 1);// mul(input[2].localPos, WorldViewProj);//mul(input[2].localPos, VoxelProj);
+	
+	
+	output[0].Position = float4(0,0,0,1);
+	output[1].Position = float4(0.5,0,0,1);
+	output[2].Position = float4(0.5,0.5,0,1);
 
 	OutputStream.Append(output[0]);
 	OutputStream.Append(output[1]);

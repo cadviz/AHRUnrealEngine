@@ -75,9 +75,9 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 			
 			FScopeCycleCounter Context( PrimitiveSceneInfo->Proxy->GetStatId( ) );
 			Drawer.SetPrimitive( PrimitiveSceneInfo->Proxy );
-				
+			
 			// Calls SceneProxy DrawDynamicElements function
-			PrimitiveSceneInfo->Proxy->DrawDynamicElements(&Drawer,&View);
+			PrimitiveSceneInfo->Proxy->DrawDynamicElements(&Drawer,&View,EDrawDynamicFlags::Voxelize);
 		}
 	}
 }
@@ -406,8 +406,8 @@ void FApproximateHybridRaytracer::Composite(FRHICommandListImmediate& RHICmdList
 	// Only one view at a time for now (1/11/2014)
 
 	// Set additive blending
-	RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_One, BO_Add, BF_One, BF_One>::GetRHI());
-	//RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_Zero, BO_Add, BF_One, BF_Zero>::GetRHI());
+	//RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_One, BO_Add, BF_One, BF_One>::GetRHI());
+	RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_Zero, BO_Add, BF_One, BF_Zero>::GetRHI());
 	
 	// Set the viewport, raster state and depth stencil
 	RHICmdList.SetViewport(View.ViewRect.Min.X, View.ViewRect.Min.Y, 0.0f, View.ViewRect.Max.X, View.ViewRect.Max.Y, 1.0f);

@@ -90,7 +90,9 @@ namespace EDrawDynamicFlags
 {
 	enum Type
 	{
-		ForceLowestLOD = 0x1
+		ForceLowestLOD = 0x1,
+		// @RyanTorant
+		Voxelize = 0x2
 	};
 }
 

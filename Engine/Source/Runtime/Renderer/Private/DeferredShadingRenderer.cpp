@@ -692,6 +692,8 @@ void FDeferredShadingSceneRenderer::Render(FRHICommandListImmediate& RHICmdList)
 	}
 
 	// Find the visible primitives.
+	// @RyanTorant
+	// Also do the voxelization stage
 	InitViews(RHICmdList);
 
 	if (GRHIThread)

@@ -158,8 +158,8 @@ bool FAHRVoxelizerDrawingPolicyFactory::DrawDynamicMesh(
 		DrawingPolicy.DrawMesh(*DrawingContext.RHICmdList, Mesh, BatchElementIndex);
 	}
 
-	DrawingContext.RHICmdList->SetDepthStencilState(FDepthStencilStateRHIParamRef());
-
+	// Unbind
+	DrawingContext.RHICmdList->SetRenderTargets(0,nullptr,FTextureRHIRef(),0,nullptr);
 	return true;
 }
 

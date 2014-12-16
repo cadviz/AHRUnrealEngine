@@ -834,14 +834,15 @@ void FStaticMeshSceneProxy::DrawDynamicElements(FPrimitiveDrawInterface* PDI,con
 	// Draw simple collision as wireframe if 'show collision', collision is enabled, and we are not using the complex as the simple
 	const bool bDrawWireframeCollision = (View->Family->EngineShowFlags.Collision && IsCollisionEnabled() && CollisionTraceFlag != ECollisionTraceFlag::CTF_UseComplexAsSimple);
 
-	const bool bDrawMesh = (bInCollisionView) ? (bDrawComplexCollision) : 
+	// @RyanTorant
+	// Added check for voxelization stage
+	const bool bDrawMesh = ((bInCollisionView) ? (bDrawComplexCollision) : 
 		(	IsRichView(*View->Family) || HasViewDependentDPG()
 			|| View->Family->EngineShowFlags.Collision
 			|| View->Family->EngineShowFlags.Bounds
 			|| bProxyIsSelected 
 			|| IsHovered()
-			|| bIsLightmapSettingError ) ;
-
+			|| bIsLightmapSettingError )) || (DrawDynamicFlags & EDrawDynamicFlags::Voxelize);
 
 	// Draw polygon mesh if we are either not in a collision view, or are drawing it as collision.
 	if(View->Family->EngineShowFlags.StaticMeshes && bDrawMesh)

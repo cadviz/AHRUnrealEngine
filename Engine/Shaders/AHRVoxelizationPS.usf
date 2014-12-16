@@ -2,6 +2,36 @@
 #include "AHRCommon.usf"
 #include "AHRVoxelizationCommon.usf"
 
+RWByteAddressBuffer SceneVolume : register (u0);
+
+float3 to_vlocal(float3 worldPos)
+{
+	// Let's get mad!
+	// (x - a)/b		   : add + div
+	// (x - a)*c , c = 1/b : add + mul
+	// x*c + d, d = -a/b   : mad
+	//return worldPos*AHRTraceCB.InvSceneBounds + AHRTraceCB.WorldToVoxelOffset;
+	
+
+	// HARDCODED DEBUG!
+	const float invSceneBounds = 1.0f/1545.92919f;
+	const float3 worldTovoxelOffset = float3(-265.486847f,0.0f,0.0f);
+
+	return worldPos*invSceneBounds + worldTovoxelOffset;
+}
+
 void Main(FAHRVoxelizationGSOut input)
 {
+	// DEBUG!
+	uint vSliceSize = 512;
+
+
+	uint3 vpos2 = floor((to_vlocal(input.wPos)*0.5 + 0.5)*vSliceSize);
+	uint vidx2 = vpos2.y + vpos2.x*vSliceSize + vpos2.z*vSliceSize*vSliceSize;
+
+#define ONE_OVER_32 0.03125f
+	uint bidx = floor(float(vidx2) * ONE_OVER_32); 
+	uint offset = vidx2 - 32 * bidx;
+
+	SceneVolume.InterlockedOr(bidx*4, 1 << offset);
 }
