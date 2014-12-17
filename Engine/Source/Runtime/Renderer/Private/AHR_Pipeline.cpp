@@ -336,6 +336,11 @@ void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,
 				EDRF_UseTriangleOptimization);
 }
 
+BEGIN_UNIFORM_BUFFER_STRUCT(AHRCompositeCB,)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(float,GIMultiplier)
+END_UNIFORM_BUFFER_STRUCT(AHRCompositeCB)
+IMPLEMENT_UNIFORM_BUFFER_STRUCT(AHRCompositeCB,TEXT("AHRCompositeCB"));
+
 class AHRCompositePS : public FGlobalShader
 {
 	DECLARE_SHADER_TYPE(AHRCompositePS,Global)
@@ -373,6 +378,12 @@ public:
 			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,GIBufferTexture.GetBaseIndex(),giSRV);
 		if(LinearSampler.IsBound())
 			RHICmdList.SetShaderSampler(ShaderRHI,LinearSampler.GetBaseIndex(),TStaticSamplerState<SF_Trilinear,AM_Wrap,AM_Wrap,AM_Wrap>::GetRHI());
+
+		AHRCompositeCB cbdata;
+
+		cbdata.GIMultiplier = View.FinalPostProcessSettings.AHRIntensity;
+
+		SetUniformBufferParameterImmediate(RHICmdList, ShaderRHI,cb,cbdata);
 	}
 
 	virtual bool Serialize(FArchive& Ar)
@@ -381,13 +392,14 @@ public:
 		Ar << DeferredParameters;
 		Ar << GIBufferTexture;
 		Ar << LinearSampler;
+		Ar << cb;
 		return bShaderHasOutdatedParameters;
 	}
 
 	FGlobalBoundShaderState& GetBoundShaderState()
 	{
 		static FGlobalBoundShaderState State;
-
+		
 		return State;
 	}
 
@@ -395,6 +407,7 @@ private:
 	FDeferredPixelShaderParameters DeferredParameters;
 	FShaderResourceParameter GIBufferTexture;
 	FShaderResourceParameter LinearSampler;
+	TShaderUniformBufferParameter<AHRCompositeCB> cb;
 };
 IMPLEMENT_SHADER_TYPE(,AHRCompositePS,TEXT("AHRComposite"),TEXT("PS"),SF_Pixel);
 
@@ -408,7 +421,11 @@ void FApproximateHybridRaytracer::Composite(FRHICommandListImmediate& RHICmdList
 	// Set additive blending
 	//RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_One, BO_Add, BF_One, BF_One>::GetRHI());
 	RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_Zero, BO_Add, BF_One, BF_Zero>::GetRHI());
-	
+
+	// add gi and multiply scene color by ao
+	// final = gi + ao*direct
+	//RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_SourceAlpha, BO_Add, BF_Zero, BF_One>::GetRHI());
+
 	// Set the viewport, raster state and depth stencil
 	RHICmdList.SetViewport(View.ViewRect.Min.X, View.ViewRect.Min.Y, 0.0f, View.ViewRect.Max.X, View.ViewRect.Max.Y, 1.0f);
 	RHICmdList.SetRasterizerState(TStaticRasterizerState<FM_Solid, CM_None>::GetRHI());
