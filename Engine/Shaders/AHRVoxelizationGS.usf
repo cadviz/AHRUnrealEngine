@@ -2,6 +2,23 @@
 #include "AHRCommon.usf"
 #include "AHRVoxelizationCommon.usf"
 
+float3 to_vlocal(float3 worldPos)
+{
+	// Let's get mad!
+	// (x - a)/b		   : add + div
+	// (x - a)*c , c = 1/b : add + mul
+	// x*c + d, d = -a/b   : mad
+	return worldPos*AHRVoxelizationCB.InvSceneBounds + AHRVoxelizationCB.WorldToVoxelOffset;
+	
+
+	// HARDCODED DEBUG!
+	/*const float invSceneBounds = 1.0f/2150.0f;
+	const float3 worldTovoxelOffset = -float3(-265.486847f,0.0f,0.0f)/2150.0f;
+
+	return worldPos*invSceneBounds + worldTovoxelOffset;*/
+}
+
+
 [maxvertexcount(3)]
 void Main(triangle FAHRVoxelizationVSOut input[3], inout TriangleStream<FAHRVoxelizationGSOut> OutputStream)
 {
@@ -19,9 +36,12 @@ void Main(triangle FAHRVoxelizationVSOut input[3], inout TriangleStream<FAHRVoxe
 	output[2].wPos = input[2].Position;
 	output[2].FactoryInterpolants = input[2].FactoryInterpolants;
 
+	float3 lpos0 = to_vlocal(input[0].Position.xyz);
+	float3 lpos1 = to_vlocal(input[1].Position.xyz);
+	float3 lpos2 = to_vlocal(input[2].Position.xyz);
 
-	float3 eyeSpaceV1 = normalize(input[1].Position.xyz - input[0].Position.xyz);
-	float3 eyeSpaceV2 = normalize(input[2].Position.xyz - input[0].Position.xyz);
+	float3 eyeSpaceV1 = normalize(lpos1 - lpos0);
+	float3 eyeSpaceV2 = normalize(lpos2 - lpos0);
 	float3 eyeSpaceNormal = abs(cross(eyeSpaceV1, eyeSpaceV2));
 	float dominantAxis = max(eyeSpaceNormal.x, max(eyeSpaceNormal.y, eyeSpaceNormal.z));
 	float3x3 swizzleMatrix;
@@ -47,16 +67,16 @@ void Main(triangle FAHRVoxelizationVSOut input[3], inout TriangleStream<FAHRVoxe
 
 	//	float2 screenFit = float2(vSliceSizeX,vSliceSizeX) / float2(ScreenX,ScreenY);
 	//		Send the Voxel triangles
-	//output[0].Position = float4(mul(input[0].Position, swizzleMatrix), 1);//float4(0, 0, 0, 1);//mul(input[0].localPos, VoxelProj);//mul(input[0].localPos, WorldViewProj);
+	output[0].Position = float4(mul(lpos0, swizzleMatrix), 1);//float4(0, 0, 0, 1);//mul(input[0].localPos, VoxelProj);//mul(input[0].localPos, WorldViewProj);
 
-	//output[1].Position = float4(mul(input[1].Position, swizzleMatrix), 1);///float4(0.5, 0, 0, 1);// mul(input[1].localPos, WorldViewProj);//mul(input[1].localPos, VoxelProj);
+	output[1].Position = float4(mul(lpos1, swizzleMatrix), 1);///float4(0.5, 0, 0, 1);// mul(input[1].localPos, WorldViewProj);//mul(input[1].localPos, VoxelProj);
 
-	//output[2].Position = float4(mul(input[2].Position, swizzleMatrix), 1);//float4(0.5, 0.5, 0, 1);// mul(input[2].localPos, WorldViewProj);//mul(input[2].localPos, VoxelProj);
+	output[2].Position = float4(mul(lpos2, swizzleMatrix), 1);//float4(0.5, 0.5, 0, 1);// mul(input[2].localPos, WorldViewProj);//mul(input[2].localPos, VoxelProj);
 	
 	
-	output[0].Position = float4(0,0,0,1);
-	output[1].Position = float4(0.5,0,0,1);
-	output[2].Position = float4(0.5,0.5,0,1);
+	//output[0].Position = float4(0,0,0,1);
+	//output[1].Position = float4(0.05,0,0,1);
+	//output[2].Position = float4(0.05,0.05,0,1);
 
 	OutputStream.Append(output[0]);
 	OutputStream.Append(output[1]);

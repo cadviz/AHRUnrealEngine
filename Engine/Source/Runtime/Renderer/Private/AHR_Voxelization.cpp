@@ -11,6 +11,8 @@ IMPLEMENT_SHADER_TYPE(,FAHRVoxelizationVertexShader,TEXT("AHRVoxelizationVS"),TE
 IMPLEMENT_SHADER_TYPE(,FAHRVoxelizationGeometryShader,TEXT("AHRVoxelizationGS"),TEXT("Main"),SF_Geometry);
 IMPLEMENT_SHADER_TYPE(,FAHRVoxelizationPixelShader,TEXT("AHRVoxelizationPS"),TEXT("Main"),SF_Pixel);
 
+IMPLEMENT_UNIFORM_BUFFER_STRUCT(AHRVoxelizationCB,TEXT("AHRVoxelizationCB"));
+
 template<typename DrawingPolicyFactoryType>
 void TAHRVoxelizerElementPDI<DrawingPolicyFactoryType>::SetPrimitive( const FPrimitiveSceneProxy* NewPrimitiveSceneProxy )
 {

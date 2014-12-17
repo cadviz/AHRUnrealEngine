@@ -10,28 +10,31 @@ float3 to_vlocal(float3 worldPos)
 	// (x - a)/b		   : add + div
 	// (x - a)*c , c = 1/b : add + mul
 	// x*c + d, d = -a/b   : mad
-	//return worldPos*AHRTraceCB.InvSceneBounds + AHRTraceCB.WorldToVoxelOffset;
+	return worldPos*AHRVoxelizationCB.InvSceneBounds + AHRVoxelizationCB.WorldToVoxelOffset;
 	
 
 	// HARDCODED DEBUG!
-	const float invSceneBounds = 1.0f/1545.92919f;
-	const float3 worldTovoxelOffset = float3(-265.486847f,0.0f,0.0f);
+	/*const float invSceneBounds = 1.0f/2150.0f;
+	const float3 worldTovoxelOffset = -float3(-265.486847f,0.0f,0.0f)/2150.0f;
 
-	return worldPos*invSceneBounds + worldTovoxelOffset;
+	return worldPos*invSceneBounds + worldTovoxelOffset;*/
 }
 
 void Main(FAHRVoxelizationGSOut input)
 {
-	// DEBUG!
-	uint vSliceSize = 512;
+	// Only voxelize if we are inside the bounds
+	float3 local = to_vlocal(input.wPos);
+	if( local.x <= 1 && local.x >= -1 &&
+		local.y <= 1 && local.y >= -1 &&
+		local.z <= 1 && local.z >= -1)
+	{
+		uint3 vpos2 = floor((local*0.5 + 0.5)*AHRVoxelizationCB.SliceSize);
+		uint vidx2 = vpos2.y + vpos2.x*AHRVoxelizationCB.SliceSize + vpos2.z*AHRVoxelizationCB.SliceSize*AHRVoxelizationCB.SliceSize;
 
+	#define ONE_OVER_32 0.03125f
+		uint bidx = floor(float(vidx2) * ONE_OVER_32); 
+		uint offset = vidx2 - 32 * bidx;
 
-	uint3 vpos2 = floor((to_vlocal(input.wPos)*0.5 + 0.5)*vSliceSize);
-	uint vidx2 = vpos2.y + vpos2.x*vSliceSize + vpos2.z*vSliceSize*vSliceSize;
-
-#define ONE_OVER_32 0.03125f
-	uint bidx = floor(float(vidx2) * ONE_OVER_32); 
-	uint offset = vidx2 - 32 * bidx;
-
-	SceneVolume.InterlockedOr(bidx*4, 1 << offset);
+		SceneVolume.InterlockedOr(bidx*4, 1 << offset);
+	}
 }

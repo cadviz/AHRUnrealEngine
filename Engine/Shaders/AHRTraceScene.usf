@@ -8,13 +8,13 @@ float3 to_vlocal(float3 worldPos)
 	// (x - a)/b		   : add + div
 	// (x - a)*c , c = 1/b : add + mul
 	// x*c + d, d = -a/b   : mad
-	//return worldPos*AHRTraceCB.InvSceneBounds + AHRTraceCB.WorldToVoxelOffset;
+	return worldPos*AHRTraceCB.InvSceneBounds + AHRTraceCB.WorldToVoxelOffset;
 
 	// HARDCODED DEBUG!
-	const float invSceneBounds = 1.0f/1545.92919f;
-	const float3 worldTovoxelOffset = float3(-265.486847f,0.0f,0.0f);
+	//const float invSceneBounds = 1.0f/2150.0f;
+	//const float3 worldTovoxelOffset = -float3(-265.486847f,0.0f,0.0f)/2150.0f;
 
-	return worldPos*invSceneBounds + worldTovoxelOffset;
+	//return worldPos*invSceneBounds + worldTovoxelOffset;
 }
 
 ByteAddressBuffer SceneVolume;
@@ -160,9 +160,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 #endif
 
 	float ao = 0;
-	// HARDCODED DEBUG!
-	//for (uint r = 0; r < AHRTraceCB.DiffuseRayCount; r++)
-	for (uint r = 0; r < 8; r++)
+	for (uint r = 0; r < AHRTraceCB.DiffuseRayCount; r++)
 	{
 		float3 dir = 0;
 
@@ -181,19 +179,15 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 		float angleCos = saturate(dot(dir,normal));
 		float dispAngleMult = sqrt(1 - angleCos*angleCos)/(angleCos + 0.01) + 1;//tan(clamp(dispAngle,0,MAX_ANGLE)) + 1;
 
-		// HARDCODED DEBUG!
-		//float3 step = dir*AHRTraceCB.invVoxel;
-		//float3 spos = wPos + step*AHRTraceCB.InitialDispMult*dispAngleMult;
-		float3 step = dir*(1.0f/512.0f);
-		float3 spos = wPos + step*1.9f*dispAngleMult;
+		// Optimize this later. Div is stupid
+		float3 step = dir*AHRTraceCB.invVoxel/AHRTraceCB.InvSceneBounds;
+		float3 spos = wPos + step*AHRTraceCB.InitialDispMult*dispAngleMult;
+		//float3 step = dir*(2150.0f/512.0f);
+		//float3 spos = wPos + step*1.9f*dispAngleMult;
 
-		// HARDCODED DEBUG!
-		//step *= AHRTraceCB.SamplesDispMultiplier;
-		step *= 2.1f;
+		step *= AHRTraceCB.SamplesDispMultiplier;
 
-		// HARDCODED DEBUG!
-		//for (uint i = 0; i < AHRTraceCB.DiffuseSamplesCount; i++)
-		for (uint i = 0; i < 32; i++)
+		for (uint i = 0; i < AHRTraceCB.DiffuseSamplesCount; i++)
 		{
 			if(magnitudeSquared(to_vlocal(spos)) > 3) 
 			{
@@ -247,7 +241,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 		}
 	}
 
-	//ao /= acc;
+	ao /= acc;
 	ao = 1.0f - saturate(ao);
 
 	diffuse /= acc;
@@ -275,5 +269,46 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 	uint bvoxD = SceneVolume.Load(bidxD*4);
 	traced = bvoxD & (1 << offsetD);*/
 
+	/*
+#define _SHOW_VOXELS
+#ifdef _SHOW_VOXELS
+	traced = 0;
+	float3 dir = ScreenVector;
+	float3 step = dir*(2150.0f/512.0f)*0.15f;
+	float3 spos = View.ViewOrigin.xyz;
+	uint prevbidx2 = -1;
+	uint bvox2 = 0;
+
+	for(int i = 0; i < 1000; i++)
+	{
+		float3 local = to_vlocal(spos);
+		if( local.x > 1 || local.x < -1 ||
+			local.y > 1 || local.y < -1 ||
+			local.z > 1 || local.z < -1) break;
+
+		uint3 vpos = floor((local*0.5 + 0.5)*512);
+		uint vidx = vpos.y + vpos.x*512 + vpos.z*512*512;
+		uint bidx = floor(float(vidx) * ONE_OVER_32);
+		uint offset = vidx - 32 * bidx;
+		
+		if (bidx != prevbidx2)
+		{
+			bvox2 = SceneVolume.Load(bidx*4);
+			prevbidx2 = bidx;
+		}
+
+		if(bvox2 & (1 << offset))
+		{
+			float3 vnormal = normalize(floor((to_vlocal(spos)*0.5 + 0.5)*512 + 0.5)  - (to_vlocal(spos)*0.5 + 0.5)*512);
+			traced = vnormal.xyzz*0.5+0.5;
+
+			break;
+		}
+
+		spos += step;
+	}
+
+#endif*/
+	
 	return traced;
 }
