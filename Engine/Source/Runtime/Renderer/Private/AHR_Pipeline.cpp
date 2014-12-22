@@ -420,7 +420,7 @@ void FApproximateHybridRaytracer::Composite(FRHICommandListImmediate& RHICmdList
 
 	// Set additive blending
 	//RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_One, BO_Add, BF_One, BF_One>::GetRHI());
-	//RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_Zero, BO_Add, BF_One, BF_Zero>::GetRHI());
+	RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_Zero, BO_Add, BF_One, BF_Zero>::GetRHI());
 
 	// add gi and multiply scene color by ao
 	// final = gi + ao*direct
@@ -428,7 +428,7 @@ void FApproximateHybridRaytracer::Composite(FRHICommandListImmediate& RHICmdList
 
 
 	//		DEBUG!!!!!
-	RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_Zero, BF_SourceColor, BO_Add, BF_One, BF_One>::GetRHI());
+	//RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_Zero, BF_SourceColor, BO_Add, BF_One, BF_One>::GetRHI());
 
 
 
