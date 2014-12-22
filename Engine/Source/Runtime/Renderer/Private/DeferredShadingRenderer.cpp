@@ -691,9 +691,24 @@ void FDeferredShadingSceneRenderer::Render(FRHICommandListImmediate& RHICmdList)
 		AHREngine.ClearGrids(RHICmdList);
 	}
 
-	// Find the visible primitives.
 	// @RyanTorant
-	// Also do the voxelization stage
+	// Store all the primitives that need to be voxelized
+	if(UseApproximateHybridRaytracingRT(Views[0].FeatureLevel))
+	{
+		for(auto primitive : Scene->Primitives)
+		{
+			FPrimitiveViewRelevance ViewRelevance = primitive->Proxy->GetViewRelevance(&Views[0]);
+			if(ViewRelevance.bNeedsVoxelization && ViewRelevance.bRenderInMainPass && !ViewRelevance.bEditorPrimitiveRelevance)
+				Views[0].PrimitivesToVoxelize.Add(primitive);
+		}
+	}
+
+	// After this point we have the PrimitivesToVoxelize array filled, so we can start voxelization
+	// For now (29/10/2014) both static and dynamic objects get voxelized on the same pass. Also, no emissive (plain binary grid)
+	if(UseApproximateHybridRaytracingRT(Views[0].FeatureLevel))
+		AHREngine.VoxelizeScene(RHICmdList,Views[0]);
+
+	// Find the visible primitives.
 	InitViews(RHICmdList);
 
 	if (GRHIThread)
@@ -798,6 +813,7 @@ void FDeferredShadingSceneRenderer::Render(FRHICommandListImmediate& RHICmdList)
 	{
 		ClearLPVs(RHICmdList);
 	}
+	
 
 	// only temporarily available after early z pass and until base pass
 	check(!GSceneRenderTargets.DBufferA);

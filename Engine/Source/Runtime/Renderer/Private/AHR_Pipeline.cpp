@@ -70,7 +70,6 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 
 		for( int32 PrimitiveIndex = 0, Num = View.PrimitivesToVoxelize.Num( ); PrimitiveIndex < Num; PrimitiveIndex++ )
 		{
-			// VisibleHairPrimitives added to FViewInfo in SceneRendering.h to allow objects to opt in to this Drawing Policy
 			const FPrimitiveSceneInfo* PrimitiveSceneInfo = View.PrimitivesToVoxelize[ PrimitiveIndex ];
 			
 			FScopeCycleCounter Context( PrimitiveSceneInfo->Proxy->GetStatId( ) );

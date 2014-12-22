@@ -555,6 +555,7 @@ void FDeferredShadingSceneRenderer::RenderLights(FRHICommandListImmediate& RHICm
 		// @RyanTorant
 		if(UseApproximateHybridRaytracingRT(Views[0].FeatureLevel))
 		{
+			
 			// No need to set the render target before, as both functions set they own rt
 			AHREngine.TraceScene(RHICmdList,Views[0]);
 			AHREngine.Upsample(RHICmdList,Views[0]);

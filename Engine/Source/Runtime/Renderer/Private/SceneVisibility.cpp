@@ -2229,13 +2229,7 @@ void FDeferredShadingSceneRenderer::InitViews(FRHICommandListImmediate& RHICmdLi
 	PreVisibilityFrameSetup(RHICmdList);
 	ComputeViewVisibility(RHICmdList);
 	PostVisibilityFrameSetup();
-
-	// @RyanTorant
-	// After this point we have the PrimitivesToVoxelize array filled, so we can start voxelization
-	// For now (29/10/2014) both static and dynamic objects get voxelized on the same pass. Also, no emissive (plain binary grid)
-	if(UseApproximateHybridRaytracingRT(Views[0].FeatureLevel))
-		AHREngine.VoxelizeScene(RHICmdList,Views[0]);
-
+	
 	FVector AverageViewPosition(0);
 
 	for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)
@@ -2263,14 +2257,26 @@ void FDeferredShadingSceneRenderer::InitViews(FRHICommandListImmediate& RHICmdLi
 		// per bone motion blur
 		GPrevPerBoneMotionBlur.RestoreForPausedMotionBlur();
 	}
+	/*
+	// @RyanTorant
+	// After this point we have the PrimitivesToVoxelize array filled, so we can start voxelization
+	// For now (29/10/2014) both static and dynamic objects get voxelized on the same pass. Also, no emissive (plain binary grid)
+	if(UseApproximateHybridRaytracingRT(Views[0].FeatureLevel))
+		AHREngine.VoxelizeScene(RHICmdList,Views[0]);*/
 
 	// initialize per-view uniform buffer.
 	for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)
 	{
 		// Initialize the view's RHI resources.
 		Views[ViewIndex].InitRHIResources(nullptr);
-	}	
+	}
 
 	OnStartFrame();
+	/*
+	// @RyanTorant
+	// After this point we have the PrimitivesToVoxelize array filled, so we can start voxelization
+	// For now (29/10/2014) both static and dynamic objects get voxelized on the same pass. Also, no emissive (plain binary grid)
+	if(UseApproximateHybridRaytracingRT(Views[0].FeatureLevel))
+		AHREngine.VoxelizeScene(RHICmdList,Views[0]);*/
 }
 

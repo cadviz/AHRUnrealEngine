@@ -43,5 +43,11 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 	}
 	gidata /= weight_sum;
 
-	return gidata;
+
+
+
+
+
+
+	return tGI.SampleLevel(samLinear,InUV,0);
 }
