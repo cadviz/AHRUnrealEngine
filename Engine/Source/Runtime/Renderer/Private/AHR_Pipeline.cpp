@@ -362,6 +362,7 @@ public:
 		DeferredParameters.Bind(Initializer.ParameterMap);
 		GIBufferTexture.Bind(Initializer.ParameterMap, TEXT("tGI"));
 		LinearSampler.Bind(Initializer.ParameterMap, TEXT("samLinear"));
+		cb.Bind(Initializer.ParameterMap,TEXT("AHRCompositeCB"));
 	}
 
 	AHRCompositePS()
@@ -420,11 +421,17 @@ void FApproximateHybridRaytracer::Composite(FRHICommandListImmediate& RHICmdList
 
 	// Set additive blending
 	//RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_One, BO_Add, BF_One, BF_One>::GetRHI());
-	RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_Zero, BO_Add, BF_One, BF_Zero>::GetRHI());
+	//RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_Zero, BO_Add, BF_One, BF_Zero>::GetRHI());
 
 	// add gi and multiply scene color by ao
 	// final = gi + ao*direct
-	//RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_SourceAlpha, BO_Add, BF_Zero, BF_One>::GetRHI());
+	//RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_SourceAlpha, BO_Add, BF_One, BF_One>::GetRHI());
+
+
+	//		DEBUG!!!!!
+	RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_Zero, BF_SourceColor, BO_Add, BF_One, BF_One>::GetRHI());
+
+
 
 	// Set the viewport, raster state and depth stencil
 	RHICmdList.SetViewport(View.ViewRect.Min.X, View.ViewRect.Min.Y, 0.0f, View.ViewRect.Max.X, View.ViewRect.Max.Y, 1.0f);

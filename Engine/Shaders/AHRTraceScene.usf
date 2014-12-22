@@ -233,18 +233,19 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 
 				ao += 1;//(i <= 8);
 				diffuse += shadowFactor*albedo.rgb*albedo.w;
-				acc += 1;
+				//acc += 1;
 
 				break;
 			}
 			spos += step;
 		}
 	}
+	//acc = AHRTraceCB.DiffuseRayCount;
 
-	ao /= acc;
+	ao /= AHRTraceCB.DiffuseRayCount;
 	ao = 1.0f - saturate(ao);
 
-	diffuse /= acc;
+	diffuse /= AHRTraceCB.DiffuseRayCount;
 
 #ifdef _GLOSSY
 	// Should be based on the material roughness
@@ -269,8 +270,8 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 	uint bvoxD = SceneVolume.Load(bidxD*4);
 	traced = bvoxD & (1 << offsetD);*/
 
-	/*
-#define _SHOW_VOXELS
+	
+//#define _SHOW_VOXELS
 #ifdef _SHOW_VOXELS
 	traced = 0;
 	float3 dir = ScreenVector;
@@ -308,7 +309,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 		spos += step;
 	}
 
-#endif*/
+#endif
 	
 	return traced;
 }

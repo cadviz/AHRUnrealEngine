@@ -21,7 +21,10 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 	float3 WorldPosition = ScreenVector * SceneDepth + View.ViewOrigin.xyz;*/
 
 	float4 fcolor = tGI.SampleLevel(samLinear,InUV,0);
-	//fcolor.w = pow(fcolor.w,AHRCompositeCB.GIMultiplier); 
+
+
+
+	fcolor = pow(fcolor,1.8);//pow(fcolor,AHRCompositeCB.GIMultiplier); 
 	
 	return fcolor;
 }
