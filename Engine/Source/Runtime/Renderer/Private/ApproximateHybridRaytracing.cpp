@@ -89,3 +89,16 @@ void FApproximateHybridRaytracer::ReleaseDynamicRHI()
 		SceneVolume->Release();
 	delete SceneVolume;
 }
+
+void FApproximateHybridRaytracer::AppendLightRSM(LightRSMData& light)
+{
+	if(currentLightIDX < MAX_AHR_LIGHTS)
+	{
+		lights[currentLightIDX] = light;
+		currentLightIDX++;
+	}
+	else
+	{
+		_DEBUG_MSG("Tried to add more lights to the ahr engine that the maximum supported , will be ignored");
+	}
+}

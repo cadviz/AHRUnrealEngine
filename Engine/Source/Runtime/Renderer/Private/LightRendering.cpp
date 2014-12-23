@@ -556,7 +556,7 @@ void FDeferredShadingSceneRenderer::RenderLights(FRHICommandListImmediate& RHICm
 		if(UseApproximateHybridRaytracingRT(Views[0].FeatureLevel))
 		{
 			
-			// No need to set the render target before, as both functions set they own rt
+			// No need to set the render target before, as both functions set there own rt
 			AHREngine.TraceScene(RHICmdList,Views[0]);
 			AHREngine.Upsample(RHICmdList,Views[0]);
 			// Add to the light accumulation buffer by rendering a quad with additive blending

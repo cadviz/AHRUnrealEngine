@@ -9,6 +9,7 @@
 #include "TextureLayout.h"
 #include "LightPropagationVolume.h"
 #include "SceneUtils.h"
+#include "ApproximateHybridRaytracing.h"
 
 static TAutoConsoleVariable<float> CVarCSMShadowDepthBias(
 	TEXT("r.Shadow.CSMDepthBias"),
@@ -1004,7 +1005,8 @@ void FShadowDepthDrawingPolicyFactory::AddStaticMesh(FScene* Scene,FStaticMesh* 
 		const bool bLightPropagationVolume = UseLightPropagationVolumeRT(Scene->GetFeatureLevel());
 		const bool bTwoSided  = Material->IsTwoSided() || StaticMesh->PrimitiveSceneInfo->Proxy->CastsShadowAsTwoSided();
 		const bool bLitOpaque = !IsTranslucentBlendMode(BlendMode) && ShadingModel != MSM_Unlit;
-		if(bLightPropagationVolume && (bLitOpaque || Material->ShouldInjectEmissiveIntoLPV()))
+		// @RyanTorant added the check for ahr here
+		if((bLightPropagationVolume && (bLitOpaque || Material->ShouldInjectEmissiveIntoLPV())) || UseApproximateHybridRaytracingRT(Scene->GetFeatureLevel()))
 		{
 			// Add the static mesh to the shadow's subject draw list.
 			if ( StaticMesh->PrimitiveSceneInfo->Proxy->AffectsDynamicIndirectLighting() )
@@ -2913,7 +2915,8 @@ bool FDeferredShadingSceneRenderer::RenderTranslucentProjectedShadows(FRHIComman
 }
 
 /**
-* Used by RenderLights to render reflective shadow maps for the LightPropagationVolume
+* // @RyanTorant
+* Used by RenderLights to render reflective shadow maps for the LightPropagationVolume or for AHR
 *
 * @param LightSceneInfo Represents the current light
 * @return true if anything got rendered
@@ -3014,29 +3017,27 @@ bool FDeferredShadingSceneRenderer::RenderReflectiveShadowMaps(FRHICommandListIm
 			break;
 		}
 
-
+		// @RyanTorant
+		// If we are using AHR, we can assume LPVs are disabled
+		if(UseApproximateHybridRaytracingRT(Views[0].FeatureLevel))
 		{
-			// Render the shadow depths.
-			SCOPED_DRAW_EVENT(RHICmdList, ReflectiveShadowMapsFromOpaque);
+			// Only the first shadow gets rendered and pushed to the ahr engine.
+			// This is because i'm still unsure how to handle multiple shadows on the tracing side
+			FProjectedShadowInfo* ProjectedShadowInfo = Shadows[0];
 
-			// render the RSMs
-			for (int32 ShadowIndex = 0; ShadowIndex < Shadows.Num(); ShadowIndex++)
 			{
-				FProjectedShadowInfo* ProjectedShadowInfo = Shadows[ShadowIndex];
+				// Render the shadow depths.
+				SCOPED_DRAW_EVENT(RHICmdList, ReflectiveShadowMapsFromOpaque);
+
+				// render the RSM
 				FSceneViewState* ViewState = (FSceneViewState*)ProjectedShadowInfo->DependentView->State;
 
-				FLightPropagationVolume* LightPropagationVolume = ViewState->GetLightPropagationVolume();
-
-				check(LightPropagationVolume);
-				auto SetShadowRenderTargets = [LightPropagationVolume](FRHICommandList& RHICmdList)
+				auto SetShadowRenderTargets = [](FRHICommandList& RHICmdList)
 				{
-					GSceneRenderTargets.BeginRenderingReflectiveShadowMap(RHICmdList, LightPropagationVolume);
+					GSceneRenderTargets.BeginRenderingReflectiveShadowMapAHR(RHICmdList);
 				};
 
 				SetShadowRenderTargets(RHICmdList);  // run it now, maybe run it later for parallel command lists
-
-
-				LightPropagationVolume->SetVplInjectionConstants( *ProjectedShadowInfo, LightSceneInfo->Proxy );
 
 				if (ProjectedShadowInfo->bAllocated && !ProjectedShadowInfo->bTranslucentShadow)
 				{
@@ -3045,37 +3046,83 @@ bool FDeferredShadingSceneRenderer::RenderReflectiveShadowMaps(FRHICommandListIm
 				}
 
 				GSceneRenderTargets.FinishRenderingReflectiveShadowMap(RHICmdList);
+				
 			}
+
+			// Now that the rsm are rendered, copy the buffers to the light list of the AHR engine
+			// The engine will give a msg box if you are over the maximum number of lights ( hardcoded at MAX_AHR_LIGHTS (5) for now, 22/12/2014 )
+
+			LightRSMData data;
+			data.Albedo = GSceneRenderTargets.GetReflectiveShadowMapDiffuseTexture();
+			data.Normals = GSceneRenderTargets.GetReflectiveShadowMapNormalTexture();
+			data.Depth = GSceneRenderTargets.GetReflectiveShadowMapDepthTexture();
+			data.ViewProj = ProjectedShadowInfo->ShadowViewMatrix;
+			data.IsValid = true;
+			AHREngine.AppendLightRSM(data);
 		}
-
-		// Inject the RSM into the LPVs
-		for (int32 ShadowIndex = 0; ShadowIndex < Shadows.Num(); ShadowIndex++)
+		else
 		{
-			FProjectedShadowInfo* ProjectedShadowInfo = Shadows[ShadowIndex];
-
-			if ( ProjectedShadowInfo->bAllocated && ProjectedShadowInfo->DependentView )
 			{
-				FSceneViewState* ViewState = (FSceneViewState*)ProjectedShadowInfo->DependentView->State;
-
-				FLightPropagationVolume* LightPropagationVolume = ViewState->GetLightPropagationVolume();
-
-				if ( ViewState && LightPropagationVolume )
+				// Render the shadow depths.
+				SCOPED_DRAW_EVENT(RHICmdList, ReflectiveShadowMapsFromOpaque);
+		
+				// render the RSMs
+				for (int32 ShadowIndex = 0; ShadowIndex < Shadows.Num(); ShadowIndex++)
 				{
-					if ( ProjectedShadowInfo->bWholeSceneShadow )
+					FProjectedShadowInfo* ProjectedShadowInfo = Shadows[ShadowIndex];
+					FSceneViewState* ViewState = (FSceneViewState*)ProjectedShadowInfo->DependentView->State;
+
+					FLightPropagationVolume* LightPropagationVolume = ViewState->GetLightPropagationVolume();
+
+					check(LightPropagationVolume);
+					auto SetShadowRenderTargets = [LightPropagationVolume](FRHICommandList& RHICmdList)
 					{
-						LightPropagationVolume->InjectDirectionalLightRSM( 
-							RHICmdList, 
-							*ProjectedShadowInfo->DependentView,
-							GSceneRenderTargets.GetReflectiveShadowMapDiffuseTexture(), 
-							GSceneRenderTargets.GetReflectiveShadowMapNormalTexture(),
-							GSceneRenderTargets.GetReflectiveShadowMapDepthTexture(),
-							*ProjectedShadowInfo, 
-							LightSceneInfo->Proxy->GetColor() );
+						GSceneRenderTargets.BeginRenderingReflectiveShadowMap(RHICmdList, LightPropagationVolume);
+					};
+
+					SetShadowRenderTargets(RHICmdList);  // run it now, maybe run it later for parallel command lists
+
+
+					LightPropagationVolume->SetVplInjectionConstants( *ProjectedShadowInfo, LightSceneInfo->Proxy );
+
+					if (ProjectedShadowInfo->bAllocated && !ProjectedShadowInfo->bTranslucentShadow)
+					{
+						ProjectedShadowInfo->ClearDepth(RHICmdList, this);
+						ProjectedShadowInfo->RenderDepth(RHICmdList, this, SetShadowRenderTargets);
+					}
+
+					GSceneRenderTargets.FinishRenderingReflectiveShadowMap(RHICmdList);
+				}
+			}
+
+			// Inject the RSM into the LPVs
+			for (int32 ShadowIndex = 0; ShadowIndex < Shadows.Num(); ShadowIndex++)
+			{
+				FProjectedShadowInfo* ProjectedShadowInfo = Shadows[ShadowIndex];
+
+				if ( ProjectedShadowInfo->bAllocated && ProjectedShadowInfo->DependentView )
+				{
+					FSceneViewState* ViewState = (FSceneViewState*)ProjectedShadowInfo->DependentView->State;
+
+					FLightPropagationVolume* LightPropagationVolume = ViewState->GetLightPropagationVolume();
+
+					if ( ViewState && LightPropagationVolume )
+					{
+						if ( ProjectedShadowInfo->bWholeSceneShadow )
+						{
+							LightPropagationVolume->InjectDirectionalLightRSM( 
+								RHICmdList, 
+								*ProjectedShadowInfo->DependentView,
+								GSceneRenderTargets.GetReflectiveShadowMapDiffuseTexture(), 
+								GSceneRenderTargets.GetReflectiveShadowMapNormalTexture(),
+								GSceneRenderTargets.GetReflectiveShadowMapDepthTexture(),
+								*ProjectedShadowInfo, 
+								LightSceneInfo->Proxy->GetColor() );
+						}
 					}
 				}
 			}
 		}
-
 		// Mark and count the rendered shadows.
 		for (int32 ShadowIndex = 0; ShadowIndex < Shadows.Num(); ShadowIndex++)
 		{

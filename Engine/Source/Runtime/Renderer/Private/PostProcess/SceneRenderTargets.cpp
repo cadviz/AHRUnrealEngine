@@ -11,7 +11,7 @@
 #include "LightPropagationVolume.h"
 #include "SceneUtils.h"
 #include "HdrCustomResolveShaders.h"
-
+#include "ApproximateHybridRaytracing.h"
 
 // for LightPropagationVolume feature, could be exposed
 const int ReflectiveShadowMapResolution = 256;
@@ -861,6 +861,15 @@ void FSceneRenderTargets::BeginRenderingReflectiveShadowMap(FRHICommandList& RHI
 	SetRenderTargets(RHICmdList, ARRAY_COUNT(RenderTargets), RenderTargets, GetReflectiveShadowMapDepthSurface(), 4, Uavs);
 }
 
+void FSceneRenderTargets::BeginRenderingReflectiveShadowMapAHR(FRHICommandList& RHICmdList)
+{
+	FTextureRHIParamRef RenderTargets[2];
+	RenderTargets[0] = GetReflectiveShadowMapNormalSurface();
+	RenderTargets[1] = GetReflectiveShadowMapDiffuseSurface();
+	
+	SetRenderTargets(RHICmdList, ARRAY_COUNT(RenderTargets), RenderTargets, GetReflectiveShadowMapDepthSurface(), 0, nullptr);
+}
+
 void FSceneRenderTargets::FinishRenderingReflectiveShadowMap(FRHICommandList& RHICmdList, const FResolveRect& ResolveRect)
 {
 	// Resolve the shadow depth z surface.
@@ -1355,7 +1364,8 @@ void FSceneRenderTargets::AllocateDeferredShadingPathRenderTargets()
 	if (CurrentFeatureLevel >= ERHIFeatureLevel::SM5)
 	{
 		// Create the reflective shadow map textures for LightPropagationVolume feature
-		if(bCurrentLightPropagationVolume)
+		// @RyanTorant
+		if(bCurrentLightPropagationVolume || UseApproximateHybridRaytracingRT(CurrentFeatureLevel))
 		{
 			{
 				FPooledRenderTargetDesc Desc(FPooledRenderTargetDesc::Create2DDesc(GetReflectiveShadowMapTextureResolution(), PF_R8G8B8A8, TexCreate_None, TexCreate_RenderTargetable, false));

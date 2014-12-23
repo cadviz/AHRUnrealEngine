@@ -7,6 +7,7 @@
 #include "RendererPrivate.h"
 #include "ScenePrivate.h"
 #include "LightPropagationVolume.h"
+#include "ApproximateHybridRaytracing.h"
 
 static float GMinScreenRadiusForShadowCaster = 0.03f;
 static FAutoConsoleVariableRef CVarMinScreenRadiusForShadowCaster(
@@ -38,7 +39,7 @@ static FAutoConsoleVariableRef CVarMinScreenRadiusForShadowCasterRSM(
 static TAutoConsoleVariable<int32> CVarDrawPreshadowFrustum(
 	TEXT("r.Shadow.DrawPreshadowFrustums"),
 	0,
-	TEXT("visualize preshadow frustums when the shadowfrustums show flag is enabled"),
+	TEXT("visualize preshadow frustums when the shadow frustums show flag is enabled"),
 	ECVF_RenderThreadSafe
 	);
 
@@ -95,7 +96,7 @@ static TAutoConsoleVariable<float> CVarPreshadowExpandFraction(
 static TAutoConsoleVariable<float> CVarPreShadowResolutionFactor(
 	TEXT("r.Shadow.PreShadowResolutionFactor"),
 	0.5f,
-	TEXT("Mulitplier for preshadow resolution"),
+	TEXT("Multiplier for preshadow resolution"),
 	ECVF_RenderThreadSafe);
 
 static TAutoConsoleVariable<float> CVarShadowTexelsPerPixel(
@@ -2101,32 +2102,64 @@ void FSceneRenderer::AddViewDependentWholeSceneShadowsForView(TArray<FProjectedS
 			FSceneViewState* ViewState = (FSceneViewState*)View.State;
 			if (ViewState)
 			{
-				FLightPropagationVolume* LightPropagationVolume = ViewState->GetLightPropagationVolume();
-
-				if (LightPropagationVolume && View.FinalPostProcessSettings.LPVIntensity > 0)
+				// @RyanTorant
+				// Again, if you have AHR enabled, you don't have LPV enabled. 'Nuff said
+				if(UseApproximateHybridRaytracingRT(Views[0].FeatureLevel))
 				{
 					// Generate the RSM shadow info
 					FWholeSceneProjectedShadowInitializer ProjectedShadowInitializer;
-					FLightPropagationVolume& Lpv = *LightPropagationVolume;
-
-					if (LightSceneInfo.Proxy->GetViewDependentRsmWholeSceneProjectedShadowInitializer(View, Lpv.GetBoundingBox(), ProjectedShadowInitializer))
+					FVector center(Views[0].FinalPostProcessSettings.AHRSceneCenterX,Views[0].FinalPostProcessSettings.AHRSceneCenterY,Views[0].FinalPostProcessSettings.AHRSceneCenterZ);
+					FVector size(Views[0].FinalPostProcessSettings.AHRSceneScale*0.5f);
+					FBox bounds(center - size,center + size);
+					if (LightSceneInfo.Proxy->GetViewDependentRsmWholeSceneProjectedShadowInitializer(View, bounds, ProjectedShadowInitializer))
 					{
 						const FIntPoint ShadowBufferResolution = GSceneRenderTargets.GetReflectiveShadowMapTextureResolution();
 
 						// Create the projected shadow info.
 						FProjectedShadowInfo* ProjectedShadowInfo = new(FMemStack::Get(), 1, 16) FProjectedShadowInfo(
-							&LightSceneInfo,
-							&View,
-							ProjectedShadowInitializer,
-							ShadowBufferResolution.X,
-							ShadowBufferResolution.Y,
-							true);
+								&LightSceneInfo,
+								&View,
+								ProjectedShadowInitializer,
+								ShadowBufferResolution.X,
+								ShadowBufferResolution.Y,
+								true);
 
 						FVisibleLightInfo& LightViewInfo = VisibleLightInfos[LightSceneInfo.Id];
 						VisibleLightInfo.MemStackProjectedShadows.Add(ProjectedShadowInfo);
 						VisibleLightInfo.AllProjectedShadows.Add(ProjectedShadowInfo);
 						VisibleLightInfo.ReflectiveShadowMaps.Add(ProjectedShadowInfo);
 						ShadowInfos.Add(ProjectedShadowInfo); // or separate list?
+					}
+				}
+				else
+				{
+					FLightPropagationVolume* LightPropagationVolume = ViewState->GetLightPropagationVolume();
+
+					if (LightPropagationVolume && View.FinalPostProcessSettings.LPVIntensity > 0)
+					{
+						// Generate the RSM shadow info
+						FWholeSceneProjectedShadowInitializer ProjectedShadowInitializer;
+						FLightPropagationVolume& Lpv = *LightPropagationVolume;
+
+						if (LightSceneInfo.Proxy->GetViewDependentRsmWholeSceneProjectedShadowInitializer(View, Lpv.GetBoundingBox(), ProjectedShadowInitializer))
+						{
+							const FIntPoint ShadowBufferResolution = GSceneRenderTargets.GetReflectiveShadowMapTextureResolution();
+
+							// Create the projected shadow info.
+							FProjectedShadowInfo* ProjectedShadowInfo = new(FMemStack::Get(), 1, 16) FProjectedShadowInfo(
+								&LightSceneInfo,
+								&View,
+								ProjectedShadowInitializer,
+								ShadowBufferResolution.X,
+								ShadowBufferResolution.Y,
+								true);
+
+							FVisibleLightInfo& LightViewInfo = VisibleLightInfos[LightSceneInfo.Id];
+							VisibleLightInfo.MemStackProjectedShadows.Add(ProjectedShadowInfo);
+							VisibleLightInfo.AllProjectedShadows.Add(ProjectedShadowInfo);
+							VisibleLightInfo.ReflectiveShadowMaps.Add(ProjectedShadowInfo);
+							ShadowInfos.Add(ProjectedShadowInfo); // or separate list?
+						}
 					}
 				}
 			}

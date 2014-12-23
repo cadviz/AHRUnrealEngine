@@ -41,6 +41,9 @@ IMPLEMENT_SHADER_TYPE(,AHRPassVS,TEXT("AHRComposite"),TEXT("VS"),SF_Vertex);
 
 void  FApproximateHybridRaytracer::InitializeViewTargets(uint32 _resX,uint32 _resY)
 {	
+	// New frame, new starting idx
+	currentLightIDX = 0;
+
 	if(_resX != ResX || _resY != ResY && _resX >= 128 && _resY >= 128) // If you are rendering to a target less than 128x128, you are doing it wrong. This is to bypass auxiliary views
 	{
 		// Store size
@@ -104,6 +107,15 @@ BEGIN_UNIFORM_BUFFER_STRUCT(AHRTraceSceneCB,)
 END_UNIFORM_BUFFER_STRUCT(AHRTraceSceneCB)
 IMPLEMENT_UNIFORM_BUFFER_STRUCT(AHRTraceSceneCB,TEXT("AHRTraceCB"));
 
+BEGIN_UNIFORM_BUFFER_STRUCT(AHRShadowMatrices,)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FMatrix,Matrix0)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FMatrix,Matrix1)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FMatrix,Matrix2)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FMatrix,Matrix3)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FMatrix,Matrix4)
+END_UNIFORM_BUFFER_STRUCT(AHRShadowMatrices)
+IMPLEMENT_UNIFORM_BUFFER_STRUCT(AHRShadowMatrices,TEXT("AHRShadowMatrices"));
+
 class AHRTraceScenePS : public FGlobalShader
 {
 	DECLARE_SHADER_TYPE(AHRTraceScenePS,Global)
@@ -128,6 +140,27 @@ public:
 		SceneVolume.Bind(Initializer.ParameterMap, TEXT("SceneVolume"));
 		LinearSampler.Bind(Initializer.ParameterMap, TEXT("samLinear"));
 		cb.Bind(Initializer.ParameterMap, TEXT("AHRTraceCB"));
+		matrixCB.Bind(Initializer.ParameterMap, TEXT("AHRShadowMatrices"));
+
+		ShadowAlbedo0.Bind(Initializer.ParameterMap, TEXT("ShadowAlbedo0"));
+		ShadowAlbedo1.Bind(Initializer.ParameterMap, TEXT("ShadowAlbedo1"));
+		ShadowAlbedo2.Bind(Initializer.ParameterMap, TEXT("ShadowAlbedo2"));
+		ShadowAlbedo3.Bind(Initializer.ParameterMap, TEXT("ShadowAlbedo3"));
+		ShadowAlbedo4.Bind(Initializer.ParameterMap, TEXT("ShadowAlbedo4"));
+
+		ShadowNormals0.Bind(Initializer.ParameterMap, TEXT("ShadowNormals0"));
+		ShadowNormals1.Bind(Initializer.ParameterMap, TEXT("ShadowNormals1"));
+		ShadowNormals2.Bind(Initializer.ParameterMap, TEXT("ShadowNormals2"));
+		ShadowNormals3.Bind(Initializer.ParameterMap, TEXT("ShadowNormals3"));
+		ShadowNormals4.Bind(Initializer.ParameterMap, TEXT("ShadowNormals4"));
+
+		ShadowZ0.Bind(Initializer.ParameterMap, TEXT("ShadowZ0"));
+		ShadowZ1.Bind(Initializer.ParameterMap, TEXT("ShadowZ1"));
+		ShadowZ2.Bind(Initializer.ParameterMap, TEXT("ShadowZ2"));
+		ShadowZ3.Bind(Initializer.ParameterMap, TEXT("ShadowZ3"));
+		ShadowZ4.Bind(Initializer.ParameterMap, TEXT("ShadowZ4"));
+
+		cmpSampler.Bind(Initializer.ParameterMap, TEXT("cmpSampler"));
 	}
 
 	AHRTraceScenePS()
@@ -161,10 +194,58 @@ public:
 
 		SetUniformBufferParameterImmediate(RHICmdList, ShaderRHI,cb,cbdata);
 
+		AHRShadowMatrices matrix_cbdata;
+
+		auto lList = AHREngine.GetLightsList();
+		matrix_cbdata.Matrix0 = lList[0].ViewProj;
+		matrix_cbdata.Matrix1 = lList[1].ViewProj;
+		matrix_cbdata.Matrix2 = lList[2].ViewProj;
+		matrix_cbdata.Matrix3 = lList[3].ViewProj;
+		matrix_cbdata.Matrix4 = lList[4].ViewProj;
+
+		SetUniformBufferParameterImmediate(RHICmdList, ShaderRHI,matrixCB,matrix_cbdata);
+
 		if(SceneVolume.IsBound())
 			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,SceneVolume.GetBaseIndex(),sceneVolumeSRV);
 		if(LinearSampler.IsBound())
 			RHICmdList.SetShaderSampler(ShaderRHI,LinearSampler.GetBaseIndex(),TStaticSamplerState<SF_Trilinear,AM_Wrap,AM_Wrap,AM_Wrap>::GetRHI());
+		if(cmpSampler.IsBound())
+			RHICmdList.SetShaderSampler(ShaderRHI,cmpSampler.GetBaseIndex(),TStaticSamplerState<SF_Trilinear,AM_Wrap,AM_Wrap,AM_Wrap,0,0,0,SCF_Less>::GetRHI());
+
+		FSamplerStateRHIParamRef SamplerStateLinear  = TStaticSamplerState<SF_Bilinear,AM_Clamp,AM_Clamp,AM_Clamp>::GetRHI();
+
+		if(ShadowAlbedo0.IsBound() && lList[0].IsValid)
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowAlbedo0, LinearSampler, SamplerStateLinear,  lList[0].Albedo );
+		if(ShadowAlbedo1.IsBound() && lList[1].IsValid)
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowAlbedo1, LinearSampler, SamplerStateLinear,  lList[1].Albedo );
+		if(ShadowAlbedo2.IsBound() && lList[2].IsValid)
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowAlbedo2, LinearSampler, SamplerStateLinear,  lList[2].Albedo );
+		if(ShadowAlbedo3.IsBound() && lList[3].IsValid)
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowAlbedo3, LinearSampler, SamplerStateLinear,  lList[3].Albedo );
+		if(ShadowAlbedo4.IsBound() && lList[4].IsValid)
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowAlbedo4, LinearSampler, SamplerStateLinear,  lList[4].Albedo );
+
+		if(ShadowNormals0.IsBound() && lList[0].IsValid)
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowNormals0, LinearSampler, SamplerStateLinear,  lList[0].Normals );
+		if(ShadowNormals1.IsBound() && lList[1].IsValid)
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowNormals1, LinearSampler, SamplerStateLinear,  lList[1].Normals );
+		if(ShadowNormals2.IsBound() && lList[2].IsValid)
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowNormals2, LinearSampler, SamplerStateLinear,  lList[2].Normals );
+		if(ShadowNormals3.IsBound() && lList[3].IsValid)
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowNormals3, LinearSampler, SamplerStateLinear,  lList[3].Normals );
+		if(ShadowNormals4.IsBound() && lList[4].IsValid)
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowNormals4, LinearSampler, SamplerStateLinear,  lList[4].Normals );
+
+		if(ShadowZ0.IsBound() && lList[0].IsValid)
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowZ0, LinearSampler, SamplerStateLinear,  lList[0].Depth );
+		if(ShadowZ1.IsBound() && lList[1].IsValid)
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowZ1, LinearSampler, SamplerStateLinear,  lList[1].Depth );
+		if(ShadowZ2.IsBound() && lList[2].IsValid)
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowZ2, LinearSampler, SamplerStateLinear,  lList[2].Depth );
+		if(ShadowZ3.IsBound() && lList[3].IsValid)
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowZ3, LinearSampler, SamplerStateLinear,  lList[3].Depth );
+		if(ShadowZ4.IsBound() && lList[4].IsValid)
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowZ4, LinearSampler, SamplerStateLinear,  lList[4].Depth );
 	}
 
 	virtual bool Serialize(FArchive& Ar)
@@ -173,7 +254,27 @@ public:
 		Ar << DeferredParameters;
 		Ar << SceneVolume;
 		Ar << LinearSampler;
+		Ar << cmpSampler;
 		Ar << cb;
+		Ar << matrixCB;
+
+		Ar << ShadowAlbedo0;
+		Ar << ShadowAlbedo1;
+		Ar << ShadowAlbedo2;
+		Ar << ShadowAlbedo3;
+		Ar << ShadowAlbedo4;
+
+		Ar << ShadowNormals0;
+		Ar << ShadowNormals1;
+		Ar << ShadowNormals2;
+		Ar << ShadowNormals3;
+		Ar << ShadowNormals4;
+
+		Ar << ShadowZ0;
+		Ar << ShadowZ1;
+		Ar << ShadowZ2;
+		Ar << ShadowZ3;
+		Ar << ShadowZ4;
 		return bShaderHasOutdatedParameters;
 	}
 
@@ -188,7 +289,27 @@ private:
 	FDeferredPixelShaderParameters DeferredParameters;
 	FShaderResourceParameter SceneVolume;
 	FShaderResourceParameter LinearSampler;
+	FShaderResourceParameter cmpSampler;
 	TShaderUniformBufferParameter<AHRTraceSceneCB> cb;
+	TShaderUniformBufferParameter<AHRShadowMatrices> matrixCB;
+
+	FShaderResourceParameter ShadowAlbedo0;
+	FShaderResourceParameter ShadowAlbedo1;
+	FShaderResourceParameter ShadowAlbedo2;
+	FShaderResourceParameter ShadowAlbedo3;
+	FShaderResourceParameter ShadowAlbedo4;
+
+	FShaderResourceParameter ShadowNormals0;
+	FShaderResourceParameter ShadowNormals1;
+	FShaderResourceParameter ShadowNormals2;
+	FShaderResourceParameter ShadowNormals3;
+	FShaderResourceParameter ShadowNormals4;
+
+	FShaderResourceParameter ShadowZ0;
+	FShaderResourceParameter ShadowZ1;
+	FShaderResourceParameter ShadowZ2;
+	FShaderResourceParameter ShadowZ3;
+	FShaderResourceParameter ShadowZ4;
 };
 IMPLEMENT_SHADER_TYPE(,AHRTraceScenePS,TEXT("AHRTraceScene"),TEXT("PS"),SF_Pixel);
 

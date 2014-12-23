@@ -2,6 +2,28 @@
 #include "DeferredShadingCommon.usf"
 #include "AHRCommon.usf"
 
+// RSM textures
+// Hardcoded to a maximum of five for now
+Texture2D<float4> ShadowAlbedo0;
+Texture2D<float4> ShadowAlbedo1;
+Texture2D<float4> ShadowAlbedo2;
+Texture2D<float4> ShadowAlbedo3;
+Texture2D<float4> ShadowAlbedo4;
+
+Texture2D<float4> ShadowNormals0;
+Texture2D<float4> ShadowNormals1;
+Texture2D<float4> ShadowNormals2;
+Texture2D<float4> ShadowNormals3;
+Texture2D<float4> ShadowNormals4;
+
+Texture2D<float> ShadowZ0;
+Texture2D<float> ShadowZ1;
+Texture2D<float> ShadowZ2;
+Texture2D<float> ShadowZ3;
+Texture2D<float> ShadowZ4;
+
+// The projection matrices are inside a constant buffer
+
 float3 to_vlocal(float3 worldPos)
 {
 	// Let's get mad!
@@ -19,6 +41,7 @@ float3 to_vlocal(float3 worldPos)
 
 ByteAddressBuffer SceneVolume;
 SamplerState samLinear;
+SamplerComparisonState cmpSampler;
 
 static const uint seedkernel[16] = 
 { 
@@ -102,10 +125,6 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 		// Instead of breaking on hit, accumulate alpha and break when it's big enough
 		for (uint i = 0; i < AHRTraceCB.GlossySamplesCount; i++)
 		{
-			// If the magnitude of the vector in local voxel space is more than 3, we are out of the bounds
-			// This is because local voxel space goes from (-1,-1,-1) to (1,1,1), so if we take the magnitude of that vector, we end up with this
-			// sqrt(1^2 + 1^2 + 1^2) = sqrt(3). saying a > b, with a,b >= 0 is the same that saying a^2 > b^2, so we can take the squared magnitudes
-			// and from there we can see that any point that has a magnitude grater than 3 is outside the bounds
 			if(magnitudeSquared(to_vlocal(spos)) > 3) 
 			{
 				// Here we could intersect the ray with the sky sphere and take that color...
@@ -227,12 +246,29 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 				float biasAngleMult = sqrt(1 - albedo.w*albedo.w)/(albedo.w + 0.01) + 1; // the w component stores the dot of the sun dir and normal
 				float shadowFactor = shadowZ.SampleCmpLevelZero(cmpSampler, lpos.xy, lpos.z-ShadowBias*biasAngleMult*0.01f);
 				*/
-				float4 albedo = 0;
-				float biasAngleMult = 0;
-				float shadowFactor = 0;
+
+				// Light sampling "loop"
+				{
+					float4 lpos = fmul(spos,AHRShadowMatrices.Matrix0);
+
+					//re-homogenize position after interpolation
+					lpos.xyz /= lpos.w;
+
+					//transform clip space coords to texture space coords (-1:1 to 0:1)
+					lpos.x = lpos.x*0.5 + 0.5;
+					lpos.y = -lpos.y*0.5 + 0.5;
+
+					float4 albedo = ShadowAlbedo0.SampleLevel(samLinear,lpos.xy,0);
+					//float biasAngleMult = sqrt(1 - albedo.w*albedo.w)/(albedo.w + 0.01) + 1; // the w component stores the dot of the sun dir and normal
+					float biasAngleMult = 1;
+					albedo.w = 1;
+					float shadowFactor = ShadowZ0.SampleCmpLevelZero(cmpSampler, lpos.xy, lpos.z);
+				
+					diffuse += shadowFactor*albedo.rgb*albedo.w;
+				}
 
 				ao += 1;//(i <= 8);
-				diffuse += shadowFactor*albedo.rgb*albedo.w;
+				
 				//acc += 1;
 
 				break;
@@ -256,7 +292,11 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 
 
 
-	traced = ao;
+	//traced = ao;
+
+
+	//traced = ShadowAlbedo0.SampleLevel(samLinear,InUV,0);
+
 
 
 	//DEBUG!
