@@ -293,6 +293,9 @@ struct FPostProcessSettings
 
 	UPROPERTY(BlueprintReadWrite, Category=Overrides, meta=(PinHiddenByDefault))
 	uint32 bOverride_AHRLostRayColor:1;
+
+	UPROPERTY(BlueprintReadWrite, Category=Overrides, meta=(PinHiddenByDefault))
+	uint32 bOverride_TriangleSizeMultiplier:1;
 	// ---------------------------
 
 	UPROPERTY(BlueprintReadWrite, Category=Overrides, meta=(PinHiddenByDefault))
@@ -581,6 +584,10 @@ struct FPostProcessSettings
 	/** Lost ray color. Should be something similar to the color of the sky */
 	UPROPERTY(interp, Category=ApproximateHybridRaytracing, AdvancedDisplay, meta=(editcondition = "bOverride_AHRLostRayColor", DisplayName = "Lost Ray Color"))
 	FLinearColor AHRLostRayColor;
+
+	/** Triangle size multiplier for the voxelization stage */
+	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_TriangleSizeMultiplier", UIMin = "0", UIMax = "1", DisplayName = "Triangle size multiplier") )
+	float TriangleSizeMultiplier;
 
 	// ---------------------
 
@@ -934,6 +941,7 @@ struct FPostProcessSettings
 		AHRSceneCenterY = 0.0f;
 		AHRSceneCenterZ = 0.0f;
 		AHRLostRayColor = FLinearColor(0.4f, 0.675f, 0.99f);
+		TriangleSizeMultiplier = 1.0f;
 
 		AutoExposureLowPercent = 80.0f;
 		AutoExposureHighPercent = 98.3f;

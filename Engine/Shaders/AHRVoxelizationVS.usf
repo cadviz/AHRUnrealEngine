@@ -16,4 +16,10 @@ void Main(
 
 	Output.FactoryInterpolants = VertexFactoryGetInterpolantsVSToPS(Input, VFIntermediates, VertexParameters);
 	Output.Position = WorldPositionExcludingWPO;
+
+	// add the material offset
+	ISOLATE
+	{
+		Output.Position.xyz += GetMaterialWorldPositionOffset(VertexParameters);
+	}
 }

@@ -69,6 +69,11 @@ bool UseApproximateHybridRaytracingRT(ERHIFeatureLevel::Type InFeatureLevel)
 	return Value != 0;
 }
 
+int32 AHRGetVoxelResolution()
+{
+	return CVarAHRVoxelSliceSize.GetValueOnAnyThread();
+}
+
 // 
 //	RHI code
 //

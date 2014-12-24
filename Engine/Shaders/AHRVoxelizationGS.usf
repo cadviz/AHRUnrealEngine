@@ -8,6 +8,8 @@ float3 to_vlocal(float3 worldPos)
 	// (x - a)/b		   : add + div
 	// (x - a)*c , c = 1/b : add + mul
 	// x*c + d, d = -a/b   : mad
+
+	// TODO: add the *0.5 + 0.5 here
 	return worldPos*AHRVoxelizationCB.InvSceneBounds + AHRVoxelizationCB.WorldToVoxelOffset;
 	
 
@@ -24,63 +26,68 @@ void Main(triangle FAHRVoxelizationVSOut input[3], inout TriangleStream<FAHRVoxe
 {
 	FAHRVoxelizationGSOut output[3];
 
-	
-	output[0].wPos = input[0].Position;
-	output[0].FactoryInterpolants = input[0].FactoryInterpolants;
+	// Convert the world position to voxel pos
+	// The code after this needs the vertex to be in the [0,1] range to work correctly
+	float3 lpos0 = (to_vlocal(input[0].Position.xyz))*0.5 + 0.5;
+	float3 lpos1 = (to_vlocal(input[1].Position.xyz))*0.5 + 0.5;
+	float3 lpos2 = (to_vlocal(input[2].Position.xyz))*0.5 + 0.5;
 
-	
-	output[1].wPos = input[1].Position;
-	output[1].FactoryInterpolants = input[1].FactoryInterpolants;
+	// Cull the triangles that are completely out bounds
+	if( lpos0.x <= 1 || lpos0.x >= 0 ||
+		lpos0.y <= 1 || lpos0.y >= 0 ||
+		lpos0.z <= 1 || lpos0.z >= 0 ||
 
-	
-	output[2].wPos = input[2].Position;
-	output[2].FactoryInterpolants = input[2].FactoryInterpolants;
+		lpos1.x <= 1 || lpos1.x >= 0 ||
+		lpos1.y <= 1 || lpos1.y >= 0 ||
+		lpos1.z <= 1 || lpos1.z >= 0 ||
 
-	float3 lpos0 = to_vlocal(input[0].Position.xyz);
-	float3 lpos1 = to_vlocal(input[1].Position.xyz);
-	float3 lpos2 = to_vlocal(input[2].Position.xyz);
-
-	float3 eyeSpaceV1 = normalize(lpos1 - lpos0);
-	float3 eyeSpaceV2 = normalize(lpos2 - lpos0);
-	float3 eyeSpaceNormal = abs(cross(eyeSpaceV1, eyeSpaceV2));
-	float dominantAxis = max(eyeSpaceNormal.x, max(eyeSpaceNormal.y, eyeSpaceNormal.z));
-	float3x3 swizzleMatrix;
-	if (dominantAxis == eyeSpaceNormal.x)
+		lpos2.x <= 1 || lpos2.x >= 0 ||
+		lpos2.y <= 1 || lpos2.y >= 0 ||
+		lpos2.z <= 1 || lpos2.z >= 0)
 	{
-		swizzleMatrix = float3x3(float3(0.0, 0.0, 1.0),
-								 float3(0.0, 1.0, 0.0),
-								 float3(1.0, 0.0, 0.0));
+		
+		output[0].wPos = input[0].Position;
+		output[0].FactoryInterpolants = input[0].FactoryInterpolants;
 
-	}
-	else if (dominantAxis == eyeSpaceNormal.y)
-	{
-		swizzleMatrix = float3x3(float3(1.0, 0.0, 0.0),
-								 float3(0.0, 0.0, 1.0),
-								 float3(0.0, 1.0, 0.0));
-	}
-	else if (dominantAxis == eyeSpaceNormal.z)
-	{
-		swizzleMatrix = float3x3(float3(1.0, 0.0, 0.0),
-								 float3(0.0, 1.0, 0.0),
-								 float3(0.0, 0.0, 1.0));
-	}
-
-	//	float2 screenFit = float2(vSliceSizeX,vSliceSizeX) / float2(ScreenX,ScreenY);
-	//		Send the Voxel triangles
-	output[0].Position = float4(mul(lpos0, swizzleMatrix), 1);//float4(0, 0, 0, 1);//mul(input[0].localPos, VoxelProj);//mul(input[0].localPos, WorldViewProj);
-
-	output[1].Position = float4(mul(lpos1, swizzleMatrix), 1);///float4(0.5, 0, 0, 1);// mul(input[1].localPos, WorldViewProj);//mul(input[1].localPos, VoxelProj);
-
-	output[2].Position = float4(mul(lpos2, swizzleMatrix), 1);//float4(0.5, 0.5, 0, 1);// mul(input[2].localPos, WorldViewProj);//mul(input[2].localPos, VoxelProj);
+		output[1].wPos = input[1].Position;
+		output[1].FactoryInterpolants = input[1].FactoryInterpolants;
 	
-	
-	//output[0].Position = float4(0,0,0,1);
-	//output[1].Position = float4(0.05,0,0,1);
-	//output[2].Position = float4(0.05,0.05,0,1);
+		output[2].wPos = input[2].Position;
+		output[2].FactoryInterpolants = input[2].FactoryInterpolants;
 
-	OutputStream.Append(output[0]);
-	OutputStream.Append(output[1]);
-	OutputStream.Append(output[2]);
+		float3 edge0 = normalize(lpos1 - lpos0);
+		float3 edge1 = normalize(lpos2 - lpos0);
+		float3 normal = abs(cross(edge0, edge1));
+		float dominantAxis = max(normal.x, max(normal.y, normal.z));
 
-	OutputStream.RestartStrip();
+		// Project the triangle along the dominant axis. It just swizzles coordinates actually 
+		if (dominantAxis == normal.x)
+		{
+			output[0].Position = float4(lpos0.zyx,1);
+			output[1].Position = float4(lpos1.zyx,1);
+			output[2].Position = float4(lpos2.zyx,1);
+		}
+		else if (dominantAxis == normal.y)
+		{
+			output[0].Position = float4(lpos0.xzy,1);
+			output[1].Position = float4(lpos1.xzy,1);
+			output[2].Position = float4(lpos2.xzy,1);
+		}
+		else
+		{
+			output[0].Position = float4(lpos0.xyz,1);
+			output[1].Position = float4(lpos1.xyz,1);
+			output[2].Position = float4(lpos2.xyz,1);
+		}	
+
+		output[0].Position *= AHRVoxelizationCB.TriangleSizeMultiplier;
+		output[1].Position *= AHRVoxelizationCB.TriangleSizeMultiplier;
+		output[2].Position *= AHRVoxelizationCB.TriangleSizeMultiplier;
+
+		OutputStream.Append(output[0]);
+		OutputStream.Append(output[1]);
+		OutputStream.Append(output[2]);
+
+		OutputStream.RestartStrip();
+	}
 }

@@ -3056,7 +3056,10 @@ bool FDeferredShadingSceneRenderer::RenderReflectiveShadowMaps(FRHICommandListIm
 			data.Albedo = GSceneRenderTargets.GetReflectiveShadowMapDiffuseTexture();
 			data.Normals = GSceneRenderTargets.GetReflectiveShadowMapNormalTexture();
 			data.Depth = GSceneRenderTargets.GetReflectiveShadowMapDepthTexture();
-			data.ViewProj = ProjectedShadowInfo->ShadowViewMatrix;
+			FVector4 ShadowmapMinMax; // output value
+			data.ViewProj = FTranslationMatrix(ProjectedShadowInfo->PreShadowTranslation - Views[0].ViewMatrices.PreViewTranslation) * ProjectedShadowInfo->SubjectAndReceiverMatrix;//ProjectedShadowInfo->GetWorldToShadowMatrix(ShadowmapMinMax);
+			
+			data.Offset = ProjectedShadowInfo->PreShadowTranslation;
 			data.IsValid = true;
 			AHREngine.AppendLightRSM(data);
 		}

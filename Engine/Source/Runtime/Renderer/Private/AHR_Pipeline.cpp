@@ -113,6 +113,12 @@ BEGIN_UNIFORM_BUFFER_STRUCT(AHRShadowMatrices,)
 	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FMatrix,Matrix2)
 	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FMatrix,Matrix3)
 	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FMatrix,Matrix4)
+
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector,Offset0)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector,Offset1)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector,Offset2)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector,Offset3)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector,Offset4)
 END_UNIFORM_BUFFER_STRUCT(AHRShadowMatrices)
 IMPLEMENT_UNIFORM_BUFFER_STRUCT(AHRShadowMatrices,TEXT("AHRShadowMatrices"));
 
@@ -202,6 +208,12 @@ public:
 		matrix_cbdata.Matrix2 = lList[2].ViewProj;
 		matrix_cbdata.Matrix3 = lList[3].ViewProj;
 		matrix_cbdata.Matrix4 = lList[4].ViewProj;
+
+		matrix_cbdata.Offset0 = lList[0].Offset;
+		matrix_cbdata.Offset1 = lList[1].Offset;
+		matrix_cbdata.Offset2 = lList[2].Offset;
+		matrix_cbdata.Offset3 = lList[3].Offset;
+		matrix_cbdata.Offset4 = lList[4].Offset;
 
 		SetUniformBufferParameterImmediate(RHICmdList, ShaderRHI,matrixCB,matrix_cbdata);
 

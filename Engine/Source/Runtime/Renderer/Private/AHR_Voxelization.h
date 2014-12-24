@@ -193,6 +193,7 @@ public:
 
 		context->RHICmdList->SetDepthStencilState(TStaticDepthStencilState<false, CF_Always>::GetRHI());
 		context->RHICmdList->SetRasterizerState(TStaticRasterizerState<FM_Solid,CM_None,false,false>::GetRHI());
+		context->RHICmdList->SetViewport(0,0,0,AHRGetVoxelResolution()*2,AHRGetVoxelResolution()*2,1);
 		Mesh.VertexFactory->Set(*context->RHICmdList);
 	
 		// Bind the voxels UAV and bind a null depth-stencil buffer

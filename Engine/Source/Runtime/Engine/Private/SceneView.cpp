@@ -689,7 +689,8 @@ void FSceneView::OverridePostProcessSettings(const FPostProcessSettings& Src, fl
 	LERP_PP(AHRSceneCenterY);
 	LERP_PP(AHRSceneCenterZ);
 	LERP_PP(AHRLostRayColor);
-
+	LERP_PP(TriangleSizeMultiplier);
+	
 	LERP_PP(AutoExposureLowPercent);
 	LERP_PP(AutoExposureHighPercent);
 	LERP_PP(AutoExposureMinBrightness);

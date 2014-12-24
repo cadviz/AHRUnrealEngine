@@ -4,23 +4,23 @@
 
 // RSM textures
 // Hardcoded to a maximum of five for now
-Texture2D<float4> ShadowAlbedo0;
-Texture2D<float4> ShadowAlbedo1;
-Texture2D<float4> ShadowAlbedo2;
-Texture2D<float4> ShadowAlbedo3;
-Texture2D<float4> ShadowAlbedo4;
+Texture2D ShadowAlbedo0;
+Texture2D ShadowAlbedo1;
+Texture2D ShadowAlbedo2;
+Texture2D ShadowAlbedo3;
+Texture2D ShadowAlbedo4;
 
-Texture2D<float4> ShadowNormals0;
-Texture2D<float4> ShadowNormals1;
-Texture2D<float4> ShadowNormals2;
-Texture2D<float4> ShadowNormals3;
-Texture2D<float4> ShadowNormals4;
+Texture2D ShadowNormals0;
+Texture2D ShadowNormals1;
+Texture2D ShadowNormals2;
+Texture2D ShadowNormals3;
+Texture2D ShadowNormals4;
 
-Texture2D<float> ShadowZ0;
-Texture2D<float> ShadowZ1;
-Texture2D<float> ShadowZ2;
-Texture2D<float> ShadowZ3;
-Texture2D<float> ShadowZ4;
+Texture2D ShadowZ0;
+Texture2D ShadowZ1;
+Texture2D ShadowZ2;
+Texture2D ShadowZ3;
+Texture2D ShadowZ4;
 
 // The projection matrices are inside a constant buffer
 
@@ -249,22 +249,25 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 
 				// Light sampling "loop"
 				{
+					//float4 lpos = fmul(spos + AHRShadowMatrices.Offset0,AHRShadowMatrices.Matrix0);
 					float4 lpos = fmul(spos,AHRShadowMatrices.Matrix0);
 
 					//re-homogenize position after interpolation
 					lpos.xyz /= lpos.w;
 
+					
 					//transform clip space coords to texture space coords (-1:1 to 0:1)
 					lpos.x = lpos.x*0.5 + 0.5;
 					lpos.y = -lpos.y*0.5 + 0.5;
 
-					float4 albedo = ShadowAlbedo0.SampleLevel(samLinear,lpos.xy,0);
+					float4 sAlbedo = ShadowAlbedo0.SampleLevel(samLinear,lpos.xy,0);
+					float4 sNormal = ShadowNormals0.SampleLevel(samLinear,lpos.xy,0);
 					//float biasAngleMult = sqrt(1 - albedo.w*albedo.w)/(albedo.w + 0.01) + 1; // the w component stores the dot of the sun dir and normal
 					float biasAngleMult = 1;
-					albedo.w = 1;
+					sAlbedo.w = 1;
 					float shadowFactor = ShadowZ0.SampleCmpLevelZero(cmpSampler, lpos.xy, lpos.z);
 				
-					diffuse += shadowFactor*albedo.rgb*albedo.w;
+					diffuse += float3(lpos.xy,0);//abs(sNormal);//*shadowFactor;//shadowFactor*albedo.rgb*sAlbedo.w;
 				}
 
 				ao += 1;//(i <= 8);
@@ -292,12 +295,14 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 
 
 
-	//traced = ao;
-
-
-	//traced = ShadowAlbedo0.SampleLevel(samLinear,InUV,0);
-
-
+	traced = ao;
+	/*
+	if(InUV.x < 0.3)
+		traced = ShadowAlbedo0.SampleLevel(samLinear,InUV,0);
+	else if(InUV.x >= 0.3 && InUV.x < 0.6)
+		traced = ShadowNormals0.SampleLevel(samLinear,InUV,0);
+	else if(InUV.x >= 0.6)
+		traced = ShadowZ0.SampleLevel(samLinear,InUV,0);*/
 
 	//DEBUG!
 	//uint vidxD = InUV.x*1000 + InUV.y*1000*1000;
@@ -350,6 +355,31 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 	}
 
 #endif
-	
+
+
+
+
+
+/*
+	float4 lpos = fmul(wPos,AHRShadowMatrices.Matrix0);
+
+	//re-homogenize position after interpolation
+	lpos.xyz /= lpos.w;
+
+	//transform clip space coords to texture space coords (-1:1 to 0:1)
+	lpos.x = lpos.x*0.5 + 0.5;
+	lpos.y = -lpos.y*0.5 + 0.5;
+
+	// clamp coordinates
+	lpos.xy = saturate(lpos.xy);
+
+	float4 sNormal = ShadowNormals0.SampleLevel(samLinear,lpos.xy,0);
+	traced = sNormal;
+
+	*/
+
+
+
+
 	return traced;
 }

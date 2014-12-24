@@ -21,6 +21,7 @@ struct LightRSMData
 	FTexture2DRHIRef Normals;
 	FTexture2DRHIRef Depth;
 	FMatrix ViewProj;
+	FVector Offset;
 };
 
 // Main class
@@ -67,6 +68,8 @@ private:
 };
 
 extern TGlobalResource<FApproximateHybridRaytracer> AHREngine;
+
+int32 AHRGetVoxelResolution();
 
 // use for render thread only
 bool UseApproximateHybridRaytracingRT(ERHIFeatureLevel::Type InFeatureLevel);

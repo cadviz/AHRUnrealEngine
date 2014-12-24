@@ -10,6 +10,7 @@ BEGIN_UNIFORM_BUFFER_STRUCT(AHRVoxelizationCB,)
 	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector,InvSceneBounds)
 	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector,WorldToVoxelOffset) // -SceneCenter/SceneBounds
 	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector,invVoxel)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(float,TriangleSizeMultiplier)
 END_UNIFORM_BUFFER_STRUCT(AHRVoxelizationCB)
 
 
@@ -109,7 +110,8 @@ public:
 
 		cbdata.InvSceneBounds = FVector(1.0f) / View.FinalPostProcessSettings.AHRSceneScale;
 		cbdata.WorldToVoxelOffset = -FVector(View.FinalPostProcessSettings.AHRSceneCenterX,View.FinalPostProcessSettings.AHRSceneCenterY,View.FinalPostProcessSettings.AHRSceneCenterZ)*cbdata.InvSceneBounds; // -SceneCenter/SceneBounds
-		
+		cbdata.TriangleSizeMultiplier = View.FinalPostProcessSettings.TriangleSizeMultiplier;
+
 		SetUniformBufferParameterImmediate(RHICmdList, ShaderRHI,cb,cbdata);
 	}
 
