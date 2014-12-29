@@ -2109,7 +2109,7 @@ void FSceneRenderer::AddViewDependentWholeSceneShadowsForView(TArray<FProjectedS
 					// Generate the RSM shadow info
 					FWholeSceneProjectedShadowInitializer ProjectedShadowInitializer;
 					FVector center(Views[0].FinalPostProcessSettings.AHRSceneCenterX,Views[0].FinalPostProcessSettings.AHRSceneCenterY,Views[0].FinalPostProcessSettings.AHRSceneCenterZ);
-					FVector size(Views[0].FinalPostProcessSettings.AHRSceneScale*0.5f);
+					FVector size(Views[0].FinalPostProcessSettings.AHRSceneScale);
 					FBox bounds(center - size,center + size);
 					if (LightSceneInfo.Proxy->GetViewDependentRsmWholeSceneProjectedShadowInitializer(View, bounds, ProjectedShadowInitializer))
 					{

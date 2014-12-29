@@ -11,13 +11,6 @@ float3 to_vlocal(float3 worldPos)
 
 	// TODO: add the *0.5 + 0.5 here
 	return worldPos*AHRVoxelizationCB.InvSceneBounds + AHRVoxelizationCB.WorldToVoxelOffset;
-	
-
-	// HARDCODED DEBUG!
-	/*const float invSceneBounds = 1.0f/2150.0f;
-	const float3 worldTovoxelOffset = -float3(-265.486847f,0.0f,0.0f)/2150.0f;
-
-	return worldPos*invSceneBounds + worldTovoxelOffset;*/
 }
 
 
@@ -80,6 +73,7 @@ void Main(triangle FAHRVoxelizationVSOut input[3], inout TriangleStream<FAHRVoxe
 			output[2].Position = float4(lpos2.xyz,1);
 		}	
 
+		// Evil parameter right here. Thought that it could help with performance, but it doesn't seem to do much.
 		output[0].Position *= AHRVoxelizationCB.TriangleSizeMultiplier;
 		output[1].Position *= AHRVoxelizationCB.TriangleSizeMultiplier;
 		output[2].Position *= AHRVoxelizationCB.TriangleSizeMultiplier;

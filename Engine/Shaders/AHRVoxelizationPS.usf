@@ -11,13 +11,6 @@ float3 to_vlocal(float3 worldPos)
 	// (x - a)*c , c = 1/b : add + mul
 	// x*c + d, d = -a/b   : mad
 	return worldPos*AHRVoxelizationCB.InvSceneBounds + AHRVoxelizationCB.WorldToVoxelOffset;
-	
-
-	// HARDCODED DEBUG!
-	/*const float invSceneBounds = 1.0f/2150.0f;
-	const float3 worldTovoxelOffset = -float3(-265.486847f,0.0f,0.0f)/2150.0f;
-
-	return worldPos*invSceneBounds + worldTovoxelOffset;*/
 }
 
 void Main(FAHRVoxelizationGSOut input)

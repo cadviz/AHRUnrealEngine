@@ -1005,8 +1005,10 @@ void FShadowDepthDrawingPolicyFactory::AddStaticMesh(FScene* Scene,FStaticMesh* 
 		const bool bLightPropagationVolume = UseLightPropagationVolumeRT(Scene->GetFeatureLevel());
 		const bool bTwoSided  = Material->IsTwoSided() || StaticMesh->PrimitiveSceneInfo->Proxy->CastsShadowAsTwoSided();
 		const bool bLitOpaque = !IsTranslucentBlendMode(BlendMode) && ShadingModel != MSM_Unlit;
+
 		// @RyanTorant added the check for ahr here
-		if((bLightPropagationVolume && (bLitOpaque || Material->ShouldInjectEmissiveIntoLPV())) || UseApproximateHybridRaytracingRT(Scene->GetFeatureLevel()))
+		if( (bLightPropagationVolume && (bLitOpaque || Material->ShouldInjectEmissiveIntoLPV())) || 
+		    (UseApproximateHybridRaytracingRT(Scene->GetFeatureLevel()) && (bLitOpaque || Material->ShouldInjectEmissiveIntoLPV()) ) )
 		{
 			// Add the static mesh to the shadow's subject draw list.
 			if ( StaticMesh->PrimitiveSceneInfo->Proxy->AffectsDynamicIndirectLighting() )
@@ -3056,9 +3058,12 @@ bool FDeferredShadingSceneRenderer::RenderReflectiveShadowMaps(FRHICommandListIm
 			data.Albedo = GSceneRenderTargets.GetReflectiveShadowMapDiffuseTexture();
 			data.Normals = GSceneRenderTargets.GetReflectiveShadowMapNormalTexture();
 			data.Depth = GSceneRenderTargets.GetReflectiveShadowMapDepthTexture();
-			FVector4 ShadowmapMinMax; // output value
-			data.ViewProj = FTranslationMatrix(ProjectedShadowInfo->PreShadowTranslation - Views[0].ViewMatrices.PreViewTranslation) * ProjectedShadowInfo->SubjectAndReceiverMatrix;//ProjectedShadowInfo->GetWorldToShadowMatrix(ShadowmapMinMax);
-			
+			//data.ViewProj = FTranslationMatrix(ProjectedShadowInfo->PreShadowTranslation - Views[0].ViewMatrices.PreViewTranslation) * ProjectedShadowInfo->SubjectAndReceiverMatrix;//ProjectedShadowInfo->GetWorldToShadowMatrix(ShadowmapMinMax);
+			//data.ViewProj = ProjectedShadowInfo->ShadowViewMatrix*ProjectedShadowInfo->SubjectAndReceiverMatrix;
+			FVector4 minMax;
+			//data.ViewProj = ProjectedShadowInfo->GetWorldToShadowMatrix(minMax);
+			data.ViewProj = FTranslationMatrix(ProjectedShadowInfo->PreShadowTranslation) *ProjectedShadowInfo->SubjectAndReceiverMatrix;
+
 			data.Offset = ProjectedShadowInfo->PreShadowTranslation;
 			data.IsValid = true;
 			AHREngine.AppendLightRSM(data);

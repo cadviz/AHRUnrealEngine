@@ -95,7 +95,6 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 
 	float3 diffuse = 0;
 	float3 glossy = 0;
-	uint acc = 1;
 
 #ifdef _GLOSSY
 	for (uint r = 0; r < AHRTraceCB.GlossyRayCount; r++)
@@ -115,10 +114,12 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 
 		float angleCos = saturate(dot(dir,normal));
 		// tan(acos(x)) = sqrt(1 - x*x)/x;
-		float dispAngleMult = sqrt(1 - angleCos*angleCos)/(angleCos + 0.01) + 1;
+		float dispAngleMult = sqrt(1 - angleCos*angleCos)/(angleCos + 0.01) + 1;//tan(clamp(dispAngle,0,MAX_ANGLE)) + 1;
 
-		float3 step = dir * AHRTraceCB.invVoxel;
+		// Optimize this later. Div is stupid
+		float3 step = dir*AHRTraceCB.invVoxel/AHRTraceCB.InvSceneBounds;
 		float3 spos = wPos + step*AHRTraceCB.InitialDispMult*dispAngleMult;
+
 		step *= AHRTraceCB.SamplesDispMultiplier;
 
 		// Rework this when enabling transparency
@@ -128,8 +129,8 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 			if(magnitudeSquared(to_vlocal(spos)) > 3) 
 			{
 				// Here we could intersect the ray with the sky sphere and take that color...
-				glossy += AHRTraceCB.LostRayColor;//float3(0.4f, 0.675f, 0.99f);
-				acc++;
+				//glossy += AHRTraceCB.LostRayColor;//float3(0.4f, 0.675f, 0.99f);
+				//acc++;
 				break;
 			}
 
@@ -149,33 +150,35 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 
 			if (hit)
 			{
-				/* This will depend on how does RSM work on UE4
-				float4 lpos = fmul(spos,LightVP);
+				// Light sampling "loop"
+				{
+					//float4 lpos = fmul(spos + AHRShadowMatrices.Offset0,AHRShadowMatrices.Matrix0);
+					float4 lpos = fmul(spos,AHRShadowMatrices.Matrix0);
 
-				//re-homogenize position after interpolation
-				lpos.xyz /= lpos.w;
+					//re-homogenize position after interpolation
+					lpos.xyz /= lpos.w;
 
-				//transform clip space coords to texture space coords (-1:1 to 0:1)
-				lpos.x = lpos.x*0.5 + 0.5;
-				lpos.y = -lpos.y*0.5 + 0.5;
+					
+					//transform clip space coords to texture space coords (-1:1 to 0:1)
+					lpos.x = lpos.x*0.5 + 0.5;
+					lpos.y = -lpos.y*0.5 + 0.5;
 
-				float4 albedo = shadowAlbedo.SampleLevel(samLinear,lpos.xy,0);
-				float biasAngleMult = sqrt(1 - albedo.w*albedo.w)/(albedo.w + 0.01) + 1; // the w component stores the dot of the sun dir and normal
-				float shadowFactor = shadowZ.SampleCmpLevelZero(cmpSampler, lpos.xy, lpos.z-ShadowBias*biasAngleMult*0.01f);
-				*/
-				float4 albedo = 0;
-				float biasAngleMult = 0;
-				float shadowFactor = 0;
-
-				glossy += shadowFactor*albedo.rgb*albedo.w;
-				acc += 1;
+					float4 sAlbedo = ShadowAlbedo0.SampleLevel(samLinear,lpos.xy,0);
+					float4 sNormal = ShadowNormals0.SampleLevel(samLinear,lpos.xy,0);
+					//float biasAngleMult = sqrt(1 - albedo.w*albedo.w)/(albedo.w + 0.01) + 1; // the w component stores the dot of the sun dir and normal
+					float biasAngleMult = 1;
+					sAlbedo.w = 1;
+					float shadowFactor = ShadowZ0.SampleCmpLevelZero(cmpSampler, lpos.xy, lpos.z);
+				
+					glossy += shadowFactor*sAlbedo.rgb*sAlbedo.w;
+				}
 
 				break;
 			}
 			spos += step;
 		}
 	}
-	glossy /= acc;
+	glossy /= AHRTraceCB.GlossyRayCount;
 #endif
 
 	float ao = 0;
@@ -211,8 +214,8 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 			if(magnitudeSquared(to_vlocal(spos)) > 3) 
 			{
 				// Here we could intersect the ray with the sky sphere and take that color...
-				diffuse += AHRTraceCB.LostRayColor;//float3(0.4f, 0.675f, 0.99f);
-				acc++;
+				//diffuse += AHRTraceCB.LostRayColor;//float3(0.4f, 0.675f, 0.99f);
+				//acc++;
 				break;
 			}
 
@@ -266,11 +269,14 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 					float biasAngleMult = 1;
 					sAlbedo.w = 1;
 					float shadowFactor = ShadowZ0.SampleCmpLevelZero(cmpSampler, lpos.xy, lpos.z);
-				
-					diffuse += float3(lpos.xy,0);//abs(sNormal);//*shadowFactor;//shadowFactor*albedo.rgb*sAlbedo.w;
-				}
+					
+					float rdist = magnitudeSquared(to_vlocal(spos)) / 3;
+					rdist = (exp(-7*rdist*rdist) + 0.3)/1.3;
 
-				ao += 1;//(i <= 8);
+					diffuse += shadowFactor*sAlbedo.rgb*sAlbedo.w*rdist;
+				}
+				float rdist = magnitudeSquared(to_vlocal(spos)) / 3;
+				ao += (exp(-7*rdist*rdist) + 0.3)/1.3;//(i <= 8);
 				
 				//acc += 1;
 
@@ -286,16 +292,19 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 
 	diffuse /= AHRTraceCB.DiffuseRayCount;
 
+	float3 fakeSky = lerp(float3(0.034,0.1,0.1),AHRTraceCB.LostRayColor,(dot(normal,float3(0,1,0)))*0.5+0.5 );
+	fakeSky*= ScreenSpaceData.GBuffer.DiffuseColor;
+
 #ifdef _GLOSSY
 	// Should be based on the material roughness
-	float4 traced = float4(lerp(glossy,diffuse,0.85),ao);
+	float4 traced = float4(lerp(glossy,diffuse,0.85) + fakeSky*ao*0.1,ao);
 #else
-	float4 traced = float4(diffuse,ao);
+	float4 traced = float4(diffuse + fakeSky*ao*0.1,ao);
 #endif
 
 
 
-	traced = ao;
+	//traced = ao;
 	/*
 	if(InUV.x < 0.3)
 		traced = ShadowAlbedo0.SampleLevel(samLinear,InUV,0);
@@ -362,7 +371,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 
 /*
 	float4 lpos = fmul(wPos,AHRShadowMatrices.Matrix0);
-
+	
 	//re-homogenize position after interpolation
 	lpos.xyz /= lpos.w;
 
@@ -373,10 +382,10 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 	// clamp coordinates
 	lpos.xy = saturate(lpos.xy);
 
-	float4 sNormal = ShadowNormals0.SampleLevel(samLinear,lpos.xy,0);
-	traced = sNormal;
-
+	//float4 sNormal = ShadowNormals0.SampleLevel(samLinear,lpos.xy,0);
+	traced = ShadowZ0.SampleCmpLevelZero(cmpSampler, lpos.xy, lpos.z);
 	*/
+	
 
 
 

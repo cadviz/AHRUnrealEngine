@@ -13,8 +13,10 @@
 #include "HdrCustomResolveShaders.h"
 #include "ApproximateHybridRaytracing.h"
 
-// for LightPropagationVolume feature, could be exposed
-const int ReflectiveShadowMapResolution = 256;
+// @RyanTorant
+// for LightPropagationVolume feature or AHR, could be exposed
+// TODO: make this a changable variable
+const int ReflectiveShadowMapResolution = 512;
 
 IMPLEMENT_UNIFORM_BUFFER_STRUCT(FGBufferResourceStruct,TEXT("GBuffers"));
 

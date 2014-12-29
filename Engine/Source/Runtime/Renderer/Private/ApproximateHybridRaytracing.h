@@ -57,9 +57,13 @@ private:
 	FRWBufferByteAddress* SceneVolume;
 
 	FTexture2DRHIRef RaytracingTarget;
-	FTexture2DRHIRef UpsampledTarget;
+	FTexture2DRHIRef UpsampledTarget0;
+	FTexture2DRHIRef UpsampledTarget1;
+	FTexture2DRHIRef UpsampledTarget2;
 	FShaderResourceViewRHIRef RaytracingTargetSRV;
-	FShaderResourceViewRHIRef UpsampledTargetSRV;
+	FShaderResourceViewRHIRef UpsampledTargetSRV0;
+	FShaderResourceViewRHIRef UpsampledTargetSRV1;
+	FShaderResourceViewRHIRef UpsampledTargetSRV2;
 
 	uint32 ResX,ResY;
 

@@ -54,10 +54,14 @@ void  FApproximateHybridRaytracer::InitializeViewTargets(uint32 _resX,uint32 _re
 
 		// PF_FloatRGBA is 16 bits float per component. Nice documentation Epic ...
 		RaytracingTarget = RHICreateTexture2D(ResX/2,ResY/2,PF_FloatRGBA,1,1,TexCreate_RenderTargetable | TexCreate_ShaderResource,CreateInfo);
-		UpsampledTarget = RHICreateTexture2D(ResX,ResY,PF_FloatRGBA,1,1,TexCreate_RenderTargetable | TexCreate_ShaderResource,CreateInfo);
+		UpsampledTarget0 = RHICreateTexture2D(ResX,ResY,PF_FloatRGBA,1,1,TexCreate_RenderTargetable | TexCreate_ShaderResource,CreateInfo);
+		UpsampledTarget1 = RHICreateTexture2D(ResX,ResY,PF_FloatRGBA,1,1,TexCreate_RenderTargetable | TexCreate_ShaderResource,CreateInfo);
+		UpsampledTarget2 = RHICreateTexture2D(ResX,ResY,PF_FloatRGBA,1,1,TexCreate_RenderTargetable | TexCreate_ShaderResource,CreateInfo);
 
 		RaytracingTargetSRV = RHICreateShaderResourceView(RaytracingTarget,0);
-		UpsampledTargetSRV = RHICreateShaderResourceView(UpsampledTarget,0);
+		UpsampledTargetSRV0 = RHICreateShaderResourceView(UpsampledTarget0,0);
+		UpsampledTargetSRV1 = RHICreateShaderResourceView(UpsampledTarget1,0);
+		UpsampledTargetSRV2 = RHICreateShaderResourceView(UpsampledTarget2,0);
 	}
 }
 
@@ -175,6 +179,9 @@ public:
 
 	void SetParameters(FRHICommandList& RHICmdList, const FSceneView& View, const FShaderResourceViewRHIRef sceneVolumeSRV)
 	{
+		FRHIResourceCreateInfo CreateInfo;
+		static auto dummyTexture = RHICreateTexture2D(1,1,PF_ShadowDepth,1,1,TexCreate_ShaderResource,CreateInfo);
+
 		const FPixelShaderRHIParamRef ShaderRHI = GetPixelShader();
 		FGlobalShader::SetParameters(RHICmdList, ShaderRHI,View);
 		DeferredParameters.Set(RHICmdList, ShaderRHI, View);
@@ -228,36 +235,66 @@ public:
 
 		if(ShadowAlbedo0.IsBound() && lList[0].IsValid)
 			SetTextureParameter(RHICmdList, ShaderRHI, ShadowAlbedo0, LinearSampler, SamplerStateLinear,  lList[0].Albedo );
+		else
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowAlbedo0, LinearSampler, SamplerStateLinear, dummyTexture);
 		if(ShadowAlbedo1.IsBound() && lList[1].IsValid)
 			SetTextureParameter(RHICmdList, ShaderRHI, ShadowAlbedo1, LinearSampler, SamplerStateLinear,  lList[1].Albedo );
+		else
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowAlbedo1, LinearSampler, SamplerStateLinear, dummyTexture);
 		if(ShadowAlbedo2.IsBound() && lList[2].IsValid)
 			SetTextureParameter(RHICmdList, ShaderRHI, ShadowAlbedo2, LinearSampler, SamplerStateLinear,  lList[2].Albedo );
+		else
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowAlbedo2, LinearSampler, SamplerStateLinear, dummyTexture);
 		if(ShadowAlbedo3.IsBound() && lList[3].IsValid)
 			SetTextureParameter(RHICmdList, ShaderRHI, ShadowAlbedo3, LinearSampler, SamplerStateLinear,  lList[3].Albedo );
+		else
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowAlbedo3, LinearSampler, SamplerStateLinear, dummyTexture);
 		if(ShadowAlbedo4.IsBound() && lList[4].IsValid)
 			SetTextureParameter(RHICmdList, ShaderRHI, ShadowAlbedo4, LinearSampler, SamplerStateLinear,  lList[4].Albedo );
+		else
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowAlbedo4, LinearSampler, SamplerStateLinear, dummyTexture);
 
 		if(ShadowNormals0.IsBound() && lList[0].IsValid)
 			SetTextureParameter(RHICmdList, ShaderRHI, ShadowNormals0, LinearSampler, SamplerStateLinear,  lList[0].Normals );
+		else
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowNormals0, LinearSampler, SamplerStateLinear, dummyTexture);
 		if(ShadowNormals1.IsBound() && lList[1].IsValid)
 			SetTextureParameter(RHICmdList, ShaderRHI, ShadowNormals1, LinearSampler, SamplerStateLinear,  lList[1].Normals );
+		else
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowNormals1, LinearSampler, SamplerStateLinear, dummyTexture);
 		if(ShadowNormals2.IsBound() && lList[2].IsValid)
 			SetTextureParameter(RHICmdList, ShaderRHI, ShadowNormals2, LinearSampler, SamplerStateLinear,  lList[2].Normals );
+		else
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowNormals2, LinearSampler, SamplerStateLinear, dummyTexture);
 		if(ShadowNormals3.IsBound() && lList[3].IsValid)
 			SetTextureParameter(RHICmdList, ShaderRHI, ShadowNormals3, LinearSampler, SamplerStateLinear,  lList[3].Normals );
+		else
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowNormals3, LinearSampler, SamplerStateLinear, dummyTexture);
 		if(ShadowNormals4.IsBound() && lList[4].IsValid)
 			SetTextureParameter(RHICmdList, ShaderRHI, ShadowNormals4, LinearSampler, SamplerStateLinear,  lList[4].Normals );
+		else
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowNormals4, LinearSampler, SamplerStateLinear, dummyTexture);
 
 		if(ShadowZ0.IsBound() && lList[0].IsValid)
 			SetTextureParameter(RHICmdList, ShaderRHI, ShadowZ0, LinearSampler, SamplerStateLinear,  lList[0].Depth );
+		else
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowZ0, LinearSampler, SamplerStateLinear, dummyTexture);
 		if(ShadowZ1.IsBound() && lList[1].IsValid)
 			SetTextureParameter(RHICmdList, ShaderRHI, ShadowZ1, LinearSampler, SamplerStateLinear,  lList[1].Depth );
+		else
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowZ1, LinearSampler, SamplerStateLinear, dummyTexture);
 		if(ShadowZ2.IsBound() && lList[2].IsValid)
 			SetTextureParameter(RHICmdList, ShaderRHI, ShadowZ2, LinearSampler, SamplerStateLinear,  lList[2].Depth );
+		else
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowZ2, LinearSampler, SamplerStateLinear, dummyTexture);
 		if(ShadowZ3.IsBound() && lList[3].IsValid)
 			SetTextureParameter(RHICmdList, ShaderRHI, ShadowZ3, LinearSampler, SamplerStateLinear,  lList[3].Depth );
+		else
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowZ3, LinearSampler, SamplerStateLinear, dummyTexture);
 		if(ShadowZ4.IsBound() && lList[4].IsValid)
 			SetTextureParameter(RHICmdList, ShaderRHI, ShadowZ4, LinearSampler, SamplerStateLinear,  lList[4].Depth );
+		else
+			SetTextureParameter(RHICmdList, ShaderRHI, ShadowZ4, LinearSampler, SamplerStateLinear, dummyTexture);
 	}
 
 	virtual bool Serialize(FArchive& Ar)
@@ -392,13 +429,14 @@ public:
 		DeferredParameters.Bind(Initializer.ParameterMap);
 		GIBufferTexture.Bind(Initializer.ParameterMap, TEXT("tGI"));
 		LinearSampler.Bind(Initializer.ParameterMap, TEXT("samLinear"));
+		BlurKernelSize.Bind(Initializer.ParameterMap,TEXT("size"));
 	}
 
 	AHRUpsamplePS()
 	{
 	}
 
-	void SetParameters(FRHICommandList& RHICmdList, const FSceneView& View, const FShaderResourceViewRHIRef giSRV)
+	void SetParameters(FRHICommandList& RHICmdList, const FSceneView& View, const FShaderResourceViewRHIRef giSRV,float blurKernelSize)
 	{
 		const FPixelShaderRHIParamRef ShaderRHI = GetPixelShader();
 		FGlobalShader::SetParameters(RHICmdList, ShaderRHI,View);
@@ -408,6 +446,8 @@ public:
 			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,GIBufferTexture.GetBaseIndex(),giSRV);
 		if(LinearSampler.IsBound())
 			RHICmdList.SetShaderSampler(ShaderRHI,LinearSampler.GetBaseIndex(),TStaticSamplerState<SF_Trilinear,AM_Wrap,AM_Wrap,AM_Wrap>::GetRHI());
+
+		SetShaderValue(RHICmdList, ShaderRHI, BlurKernelSize,blurKernelSize);
 	}
 
 	virtual bool Serialize(FArchive& Ar)
@@ -416,6 +456,7 @@ public:
 		Ar << DeferredParameters;
 		Ar << GIBufferTexture;
 		Ar << LinearSampler;
+		Ar << BlurKernelSize;
 		return bShaderHasOutdatedParameters;
 	}
 
@@ -430,6 +471,7 @@ private:
 	FDeferredPixelShaderParameters DeferredParameters;
 	FShaderResourceParameter GIBufferTexture;
 	FShaderResourceParameter LinearSampler;
+	FShaderParameter BlurKernelSize;
 };
 IMPLEMENT_SHADER_TYPE(,AHRUpsamplePS,TEXT("AHRUpsample"),TEXT("PS"),SF_Pixel);
 
@@ -437,23 +479,76 @@ void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,
 {
 	SCOPED_DRAW_EVENT(RHICmdList,AHRUpsample);
 
-	// Set the viewport, raster state , depth stencil and render target
-	SetRenderTarget(RHICmdList, UpsampledTarget, FTextureRHIRef());
 	RHICmdList.SetViewport(View.ViewRect.Min.X, View.ViewRect.Min.Y, 0.0f, View.ViewRect.Max.X, View.ViewRect.Max.Y, 1.0f);
 	RHICmdList.SetRasterizerState(TStaticRasterizerState<FM_Solid, CM_None>::GetRHI());
 	RHICmdList.SetDepthStencilState(TStaticDepthStencilState<false, CF_Always>::GetRHI());
-
-	// Clear the target before drawing
-	RHICmdList.Clear(true, FLinearColor::Black, false, 1.0f, false, 0, FIntRect());
 
 	// Get the shaders
 	TShaderMapRef<AHRPassVS> VertexShader(View.ShaderMap);
 	TShaderMapRef<AHRUpsamplePS> PixelShader(View.ShaderMap);
 
+	///////// Pass 0
+
+	// Set the viewport, raster state , depth stencil and render target
+	SetRenderTarget(RHICmdList, UpsampledTarget0, FTextureRHIRef());
+	
+	// Clear the target before drawing
+	RHICmdList.Clear(true, FLinearColor::Black, false, 1.0f, false, 0, FIntRect());
+
 	// Bound shader parameters
 	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PixelShader->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PixelShader);
 	VertexShader->SetParameters(RHICmdList,View);
-	PixelShader->SetParameters(RHICmdList, View, RaytracingTargetSRV);
+	PixelShader->SetParameters(RHICmdList, View, RaytracingTargetSRV,1.7);
+
+	// Draw!
+	DrawRectangle( 
+				RHICmdList,
+				0, 0,
+				View.ViewRect.Width(), View.ViewRect.Height(),
+				View.ViewRect.Min.X, View.ViewRect.Min.Y, 
+				View.ViewRect.Width(), View.ViewRect.Height(),
+				View.ViewRect.Size(),
+				GSceneRenderTargets.GetBufferSizeXY(),
+				*VertexShader,
+				EDRF_UseTriangleOptimization);
+
+	///////// Pass 1
+
+	// Set the viewport, raster state , depth stencil and render target
+	SetRenderTarget(RHICmdList, UpsampledTarget1, FTextureRHIRef());
+	
+	// Clear the target before drawing
+	RHICmdList.Clear(true, FLinearColor::Black, false, 1.0f, false, 0, FIntRect());
+
+	// Bound shader parameters
+	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PixelShader->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PixelShader);
+	VertexShader->SetParameters(RHICmdList,View);
+	PixelShader->SetParameters(RHICmdList, View, UpsampledTargetSRV0,2.8);
+
+	// Draw!
+	DrawRectangle( 
+				RHICmdList,
+				0, 0,
+				View.ViewRect.Width(), View.ViewRect.Height(),
+				View.ViewRect.Min.X, View.ViewRect.Min.Y, 
+				View.ViewRect.Width(), View.ViewRect.Height(),
+				View.ViewRect.Size(),
+				GSceneRenderTargets.GetBufferSizeXY(),
+				*VertexShader,
+				EDRF_UseTriangleOptimization);
+
+	///////// Pass 2
+
+	// Set the viewport, raster state , depth stencil and render target
+	SetRenderTarget(RHICmdList, UpsampledTarget2, FTextureRHIRef());
+	
+	// Clear the target before drawing
+	RHICmdList.Clear(true, FLinearColor::Black, false, 1.0f, false, 0, FIntRect());
+
+	// Bound shader parameters
+	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PixelShader->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PixelShader);
+	VertexShader->SetParameters(RHICmdList,View);
+	PixelShader->SetParameters(RHICmdList, View, UpsampledTargetSRV1,1.85);
 
 	// Draw!
 	DrawRectangle( 
@@ -552,8 +647,8 @@ void FApproximateHybridRaytracer::Composite(FRHICommandListImmediate& RHICmdList
 	// Only one view at a time for now (1/11/2014)
 
 	// Set additive blending
-	//RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_One, BO_Add, BF_One, BF_One>::GetRHI());
-	RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_Zero, BO_Add, BF_One, BF_Zero>::GetRHI());
+	RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_One, BO_Add, BF_One, BF_One>::GetRHI());
+	//RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_Zero, BO_Add, BF_One, BF_Zero>::GetRHI());
 
 	// add gi and multiply scene color by ao
 	// final = gi + ao*direct
@@ -577,7 +672,7 @@ void FApproximateHybridRaytracer::Composite(FRHICommandListImmediate& RHICmdList
 	// Bound shader parameters
 	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PixelShader->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PixelShader);
 	VertexShader->SetParameters(RHICmdList,View);
-	PixelShader->SetParameters(RHICmdList, View, UpsampledTargetSRV); // just binds the upsampled texture using SetTextureParameter()
+	PixelShader->SetParameters(RHICmdList, View, UpsampledTargetSRV2); // just binds the upsampled texture using SetTextureParameter()
 
 	// Draw!
 	DrawRectangle( 

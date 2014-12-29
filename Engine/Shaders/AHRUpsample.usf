@@ -2,6 +2,7 @@
 
 Texture2D<float4> tGI;
 SamplerState samLinear;
+float size;
 
 static const float g_epsilon = 0.1;
 
@@ -13,17 +14,17 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 
 	const float2 coords[9] =
 	{
-		InUV + View.ViewSizeAndSceneTexelSize.zw*float2(-1.0f, 1.0f),
-		InUV + View.ViewSizeAndSceneTexelSize.zw*float2(0.0f, 1.0f),
-		InUV + View.ViewSizeAndSceneTexelSize.zw*float2(1.0f, 1.0f),
+		InUV + View.ViewSizeAndSceneTexelSize.zw*float2(-size,size),
+		InUV + View.ViewSizeAndSceneTexelSize.zw*float2(0.0f, size),
+		InUV + View.ViewSizeAndSceneTexelSize.zw*float2(size, size),
 
-		InUV + View.ViewSizeAndSceneTexelSize.zw*float2(-1.0f, 0.0f),
+		InUV + View.ViewSizeAndSceneTexelSize.zw*float2(-size, 0.0f),
 		InUV + View.ViewSizeAndSceneTexelSize.zw*float2(0.0f, 0.0f),
-		InUV + View.ViewSizeAndSceneTexelSize.zw*float2(1.0f, 0.0f),
+		InUV + View.ViewSizeAndSceneTexelSize.zw*float2(size, 0.0f),
 
-		InUV + View.ViewSizeAndSceneTexelSize.zw*float2(-1.0f, -1.0f),
-		InUV + View.ViewSizeAndSceneTexelSize.zw*float2(0.0f, -1.0f),
-		InUV + View.ViewSizeAndSceneTexelSize.zw*float2(1.0f, -1.0f),
+		InUV + View.ViewSizeAndSceneTexelSize.zw*float2(-size, -size),
+		InUV + View.ViewSizeAndSceneTexelSize.zw*float2(0.0f, -size),
+		InUV + View.ViewSizeAndSceneTexelSize.zw*float2(size, -size),
 	};
 
 	float4 gidata = 0;
@@ -32,12 +33,12 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 	[unroll]
 	for (int i = 0; i < 9; i++) 
 	{
-		float z = CalcSceneDepth(InUV +  coords[i])*0.0001f;
+		float z = CalcSceneDepth(coords[i])*0.0001f;
 		//float3 wp = ScreenVector * z + View.ViewOrigin.xyz;
 		//float3 linearZ = distanceSquared(SceneDepth,View.ViewOrigin.xyz);
 
 		float w = 1.0f / (g_epsilon + abs(SceneDepth - z));
-		w = 1;
+		//w = 1;
 		gidata += tGI.SampleLevel(samLinear, coords[i],0)*w;
 		weight_sum += w;
 	}

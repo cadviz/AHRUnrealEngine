@@ -24,7 +24,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 
 
 
-	fcolor = pow(fcolor,1.8);//pow(fcolor,AHRCompositeCB.GIMultiplier); 
+	fcolor = pow(fcolor,1.8) * AHRCompositeCB.GIMultiplier;//pow(fcolor,AHRCompositeCB.GIMultiplier); 
 	
 	return fcolor;
 }
