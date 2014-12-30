@@ -1,3 +1,4 @@
+// @RyanTorant
 float rand(float2 co)
 {
 	co = cos(co)*0.5 + 0.5; // change it to [0,1]

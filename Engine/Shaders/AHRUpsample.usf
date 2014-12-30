@@ -1,10 +1,12 @@
+// @RyanTorant
 #include "Common.usf"
+#include "DeferredShadingCommon.usf"
 
 Texture2D<float4> tGI;
 SamplerState samLinear;
 float size;
 
-static const float g_epsilon = 0.1;
+static const float g_epsilon = 0.0001;
 
 float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 {
@@ -29,16 +31,20 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 
 	float4 gidata = 0;
 	float weight_sum = 0;
+	float3 normal = GetScreenSpaceData(InUV).GBuffer.WorldNormal;
 
 	[unroll]
 	for (int i = 0; i < 9; i++) 
 	{
 		float z = CalcSceneDepth(coords[i])*0.0001f;
+		float3 n = GetScreenSpaceData(coords[i]).GBuffer.WorldNormal;
 		//float3 wp = ScreenVector * z + View.ViewOrigin.xyz;
 		//float3 linearZ = distanceSquared(SceneDepth,View.ViewOrigin.xyz);
 
+
 		float w = 1.0f / (g_epsilon + abs(SceneDepth - z));
-		//w = 1;
+		w *= 1.0f / (g_epsilon + 1 - abs(dot(n,normal)));
+
 		gidata += tGI.SampleLevel(samLinear, coords[i],0)*w;
 		weight_sum += w;
 	}

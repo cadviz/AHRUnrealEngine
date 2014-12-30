@@ -280,9 +280,6 @@
     <None Include="..\..\Shaders\AHRVoxelizationCommon.usf">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="..\..\Shaders\AHRVoxelizationShader.usf">
-      <Filter>Shaders</Filter>
-    </None>
     <None Include="..\..\Shaders\AHRVoxelizationVS.usf">
       <Filter>Shaders</Filter>
     </None>

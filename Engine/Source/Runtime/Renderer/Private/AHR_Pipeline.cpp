@@ -54,14 +54,12 @@ void  FApproximateHybridRaytracer::InitializeViewTargets(uint32 _resX,uint32 _re
 
 		// PF_FloatRGBA is 16 bits float per component. Nice documentation Epic ...
 		RaytracingTarget = RHICreateTexture2D(ResX/2,ResY/2,PF_FloatRGBA,1,1,TexCreate_RenderTargetable | TexCreate_ShaderResource,CreateInfo);
-		UpsampledTarget0 = RHICreateTexture2D(ResX,ResY,PF_FloatRGBA,1,1,TexCreate_RenderTargetable | TexCreate_ShaderResource,CreateInfo);
+		UpsampledTarget0 = RHICreateTexture2D(ResX/2,ResY/2,PF_FloatRGBA,1,1,TexCreate_RenderTargetable | TexCreate_ShaderResource,CreateInfo);
 		UpsampledTarget1 = RHICreateTexture2D(ResX,ResY,PF_FloatRGBA,1,1,TexCreate_RenderTargetable | TexCreate_ShaderResource,CreateInfo);
-		UpsampledTarget2 = RHICreateTexture2D(ResX,ResY,PF_FloatRGBA,1,1,TexCreate_RenderTargetable | TexCreate_ShaderResource,CreateInfo);
 
 		RaytracingTargetSRV = RHICreateShaderResourceView(RaytracingTarget,0);
 		UpsampledTargetSRV0 = RHICreateShaderResourceView(UpsampledTarget0,0);
 		UpsampledTargetSRV1 = RHICreateShaderResourceView(UpsampledTarget1,0);
-		UpsampledTargetSRV2 = RHICreateShaderResourceView(UpsampledTarget2,0);
 	}
 }
 
@@ -479,7 +477,7 @@ void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,
 {
 	SCOPED_DRAW_EVENT(RHICmdList,AHRUpsample);
 
-	RHICmdList.SetViewport(View.ViewRect.Min.X, View.ViewRect.Min.Y, 0.0f, View.ViewRect.Max.X, View.ViewRect.Max.Y, 1.0f);
+	
 	RHICmdList.SetRasterizerState(TStaticRasterizerState<FM_Solid, CM_None>::GetRHI());
 	RHICmdList.SetDepthStencilState(TStaticDepthStencilState<false, CF_Always>::GetRHI());
 
@@ -490,6 +488,7 @@ void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,
 	///////// Pass 0
 
 	// Set the viewport, raster state , depth stencil and render target
+	RHICmdList.SetViewport(View.ViewRect.Min.X, View.ViewRect.Min.Y, 0.0f, View.ViewRect.Max.X/2, View.ViewRect.Max.Y/2, 1.0f);
 	SetRenderTarget(RHICmdList, UpsampledTarget0, FTextureRHIRef());
 	
 	// Clear the target before drawing
@@ -498,57 +497,33 @@ void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,
 	// Bound shader parameters
 	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PixelShader->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PixelShader);
 	VertexShader->SetParameters(RHICmdList,View);
-	PixelShader->SetParameters(RHICmdList, View, RaytracingTargetSRV,1.7);
+	PixelShader->SetParameters(RHICmdList, View, RaytracingTargetSRV,2.8);
 
 	// Draw!
 	DrawRectangle( 
 				RHICmdList,
 				0, 0,
-				View.ViewRect.Width(), View.ViewRect.Height(),
+				View.ViewRect.Width()/2, View.ViewRect.Height()/2,
 				View.ViewRect.Min.X, View.ViewRect.Min.Y, 
 				View.ViewRect.Width(), View.ViewRect.Height(),
-				View.ViewRect.Size(),
+				View.ViewRect.Size()/2,
 				GSceneRenderTargets.GetBufferSizeXY(),
 				*VertexShader,
 				EDRF_UseTriangleOptimization);
 
 	///////// Pass 1
-
+	
 	// Set the viewport, raster state , depth stencil and render target
+	RHICmdList.SetViewport(View.ViewRect.Min.X, View.ViewRect.Min.Y, 0.0f, View.ViewRect.Max.X, View.ViewRect.Max.Y, 1.0f);
 	SetRenderTarget(RHICmdList, UpsampledTarget1, FTextureRHIRef());
-	
+
 	// Clear the target before drawing
 	RHICmdList.Clear(true, FLinearColor::Black, false, 1.0f, false, 0, FIntRect());
 
 	// Bound shader parameters
 	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PixelShader->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PixelShader);
 	VertexShader->SetParameters(RHICmdList,View);
-	PixelShader->SetParameters(RHICmdList, View, UpsampledTargetSRV0,2.8);
-
-	// Draw!
-	DrawRectangle( 
-				RHICmdList,
-				0, 0,
-				View.ViewRect.Width(), View.ViewRect.Height(),
-				View.ViewRect.Min.X, View.ViewRect.Min.Y, 
-				View.ViewRect.Width(), View.ViewRect.Height(),
-				View.ViewRect.Size(),
-				GSceneRenderTargets.GetBufferSizeXY(),
-				*VertexShader,
-				EDRF_UseTriangleOptimization);
-
-	///////// Pass 2
-
-	// Set the viewport, raster state , depth stencil and render target
-	SetRenderTarget(RHICmdList, UpsampledTarget2, FTextureRHIRef());
-	
-	// Clear the target before drawing
-	RHICmdList.Clear(true, FLinearColor::Black, false, 1.0f, false, 0, FIntRect());
-
-	// Bound shader parameters
-	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PixelShader->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PixelShader);
-	VertexShader->SetParameters(RHICmdList,View);
-	PixelShader->SetParameters(RHICmdList, View, UpsampledTargetSRV1,1.85);
+	PixelShader->SetParameters(RHICmdList, View, UpsampledTargetSRV0,1.8);
 
 	// Draw!
 	DrawRectangle( 
@@ -672,7 +647,7 @@ void FApproximateHybridRaytracer::Composite(FRHICommandListImmediate& RHICmdList
 	// Bound shader parameters
 	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PixelShader->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PixelShader);
 	VertexShader->SetParameters(RHICmdList,View);
-	PixelShader->SetParameters(RHICmdList, View, UpsampledTargetSRV2); // just binds the upsampled texture using SetTextureParameter()
+	PixelShader->SetParameters(RHICmdList, View, UpsampledTargetSRV1); // just binds the upsampled texture using SetTextureParameter()
 
 	// Draw!
 	DrawRectangle( 

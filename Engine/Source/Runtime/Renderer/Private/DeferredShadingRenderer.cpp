@@ -722,7 +722,7 @@ void FDeferredShadingSceneRenderer::Render(FRHICommandListImmediate& RHICmdList)
 	// Initialize the targets to the size of the view
 	if(UseApproximateHybridRaytracingRT(FeatureLevel))
 	{
-		AHREngine.InitializeViewTargets(ViewFamily.FamilySizeX,ViewFamily.FamilySizeY);
+		AHREngine.InitializeViewTargets(Views[0].ViewRect.Max.X,Views[0].ViewRect.Max.Y);
 	}
 
 	const bool bIsWireframe = ViewFamily.EngineShowFlags.Wireframe;

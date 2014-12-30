@@ -651,7 +651,6 @@
     <None Include="..\..\Shaders\AHRTraceScene.usf" />
     <None Include="..\..\Shaders\AHRUpsample.usf" />
     <None Include="..\..\Shaders\AHRVoxelizationCommon.usf" />
-    <None Include="..\..\Shaders\AHRVoxelizationShader.usf" />
     <None Include="..\..\Shaders\AHRVoxelizationVS.usf" />
     <None Include="..\..\Shaders\AtmosphereCommon.usf" />
     <None Include="..\..\Shaders\AtmospherePrecompute.usf" />
