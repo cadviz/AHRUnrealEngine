@@ -670,6 +670,7 @@ public:
 		Result.bShadowRelevance = IsShadowCast(View);
 		// @RyanTorant
 		Result.bNeedsVoxelization = bAffectDynamicIndirectLighting;
+		Result.bNeedsEveryFrameVoxelization = bVoxelizeEveryFrame;
 		MaterialRelevance.SetPrimitiveViewRelevance(Result);
 		return Result;
 	}

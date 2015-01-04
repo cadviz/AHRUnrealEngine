@@ -127,6 +127,7 @@ UFoliageType::UFoliageType(const FObjectInitializer& ObjectInitializer)
 	bCastDynamicShadow = true;
 	bCastStaticShadow = true;
 	bAffectDynamicIndirectLighting = false;
+	bVoxelizeEveryFrame = true; // @RyanTorant
 	bCastShadowAsTwoSided = false;
 	bReceivesDecals = false;
 
@@ -302,6 +303,7 @@ void FFoliageMeshInfo::AddInstance(AInstancedFoliageActor* InIFA, UFoliageType* 
 		BestCluster->ClusterComponent->bCastDynamicShadow             = InSettings->bCastDynamicShadow;
 		BestCluster->ClusterComponent->bCastStaticShadow              = InSettings->bCastStaticShadow;
 		BestCluster->ClusterComponent->bAffectDynamicIndirectLighting = InSettings->bAffectDynamicIndirectLighting;
+		BestCluster->ClusterComponent->bVoxelizeEveryFrame = InSettings->bVoxelizeEveryFrame; // @RyanTorant
 		BestCluster->ClusterComponent->bCastShadowAsTwoSided          = InSettings->bCastShadowAsTwoSided;
 		BestCluster->ClusterComponent->bReceivesDecals                = InSettings->bReceivesDecals;
 		BestCluster->ClusterComponent->bOverrideLightMapRes           = InSettings->bOverrideLightMapRes;

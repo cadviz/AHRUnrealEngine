@@ -274,6 +274,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Lighting, AdvancedDisplay, meta=(EditCondition="CastShadow"))
 	uint32 bAffectDynamicIndirectLighting:1;
 
+	// @RyanTorant
+	/** Controls whether the primitive should be voxelized every frame.  This flag is only used if bAffectDynamicIndirectLighting is true. **/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Lighting, AdvancedDisplay, meta=(EditCondition="bAffectDynamicIndirectLighting"))
+	uint32 bVoxelizeEveryFrame:1;
+
 	/** Controls whether the primitive should cast shadows in the case of non precomputed shadowing.  This flag is only used if CastShadow is true. **/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Lighting, AdvancedDisplay, meta=(EditCondition="CastShadow"))
 	uint32 bCastDynamicShadow:1;

@@ -127,6 +127,7 @@ public:
 	uint32 bHasViewDependentDPG : 1;
 	uint32 bCastDynamicShadow : 1;
 	uint32 bAffectDynamicIndirectLighting : 1;
+	uint32 bNeedsEveryFrameVoxelization : 1;
 	uint32 StaticDepthPriorityGroup : SDPG_NumBits;
 
 	/** Initializes the compact scene info from the primitive's full scene info. */

@@ -19,6 +19,7 @@ APaperCharacter::APaperCharacter(const FObjectInitializer& ObjectInitializer)
 		Sprite->bOwnerNoSee = false;
 		// @RyanTorant
 		Sprite->bAffectDynamicIndirectLighting = false; // wtf? why was this true as default??
+		Sprite->bVoxelizeEveryFrame = true;
 		Sprite->PrimaryComponentTick.TickGroup = TG_PrePhysics;
 		Sprite->AttachParent = GetCapsuleComponent();
 		static FName CollisionProfileName(TEXT("CharacterMesh"));

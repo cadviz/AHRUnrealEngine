@@ -132,6 +132,7 @@ FPrimitiveSceneProxy* UBoxComponent::CreateSceneProxy()
 			Result.bEditorPrimitiveRelevance = UseEditorCompositing(View);
 			// @RyanTorant
 			Result.bNeedsVoxelization = bAffectDynamicIndirectLighting;
+			Result.bNeedsEveryFrameVoxelization = bVoxelizeEveryFrame;
 			return Result;
 		}
 		virtual uint32 GetMemoryFootprint( void ) const override { return( sizeof( *this ) + GetAllocatedSize() ); }

@@ -91,6 +91,7 @@ ACharacter::ACharacter(const FObjectInitializer& ObjectInitializer)
 		// @RyanTorant
 		// AHR disabled by default
 		Mesh->bAffectDynamicIndirectLighting = false;
+		Mesh->bVoxelizeEveryFrame = true;
 		Mesh->PrimaryComponentTick.TickGroup = TG_PrePhysics;
 		Mesh->bChartDistanceFactor = true;
 		Mesh->AttachParent = CapsuleComponent;

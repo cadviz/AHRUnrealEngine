@@ -176,6 +176,7 @@ FPrimitiveSceneProxy* USphereComponent::CreateSceneProxy()
 			Result.bEditorPrimitiveRelevance = UseEditorCompositing(View);
 			// @RyanTorant
 			Result.bNeedsVoxelization = bAffectDynamicIndirectLighting;
+			Result.bNeedsEveryFrameVoxelization = bVoxelizeEveryFrame;
 			return Result;
 		}
 

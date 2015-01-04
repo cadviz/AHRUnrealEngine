@@ -4671,6 +4671,7 @@ FPrimitiveViewRelevance FSkeletalMeshSceneProxy::GetViewRelevance(const FSceneVi
 	MaterialRelevance.SetPrimitiveViewRelevance(Result);
 	// @RyanTorant
 	Result.bNeedsVoxelization = bAffectDynamicIndirectLighting;
+	Result.bNeedsEveryFrameVoxelization = bVoxelizeEveryFrame;
 	return Result;
 }
 

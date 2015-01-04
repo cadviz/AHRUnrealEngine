@@ -1164,6 +1164,7 @@ FPrimitiveViewRelevance FStaticMeshSceneProxy::GetViewRelevance(const FSceneView
 	}
 	// @RyanTorant
 	Result.bNeedsVoxelization = bAffectDynamicIndirectLighting;
+	Result.bNeedsEveryFrameVoxelization = bVoxelizeEveryFrame;
 	return Result;
 }
 

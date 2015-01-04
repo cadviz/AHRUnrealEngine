@@ -46,6 +46,10 @@ struct FPrimitiveViewRelevance
 	/** The primitive needs to be voxelized */
 	uint32 bNeedsVoxelization : 1;
 
+	// @RyanTorant
+	/** The primitive needs to be voxelized every frame */
+	uint32 bNeedsEveryFrameVoxelization : 1;
+
 	/** 
 	 * Whether this primitive view relevance has been initialized this frame.  
 	 * Primitives that have not had ComputeRelevanceForView called on them (because they were culled) will not be initialized,
@@ -77,12 +81,13 @@ struct FPrimitiveViewRelevance
 		bNormalTranslucencyRelevance(false),
 		bSubsurfaceProfileRelevance(false),
 		bInitializedThisFrame(false),
-		bNeedsVoxelization(false)
+		bNeedsVoxelization(false),
+		bNeedsEveryFrameVoxelization(false)
 	{}
 
 	// @RyanTorant
 	/** Initialization constructor that takes as an input if it needs voxelization. */
-	FPrimitiveViewRelevance(bool needsVoxelization):
+	FPrimitiveViewRelevance(bool needsVoxelization,bool needsEveryFrameVoxelization):
 		bStaticRelevance(false),
 		bDynamicRelevance(false),
 		bDrawRelevance(false),
@@ -100,7 +105,8 @@ struct FPrimitiveViewRelevance
 		bNormalTranslucencyRelevance(false),
 		bSubsurfaceProfileRelevance(false),
 		bInitializedThisFrame(false),
-		bNeedsVoxelization(needsVoxelization)
+		bNeedsVoxelization(needsVoxelization),
+		bNeedsEveryFrameVoxelization(needsEveryFrameVoxelization)
 	{}
 
 	/** Bitwise OR operator.  Sets any relevance bits which are present in either FPrimitiveViewRelevance. */
@@ -124,6 +130,7 @@ struct FPrimitiveViewRelevance
 		bInitializedThisFrame |= B.bInitializedThisFrame;
 		bSubsurfaceProfileRelevance |= B.bSubsurfaceProfileRelevance != 0;
 		bNeedsVoxelization |= B.bNeedsVoxelization != 0;
+		bNeedsEveryFrameVoxelization |= B.bNeedsEveryFrameVoxelization != 0;
 		return *this;
 	}
 

@@ -927,6 +927,7 @@ public:
 		}
 		// @RyanTorant
 		Result.bNeedsVoxelization = bAffectDynamicIndirectLighting;
+		Result.bNeedsEveryFrameVoxelization = bVoxelizeEveryFrame;
 		return Result;
 	}
 

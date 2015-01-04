@@ -78,6 +78,7 @@ UPrimitiveComponent::UPrimitiveComponent(const FObjectInitializer& ObjectInitial
 	// @RyanTorant
 	// AHR disabled by default
 	bAffectDynamicIndirectLighting = false;
+	bVoxelizeEveryFrame = true;
 	LpvBiasMultiplier = 1.0f;
 	bCastStaticShadow = true;
 	bCastVolumetricTranslucentShadow = false;

@@ -76,6 +76,7 @@ void FPrimitiveSceneInfoCompact::Init(FPrimitiveSceneInfo* InPrimitiveSceneInfo)
 	bCastDynamicShadow = PrimitiveSceneInfo->Proxy->CastsDynamicShadow();
 
 	bAffectDynamicIndirectLighting = PrimitiveSceneInfo->Proxy->AffectsDynamicIndirectLighting();
+	bNeedsEveryFrameVoxelization = PrimitiveSceneInfo->Proxy->NeedsEveryFrameVoxelization();
 	LpvBiasMultiplier = PrimitiveSceneInfo->Proxy->GetLpvBiasMultiplier();
 	
 	StaticDepthPriorityGroup = bHasViewDependentDPG ? 0 : Proxy->GetStaticDepthPriorityGroup();

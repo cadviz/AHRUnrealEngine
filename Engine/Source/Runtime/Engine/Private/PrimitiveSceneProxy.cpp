@@ -37,6 +37,7 @@ FPrimitiveSceneProxy::FPrimitiveSceneProxy(const UPrimitiveComponent* InComponen
 	// Disable dynamic shadow casting if the primitive only casts indirect shadows, since dynamic shadows are always shadowing direct lighting
 ,	bCastDynamicShadow(InComponent->bCastDynamicShadow && InComponent->CastShadow && !InComponent->GetShadowIndirectOnly())
 ,   bAffectDynamicIndirectLighting(InComponent->bAffectDynamicIndirectLighting)
+,	bVoxelizeEveryFrame(InComponent->bVoxelizeEveryFrame)
 ,	bCastStaticShadow(InComponent->CastShadow && InComponent->bCastStaticShadow)
 ,	bCastVolumetricTranslucentShadow(InComponent->bCastDynamicShadow && InComponent->CastShadow && InComponent->bCastVolumetricTranslucentShadow)
 ,	bCastHiddenShadow(InComponent->bCastHiddenShadow)
@@ -168,7 +169,7 @@ HHitProxy* FPrimitiveSceneProxy::CreateHitProxies(UPrimitiveComponent* Component
 
 FPrimitiveViewRelevance FPrimitiveSceneProxy::GetViewRelevance(const FSceneView* View)
 {
-	return FPrimitiveViewRelevance(bAffectDynamicIndirectLighting);
+	return FPrimitiveViewRelevance(bAffectDynamicIndirectLighting,bVoxelizeEveryFrame);
 }
 
 void FPrimitiveSceneProxy::UpdateActorPosition(FVector InActorPosition)

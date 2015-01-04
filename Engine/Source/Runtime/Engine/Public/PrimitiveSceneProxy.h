@@ -355,6 +355,7 @@ public:
 	inline bool CastsStaticShadow() const { return bCastStaticShadow; }
 	inline bool CastsDynamicShadow() const { return bCastDynamicShadow; }
 	inline bool AffectsDynamicIndirectLighting() const { return bAffectDynamicIndirectLighting; }
+	inline bool NeedsEveryFrameVoxelization() const { return bVoxelizeEveryFrame; }
 	inline float GetLpvBiasMultiplier() const { return LpvBiasMultiplier; }
 	inline EIndirectLightingCacheQuality GetIndirectLightingCacheQuality() const { return IndirectLightingCacheQuality; }
 	inline bool CastsVolumetricTranslucentShadow() const { return bCastVolumetricTranslucentShadow; }
@@ -512,8 +513,13 @@ protected:
 	/** True if the primitive casts dynamic shadows. */
 	uint32 bCastDynamicShadow : 1;
 
-	/** True if the primitive casts Reflective Shadow Map shadows (meaning it affects Light Propagation Volumes). */
+	// @RyanTorant
+	/** True if the primitive casts Reflective Shadow Map shadows (meaning it affects Light Propagation Volumes), or is voxelized if AHR is enabled */
 	uint32 bAffectDynamicIndirectLighting : 1;
+
+	// @RyanTorant
+	/** Controls whether the primitive should be voxelized every frame**/
+	uint32 bVoxelizeEveryFrame:1;
 
 	/** True if the primitive casts static shadows. */
 	uint32 bCastStaticShadow : 1;
