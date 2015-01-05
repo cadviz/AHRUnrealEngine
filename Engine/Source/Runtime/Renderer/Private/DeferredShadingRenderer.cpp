@@ -688,7 +688,7 @@ void FDeferredShadingSceneRenderer::Render(FRHICommandListImmediate& RHICmdList)
 		AHREngine.UpdateSettings();
 
 		// Clear the voxel grids
-		AHREngine.ClearGrids(RHICmdList);
+		//AHREngine.ClearGrids(RHICmdList);
 	}
 
 	// @RyanTorant

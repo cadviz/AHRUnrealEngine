@@ -1,0 +1,8 @@
+RWByteAddressBuffer DynamicVolume;
+ByteAddressBuffer StaticVolume;
+
+[numthreads(256, 1, 1)]
+void main( uint3 DTid : SV_DispatchThreadID )
+{
+	DynamicVolume.InterlockedOr(DTid.x*4,StaticVolume.Load(DTid.x*4));
+}

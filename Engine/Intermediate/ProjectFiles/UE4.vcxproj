@@ -12275,6 +12275,9 @@
     <None Include="..\..\Plugins\Slate\SlateRemote\SlateRemote.uplugin" />
     <None Include="..\..\Plugins\Slate\SlateRemote\Resources\Icon128.png" />
   </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\..\Shaders\AHRDynamicStaticVolumeCombine.usf" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{0A627247-20B9-4EC0-892F-AB0932863207}</ProjectGuid>
     <Keyword>MakeFileProj</Keyword>

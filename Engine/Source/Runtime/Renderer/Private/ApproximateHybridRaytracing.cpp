@@ -37,17 +37,23 @@ void FApproximateHybridRaytracer::UpdateSettings()
 		CVarAHRVoxelSliceSize.AsVariable()->ClearFlags(ECVF_Changed);
 
 		uint32 vSliceSize = CVarAHRVoxelSliceSize.GetValueOnAnyThread();
-		if(SceneVolume)
+		if(DynamicSceneVolume)
 		{
 			// Destroy the volume
-			SceneVolume->Release();
+			DynamicSceneVolume->Release();
 			// ... and recreate it
-			SceneVolume->Initialize(vSliceSize*vSliceSize*vSliceSize/32*4);
-			_DEBUG_MSG("Changed grid res");
+			DynamicSceneVolume->Initialize(vSliceSize*vSliceSize*vSliceSize/32*4);
+		}
+		if(StaticSceneVolume)
+		{
+			// Destroy the volume
+			StaticSceneVolume->Release();
+			// ... and recreate it
+			StaticSceneVolume->Initialize(vSliceSize*vSliceSize*vSliceSize/32*4);
 		}
 	}
 }
-
+/*
 void FApproximateHybridRaytracer::ClearGrids(FRHICommandListImmediate& RHICmdList)
 {
 	SCOPED_DRAW_EVENT(RHICmdList,AHRInternalClearGrids);
@@ -55,7 +61,7 @@ void FApproximateHybridRaytracer::ClearGrids(FRHICommandListImmediate& RHICmdLis
 	uint32 cls[4] = { 0,0,0,0 };
 	RHICmdList.ClearUAV(SceneVolume->UAV, cls);
 }
-
+*/
 bool UseApproximateHybridRaytracingRT(ERHIFeatureLevel::Type InFeatureLevel)
 {
 	if(InFeatureLevel < ERHIFeatureLevel::SM5 || !AHREngine.IsInitialized())
@@ -82,17 +88,26 @@ void FApproximateHybridRaytracer::InitDynamicRHI()
 {
 	uint32 vSliceSize = CVarAHRVoxelSliceSize.GetValueOnAnyThread();
 
-	SceneVolume = new FRWBufferByteAddress;
-	SceneVolume->Initialize(vSliceSize*vSliceSize*vSliceSize/32*4);
+	StaticSceneVolume = new FRWBufferByteAddress;
+	StaticSceneVolume->Initialize(vSliceSize*vSliceSize*vSliceSize/32*4);
+	DynamicSceneVolume = new FRWBufferByteAddress;
+	DynamicSceneVolume->Initialize(vSliceSize*vSliceSize*vSliceSize/32*4);
 }
 
 
 void FApproximateHybridRaytracer::ReleaseDynamicRHI()
 {
 	// Destroy grids
-	if(SceneVolume)
-		SceneVolume->Release();
-	delete SceneVolume;
+	if(StaticSceneVolume)
+	{
+		StaticSceneVolume->Release();
+		delete StaticSceneVolume;
+	}
+	if(DynamicSceneVolume)
+	{
+		DynamicSceneVolume->Release();
+		delete DynamicSceneVolume;
+	}
 }
 
 void FApproximateHybridRaytracer::AppendLightRSM(LightRSMData& light)
@@ -104,6 +119,6 @@ void FApproximateHybridRaytracer::AppendLightRSM(LightRSMData& light)
 	}
 	else
 	{
-		_DEBUG_MSG("Tried to add more lights to the ahr engine that the maximum supported , will be ignored");
+		//_DEBUG_MSG("Tried to add more lights to the ahr engine that the maximum supported , will be ignored");
 	}
 }

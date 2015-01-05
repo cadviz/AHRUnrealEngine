@@ -31,7 +31,8 @@ public:
 	// Constructor
 	FApproximateHybridRaytracer() : FRenderResource(ERHIFeatureLevel::SM5)
 	{
-		SceneVolume = nullptr;
+		currentVolume = nullptr;
+		StaticSceneVolume = DynamicSceneVolume = nullptr;
 		ResX = ResY = -1;
 		currentLightIDX = 0;
 	}
@@ -45,8 +46,11 @@ public:
 
 	// Data functions
 	void UpdateSettings(); // Resizes the grid if needed
-	void ClearGrids(FRHICommandListImmediate& RHICmdList);
-	FUnorderedAccessViewRHIRef GetSceneVolumeUAV(){ return SceneVolume->UAV; }
+	//void ClearGrids(FRHICommandListImmediate& RHICmdList);
+	void SetStaticVolumeAsActive(){ currentVolume = &StaticSceneVolume; }
+	void SetDynamicVolumeAsActive(){ currentVolume = &DynamicSceneVolume; }
+	FUnorderedAccessViewRHIRef GetSceneVolumeUAV(){ return (*currentVolume)->UAV; }
+
 	void AppendLightRSM(LightRSMData& light);
 	LightRSMData* GetLightsList(){ return lights; }
 
@@ -54,7 +58,9 @@ public:
 	void InitDynamicRHI() override final;
 	void ReleaseDynamicRHI() override final;
 private:
-	FRWBufferByteAddress* SceneVolume;
+	FRWBufferByteAddress** currentVolume; // ptr-to-ptr to remember people that this is JUST AN UTILITY! IT IS NOT THE ACTUAL VOLUME!
+	FRWBufferByteAddress* StaticSceneVolume;
+	FRWBufferByteAddress* DynamicSceneVolume;
 
 	FTexture2DRHIRef RaytracingTarget;
 	FTexture2DRHIRef UpsampledTarget0;

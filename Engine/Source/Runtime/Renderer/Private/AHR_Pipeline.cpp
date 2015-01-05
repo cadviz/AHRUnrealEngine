@@ -5,6 +5,8 @@
 #include "SceneUtils.h"
 #include "SceneFilterRendering.h"
 #include "AHR_Voxelization.h"
+//#include <mutex>
+#include <vector>
 
 // Using a full screen quad at every stage instead of a cs as the targets are already setted for a quad. Also, not using groupshared memory.
 class AHRPassVS : public FGlobalShader
@@ -63,20 +65,157 @@ void  FApproximateHybridRaytracer::InitializeViewTargets(uint32 _resX,uint32 _re
 	}
 }
 
+class AHRDynamicStaticVolumeCombine : public FGlobalShader
+{
+	DECLARE_SHADER_TYPE(AHRDynamicStaticVolumeCombine,Global);
+
+public:
+
+	static bool ShouldCache(EShaderPlatform Platform)
+	{
+		return RHISupportsComputeShaders(Platform);
+	}
+
+	static void ModifyCompilationEnvironment( EShaderPlatform Platform, FShaderCompilerEnvironment& OutEnvironment )
+	{
+		FGlobalShader::ModifyCompilationEnvironment( Platform, OutEnvironment );
+	}
+
+	/** Default constructor. */
+	AHRDynamicStaticVolumeCombine()
+	{
+	}
+
+	/** Initialization constructor. */
+	explicit AHRDynamicStaticVolumeCombine( const ShaderMetaType::CompiledShaderInitializerType& Initializer )
+		: FGlobalShader(Initializer)
+	{
+		StaticVolume.Bind( Initializer.ParameterMap, TEXT("StaticVolume") );
+		DynamicVolume.Bind( Initializer.ParameterMap, TEXT("DynamicVolume") );
+	}
+
+	/** Serialization. */
+	virtual bool Serialize( FArchive& Ar ) override
+	{
+		bool bShaderHasOutdatedParameters = FGlobalShader::Serialize( Ar );
+		Ar << StaticVolume;
+		Ar << DynamicVolume;
+		return bShaderHasOutdatedParameters;
+	}
+
+	/**
+	 * Set parameters for this shader.
+	 */
+	
+	void SetParameters(FRHICommandList& RHICmdList, FUnorderedAccessViewRHIParamRef DynamicVolumeUAV,FShaderResourceViewRHIParamRef StaticVolumeSRV)
+	{
+		FComputeShaderRHIParamRef ComputeShaderRHI = GetComputeShader();
+		if ( DynamicVolume.IsBound() )
+		{
+			RHICmdList.SetUAVParameter(ComputeShaderRHI, DynamicVolume.GetBaseIndex(), DynamicVolumeUAV);
+		}
+		if ( StaticVolume.IsBound() )
+		{
+			RHICmdList.SetShaderResourceViewParameter(ComputeShaderRHI,StaticVolume.GetBaseIndex(), StaticVolumeSRV);
+		}
+	}
+
+	/**
+	 * Unbinds any buffers that have been bound.
+	 */
+	void UnbindBuffers(FRHICommandList& RHICmdList)
+	{
+		FComputeShaderRHIParamRef ComputeShaderRHI = GetComputeShader();
+		if ( DynamicVolume.IsBound() )
+		{
+			RHICmdList.SetUAVParameter(ComputeShaderRHI, DynamicVolume.GetBaseIndex(), FUnorderedAccessViewRHIParamRef());
+		}
+		if ( StaticVolume.IsBound() )
+		{
+			RHICmdList.SetShaderResourceViewParameter(ComputeShaderRHI,StaticVolume.GetBaseIndex(), FShaderResourceViewRHIParamRef());
+		}
+	}
+
+private:
+	FShaderResourceParameter StaticVolume;
+	FShaderResourceParameter DynamicVolume;
+};
+IMPLEMENT_SHADER_TYPE(,AHRDynamicStaticVolumeCombine,TEXT("AHRDynamicStaticVolumeCombine"),TEXT("main"),SF_Compute);
+
+//std::mutex cs;
+//pthread_mutex_t Mutex;
+FCriticalSection cs;
+uint32 prevGridRes = -1;
+std::vector<FName> prevStaticObjects;
+
 void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmdList,FViewInfo& View)
 {
 	SCOPED_DRAW_EVENT(RHICmdList,AHRVoxelizeScene);
 
-	// Voxelize the objects to the binary grid
-	if( View.PrimitivesToVoxelize.Num( ) > 0 )
+	if(View.PrimitivesToVoxelize.Num() == 0)
+		return;
+
+	uint32 gridRes = CVarAHRVoxelSliceSize.GetValueOnAnyThread();
+	TArray<const FPrimitiveSceneInfo*,SceneRenderingAllocator> staticObjects;
+	TArray<const FPrimitiveSceneInfo*,SceneRenderingAllocator> dynamicsObjects;
+	bool voxelizeStatic = false;
+
+	//cs.lock();
+	//pthread_mutex_lock(&Mutex);
 	{
+		// Make this thread-safe
+		FScopeLock ScopeLock(&cs);
+
+		// Could this be optimized? It feels wrong...
+		bool staticListChanged = false;
+		for(auto obj : View.PrimitivesToVoxelize)
+		{
+			if(obj->Proxy->NeedsEveryFrameVoxelization())
+			{
+				dynamicsObjects.Add(obj);
+			}
+			else
+			{
+				// Check if the object exists on the prev statics. O(x^2). Need to make this faster
+				bool found = false;
+				for(auto sObjName : prevStaticObjects)
+					found |= sObjName == obj->Proxy->GetOwnerName();
+
+				staticListChanged |= !found;
+				staticObjects.Add(obj);
+			}
+		}
+		// Voxelize static only once, to the static grid. Revoxelize static if something changed (add, delete, grid res changed)
+		voxelizeStatic = prevGridRes != gridRes ||
+							  prevStaticObjects.size() != staticObjects.Num() ||
+							  staticListChanged;
+		if(voxelizeStatic)
+		{
+			// we are going to voxelize, so store state
+			prevStaticObjects.clear();
+			for(auto obj : staticObjects)
+				prevStaticObjects.push_back(obj->Proxy->GetOwnerName());
+
+			prevGridRes = gridRes;
+		}
+	}
+	//pthread_mutex_unlock(&Mutex);
+	//cs.unlock();
+
+	uint32 cls[4] = { 0,0,0,0 };
+
+	// Voxelize only static
+	if( staticObjects.Num( ) > 0  && voxelizeStatic)
+	{
+		// Clear
+		RHICmdList.ClearUAV(StaticSceneVolume->UAV, cls);
+		SetStaticVolumeAsActive();
+
 		TAHRVoxelizerElementPDI<FAHRVoxelizerDrawingPolicyFactory> Drawer(
 			&View, FAHRVoxelizerDrawingPolicyFactory::ContextType(RHICmdList) );
 
-		for( int32 PrimitiveIndex = 0, Num = View.PrimitivesToVoxelize.Num( ); PrimitiveIndex < Num; PrimitiveIndex++ )
+		for( auto PrimitiveSceneInfo : staticObjects )
 		{
-			const FPrimitiveSceneInfo* PrimitiveSceneInfo = View.PrimitivesToVoxelize[ PrimitiveIndex ];
-			
 			FScopeCycleCounter Context( PrimitiveSceneInfo->Proxy->GetStatId( ) );
 			Drawer.SetPrimitive( PrimitiveSceneInfo->Proxy );
 			
@@ -84,6 +223,31 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 			PrimitiveSceneInfo->Proxy->DrawDynamicElements(&Drawer,&View,EDrawDynamicFlags::Voxelize);
 		}
 	}
+
+	
+	// Voxelize dynamic to the dynamic grid
+	RHICmdList.ClearUAV(DynamicSceneVolume->UAV, cls);
+	SetDynamicVolumeAsActive();
+
+	TAHRVoxelizerElementPDI<FAHRVoxelizerDrawingPolicyFactory> Drawer(
+			&View, FAHRVoxelizerDrawingPolicyFactory::ContextType(RHICmdList) );
+
+	for( auto PrimitiveSceneInfo : dynamicsObjects )
+	{
+		FScopeCycleCounter Context( PrimitiveSceneInfo->Proxy->GetStatId( ) );
+		Drawer.SetPrimitive( PrimitiveSceneInfo->Proxy );
+			
+		// Calls SceneProxy DrawDynamicElements function
+		PrimitiveSceneInfo->Proxy->DrawDynamicElements(&Drawer,&View,EDrawDynamicFlags::Voxelize);
+	}
+
+	// Dispatch a compute shader that applies a per voxel pack or between the static grid and the dynamic grid.
+	// The dynamic grid is the one that gets binded as an SRV
+	TShaderMapRef<AHRDynamicStaticVolumeCombine> combineCS(GetGlobalShaderMap(View.GetFeatureLevel()));
+	RHICmdList.SetComputeShader(combineCS->GetComputeShader());
+	combineCS->SetParameters(RHICmdList, DynamicSceneVolume->UAV,StaticSceneVolume->SRV);
+	DispatchComputeShader(RHICmdList, *combineCS, gridRes*gridRes*gridRes/32/256, 1 ,1 );
+	combineCS->UnbindBuffers(RHICmdList);
 }
 
 ///
@@ -385,7 +549,8 @@ void FApproximateHybridRaytracer::TraceScene(FRHICommandListImmediate& RHICmdLis
 	// Bound shader parameters
 	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PixelShader->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PixelShader);
 	VertexShader->SetParameters(RHICmdList,View);
-	PixelShader->SetParameters(RHICmdList, View, SceneVolume->SRV);
+	// The dynamic grid should have both the static and dynamic data by now
+	PixelShader->SetParameters(RHICmdList, View, DynamicSceneVolume->SRV);
 
 	// Draw a quad mapping scene color to the view's render target
 	DrawRectangle( 
