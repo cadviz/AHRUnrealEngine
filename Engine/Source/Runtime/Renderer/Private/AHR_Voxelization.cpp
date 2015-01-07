@@ -7,9 +7,9 @@
 #include "RHI.h"
 #include "AHR_Voxelization_Shaders.h"
 
-IMPLEMENT_SHADER_TYPE(,FAHRVoxelizationVertexShader,TEXT("AHRVoxelizationVS"),TEXT("Main"),SF_Vertex);
-IMPLEMENT_SHADER_TYPE(,FAHRVoxelizationGeometryShader,TEXT("AHRVoxelizationGS"),TEXT("Main"),SF_Geometry);
-IMPLEMENT_SHADER_TYPE(,FAHRVoxelizationPixelShader,TEXT("AHRVoxelizationPS"),TEXT("Main"),SF_Pixel);
+IMPLEMENT_MATERIAL_SHADER_TYPE(,FAHRVoxelizationVertexShader,TEXT("AHRVoxelizationVS"),TEXT("Main"),SF_Vertex);
+IMPLEMENT_MATERIAL_SHADER_TYPE(,FAHRVoxelizationGeometryShader,TEXT("AHRVoxelizationGS"),TEXT("Main"),SF_Geometry);
+IMPLEMENT_MATERIAL_SHADER_TYPE(,FAHRVoxelizationPixelShader,TEXT("AHRVoxelizationPS"),TEXT("Main"),SF_Pixel);
 
 IMPLEMENT_UNIFORM_BUFFER_STRUCT(AHRVoxelizationCB,TEXT("AHRVoxelizationCB"));
 
