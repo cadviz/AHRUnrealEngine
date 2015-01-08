@@ -327,11 +327,11 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 	traced = bvoxD & (1 << offsetD);*/
 
 	
-//#define _SHOW_VOXELS
+#define _SHOW_VOXELS
 #ifdef _SHOW_VOXELS
 	traced = 0;
 	float3 dir = ScreenVector;
-	float3 step = dir*(2150.0f/512.0f)*0.15f;
+	float3 step = dir*AHRTraceCB.invVoxel/AHRTraceCB.InvSceneBounds*0.15f;
 	float3 spos = View.ViewOrigin.xyz;
 	uint prevbidx2 = -1;
 	uint bvox2 = 0;
@@ -343,8 +343,8 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 			local.y > 1 || local.y < -1 ||
 			local.z > 1 || local.z < -1) break;
 
-		uint3 vpos = floor((local*0.5 + 0.5)*512);
-		uint vidx = vpos.y + vpos.x*512 + vpos.z*512*512;
+		uint3 vpos = floor((local*0.5 + 0.5)*AHRTraceCB.SliceSize);
+		uint vidx = vpos.y + vpos.x*AHRTraceCB.SliceSize + vpos.z*AHRTraceCB.SliceSize*AHRTraceCB.SliceSize;
 		uint bidx = floor(float(vidx) * ONE_OVER_32);
 		uint offset = vidx - 32 * bidx;
 		
@@ -356,7 +356,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 
 		if(bvox2 & (1 << offset))
 		{
-			float3 vnormal = normalize(floor((to_vlocal(spos)*0.5 + 0.5)*512 + 0.5)  - (to_vlocal(spos)*0.5 + 0.5)*512);
+			float3 vnormal = normalize(floor((to_vlocal(spos)*0.5 + 0.5)*AHRTraceCB.SliceSize + 0.5)  - (to_vlocal(spos)*0.5 + 0.5)*AHRTraceCB.SliceSize);
 			traced = vnormal.xyzz*0.5+0.5;
 
 			break;
