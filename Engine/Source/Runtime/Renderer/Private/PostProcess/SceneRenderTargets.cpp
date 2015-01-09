@@ -124,6 +124,12 @@ FIntPoint FSceneRenderTargets::ComputeDesiredSize(const FSceneViewFamily& ViewFa
 	enum ESizingMethods { RequestedSize, ScreenRes, Grow, VisibleSizingMethodsCount, Clamped };
 	ESizingMethods SceneTargetsSizingMethod = Grow;
 
+	// @RyanTorant
+	// Only resize to fit supported on AHR. Other modes mess up the targets
+	// TODO: Fix this!
+	if(UseApproximateHybridRaytracingRT(ViewFamily.GetFeatureLevel()))
+		return FIntPoint(ViewFamily.FamilySizeX, ViewFamily.FamilySizeY);
+
 	bool bIsSceneCapture = false;
 	bool bIsReflectionCapture = false;
 
@@ -182,7 +188,7 @@ FIntPoint FSceneRenderTargets::ComputeDesiredSize(const FSceneViewFamily& ViewFa
 		// On XBoxOn it can cause different ESRam allocation (Rare, only if Reflection Capture wasn't cooked)
 		SceneTargetsSizingMethod = Grow;
 	}
-
+	
 	switch (SceneTargetsSizingMethod)
 	{
 		case RequestedSize:
@@ -368,6 +374,33 @@ inline uint16 GetNumSceneColorMSAASamples(ERHIFeatureLevel::Type InFeatureLevel)
 		NumSamples = 1;
 	}
 	return NumSamples;
+}
+
+void FSceneRenderTargets::AllocAHRTargets()
+{
+	if(AHRRaytracingTarget) return; // Already initialized
+
+	// Create the targets
+	FPooledRenderTargetDesc DescTracing(FPooledRenderTargetDesc::Create2DDesc(BufferSize/2, PF_FloatRGBA, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
+	GRenderTargetPool.FindFreeElement(DescTracing, AHRRaytracingTarget, TEXT("RaytracingTarget"));
+
+	FPooledRenderTargetDesc DescUp0(FPooledRenderTargetDesc::Create2DDesc(BufferSize/2, PF_FloatRGBA, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
+	GRenderTargetPool.FindFreeElement(DescUp0, AHRUpsampledTarget0, TEXT("AHRUpsampledTarget0"));
+
+	FPooledRenderTargetDesc DescUp1(FPooledRenderTargetDesc::Create2DDesc(BufferSize, PF_FloatRGBA, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
+	GRenderTargetPool.FindFreeElement(DescUp1, AHRUpsampledTarget1, TEXT("AHRUpsampledTarget1"));
+
+	// Bind them to the AHR engine
+	AHREngine.RaytracingTarget = AHRRaytracingTarget->GetRenderTargetItem().TargetableTexture->GetTexture2D();
+	AHREngine.RaytracingTargetSRV = RHICreateShaderResourceView(AHRRaytracingTarget->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D(),0);
+	AHREngine.UpsampledTarget0 = AHRUpsampledTarget0->GetRenderTargetItem().TargetableTexture->GetTexture2D();
+	AHREngine.UpsampledTargetSRV0 = RHICreateShaderResourceView(AHRUpsampledTarget0->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D(),0);
+	AHREngine.UpsampledTarget1 = AHRUpsampledTarget1->GetRenderTargetItem().TargetableTexture->GetTexture2D();
+	AHREngine.UpsampledTargetSRV1 = RHICreateShaderResourceView(AHRUpsampledTarget1->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D(),0);
+
+	// Set the screen resolution in the AHR engine
+	AHREngine.ResX = BufferSize.X;
+	AHREngine.ResY = BufferSize.Y;
 }
 
 void FSceneRenderTargets::AllocSceneColor()
@@ -1384,6 +1417,9 @@ void FSceneRenderTargets::AllocateDeferredShadingPathRenderTargets()
 				GRenderTargetPool.FindFreeElement(Desc, ReflectiveShadowMapDepth, TEXT("RSMDepth"));
 			}
 		}
+
+		if(UseApproximateHybridRaytracingRT(CurrentFeatureLevel))
+			AllocAHRTargets();
 	}
 }
 
@@ -1503,6 +1539,10 @@ void FSceneRenderTargets::ReleaseAllTargets()
 
 	EditorPrimitivesColor.SafeRelease();
 	EditorPrimitivesDepth.SafeRelease();
+
+	AHRRaytracingTarget.SafeRelease();
+	AHRUpsampledTarget0.SafeRelease();
+	AHRUpsampledTarget1.SafeRelease();
 }
 
 void FSceneRenderTargets::ReleaseDynamicRHI()

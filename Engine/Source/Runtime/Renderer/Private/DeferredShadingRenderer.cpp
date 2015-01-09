@@ -721,10 +721,17 @@ void FDeferredShadingSceneRenderer::Render(FRHICommandListImmediate& RHICmdList)
 	// @RyanTorant
 	// Initialize the targets to the size of the view
 	if(UseApproximateHybridRaytracingRT(FeatureLevel))
-	{
-		AHREngine.InitializeViewTargets(Views[0].ViewRect.Max.X,Views[0].ViewRect.Max.Y);
-	}
+	{	/*
+		// Find the correct size
+		FIntPoint DesiredBufferSize = GSceneRenderTargets.ComputeDesiredSize(ViewFamily);
+		GSceneRenderTargets.QuantizeBufferSize(DesiredBufferSize.X, DesiredBufferSize.Y);
 
+		AHREngine.InitializeViewTargets(DesiredBufferSize.X,DesiredBufferSize.Y);*/
+
+		// Pass-through if already initialized
+		//GSceneRenderTargets.AllocAHRTargets();
+	}
+	
 	const bool bIsWireframe = ViewFamily.EngineShowFlags.Wireframe;
 	static const auto ClearMethodCVar = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("r.ClearSceneMethod"));
 	bool bRequiresRHIClear = true;

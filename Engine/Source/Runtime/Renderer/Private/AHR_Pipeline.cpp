@@ -45,24 +45,26 @@ void  FApproximateHybridRaytracer::InitializeViewTargets(uint32 _resX,uint32 _re
 {	
 	// New frame, new starting idx
 	currentLightIDX = 0;
-
+	/*
 	if(_resX != ResX || _resY != ResY && _resX >= 128 && _resY >= 128) // If you are rendering to a target less than 128x128, you are doing it wrong. This is to bypass auxiliary views
 	{
+		// Destroy the prev targets
+
 		// Store size
 		ResX = _resX; ResY = _resY;
 
 		// The view size changed, so we have to rebuild the targets
 		FRHIResourceCreateInfo CreateInfo;
-
+		
 		// PF_FloatRGBA is 16 bits float per component. Nice documentation Epic ...
 		RaytracingTarget = RHICreateTexture2D(ResX/2,ResY/2,PF_FloatRGBA,1,1,TexCreate_RenderTargetable | TexCreate_ShaderResource,CreateInfo);
 		UpsampledTarget0 = RHICreateTexture2D(ResX/2,ResY/2,PF_FloatRGBA,1,1,TexCreate_RenderTargetable | TexCreate_ShaderResource,CreateInfo);
 		UpsampledTarget1 = RHICreateTexture2D(ResX,ResY,PF_FloatRGBA,1,1,TexCreate_RenderTargetable | TexCreate_ShaderResource,CreateInfo);
-
+		
 		RaytracingTargetSRV = RHICreateShaderResourceView(RaytracingTarget,0);
 		UpsampledTargetSRV0 = RHICreateShaderResourceView(UpsampledTarget0,0);
 		UpsampledTargetSRV1 = RHICreateShaderResourceView(UpsampledTarget1,0);
-	}
+	}*/
 }
 
 class AHRDynamicStaticVolumeCombine : public FGlobalShader
@@ -536,6 +538,7 @@ void FApproximateHybridRaytracer::TraceScene(FRHICommandListImmediate& RHICmdLis
 	FIntRect SrcRect = View.ViewRect;
 	FIntRect DestRect = SrcRect/2;
 	RHICmdList.SetViewport(SrcRect.Min.X, SrcRect.Min.Y, 0.0f,DestRect.Max.X, DestRect.Max.Y, 1.0f);
+	//RHICmdList.SetViewport(0, 0, 0.0f,ResX/2, ResY/2, 1.0f);
 	RHICmdList.SetRasterizerState(TStaticRasterizerState<FM_Solid, CM_None>::GetRHI());
 	RHICmdList.SetDepthStencilState(TStaticDepthStencilState<false, CF_Always>::GetRHI());
 
@@ -563,6 +566,16 @@ void FApproximateHybridRaytracer::TraceScene(FRHICommandListImmediate& RHICmdLis
 		GSceneRenderTargets.GetBufferSizeXY(),
 		*VertexShader,
 		EDRF_UseTriangleOptimization);
+	/*DrawRectangle( 
+		RHICmdList,
+		0, 0,
+		ResX/2, ResY/2,
+		0, 0, 
+		ResX, ResY,
+		FIntPoint(ResX/2,ResY/2),
+		GSceneRenderTargets.GetBufferSizeXY(),
+		*VertexShader,
+		EDRF_UseTriangleOptimization);*/
 }
 
 
@@ -802,6 +815,7 @@ void FApproximateHybridRaytracer::Composite(FRHICommandListImmediate& RHICmdList
 
 	// Set the viewport, raster state and depth stencil
 	RHICmdList.SetViewport(View.ViewRect.Min.X, View.ViewRect.Min.Y, 0.0f, View.ViewRect.Max.X, View.ViewRect.Max.Y, 1.0f);
+	//RHICmdList.SetViewport(0, 0, 0.0f,ResX, ResY, 1.0f);
 	RHICmdList.SetRasterizerState(TStaticRasterizerState<FM_Solid, CM_None>::GetRHI());
 	RHICmdList.SetDepthStencilState(TStaticDepthStencilState<false, CF_Always>::GetRHI());
 
@@ -825,4 +839,14 @@ void FApproximateHybridRaytracer::Composite(FRHICommandListImmediate& RHICmdList
 				GSceneRenderTargets.GetBufferSizeXY(),
 				*VertexShader,
 				EDRF_UseTriangleOptimization);
+	/*	DrawRectangle( 
+		RHICmdList,
+		0, 0,
+		ResX, ResY,
+		0, 0, 
+		ResX, ResY,
+		FIntPoint(ResX,ResY),
+		GSceneRenderTargets.GetBufferSizeXY(),
+		*VertexShader,
+		EDRF_UseTriangleOptimization);*/
 }

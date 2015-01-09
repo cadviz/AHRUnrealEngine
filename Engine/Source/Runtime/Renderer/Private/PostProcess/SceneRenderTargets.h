@@ -420,6 +420,9 @@ public:
 
 	void AllocateReflectionTargets();
 
+	// @RyanTorant
+	void AllocAHRTargets();
+
 	TRefCountPtr<IPooledRenderTarget>& GetReflectionBrightnessTarget();
 
 private: // Get...() methods instead of direct access
@@ -439,6 +442,13 @@ public:
 	TRefCountPtr<IPooledRenderTarget> AuxiliarySceneDepthZ;
 	// Quarter-sized version of the scene depths
 	TRefCountPtr<IPooledRenderTarget> SmallDepthZ;
+
+	// @RyanTorant
+	// Targets for the AHR pass
+	// Format is R16G16B16A16_FLOAT, or PF_FloatRGBA on Epic's dictionary...
+	TRefCountPtr<IPooledRenderTarget> AHRRaytracingTarget; // half resolution 
+	TRefCountPtr<IPooledRenderTarget> AHRUpsampledTarget0; // half resolution 
+	TRefCountPtr<IPooledRenderTarget> AHRUpsampledTarget1; // full resolution
 
 	// GBuffer: Geometry Buffer rendered in base pass for deferred shading, only available between AllocGBufferTargets() and FreeGBufferTargets()
 	TRefCountPtr<IPooledRenderTarget> GBufferA;
@@ -514,13 +524,6 @@ private:
 	int32 GBufferRefCount;
 
 	/**
-	 * Takes the requested buffer size and quantizes it to an appropriate size for the rest of the
-	 * rendering pipeline. Currently ensures that sizes are multiples of 8 so that they can safely
-	 * be halved in size several times.
-	 */
-	void QuantizeBufferSize(int32& InOutBufferSizeX, int32& InOutBufferSizeY) const;
-
-	/**
 	 * Initializes the editor primitive color render target
 	 */
 	void InitEditorPrimitivesColor();
@@ -542,10 +545,17 @@ private:
 	/** Allocates common depth render targets that are used by both forward and deferred rendering paths */
 	void AllocateCommonDepthTargets();
 
+	void AllocSceneColor();
+
 	/** Determine the appropriate render target dimensions. */
 	FIntPoint ComputeDesiredSize(const FSceneViewFamily& ViewFamily) const;
 
-	void AllocSceneColor();
+	/**
+	 * Takes the requested buffer size and quantizes it to an appropriate size for the rest of the
+	 * rendering pipeline. Currently ensures that sizes are multiples of 8 so that they can safely
+	 * be halved in size several times.
+	 */
+	void QuantizeBufferSize(int32& InOutBufferSizeX, int32& InOutBufferSizeY) const;
 
 	// internal method, used by AdjustGBufferRefCount()
 	void ReleaseGBufferTargets();

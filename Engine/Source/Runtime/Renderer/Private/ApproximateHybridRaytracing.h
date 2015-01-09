@@ -57,19 +57,21 @@ public:
 	// FRenderResource code : Mainly, InitDynamicRHI()/ReleaseDynamicRHI(). Also, IsInitialized()
 	void InitDynamicRHI() override final;
 	void ReleaseDynamicRHI() override final;
-private:
-	FRWBufferByteAddress** currentVolume; // ptr-to-ptr to remember people that this is JUST AN UTILITY! IT IS NOT THE ACTUAL VOLUME!
-	FRWBufferByteAddress* StaticSceneVolume;
-	FRWBufferByteAddress* DynamicSceneVolume;
 
+	// Public because, ... I'm Batman!
 	FTexture2DRHIRef RaytracingTarget;
 	FTexture2DRHIRef UpsampledTarget0;
 	FTexture2DRHIRef UpsampledTarget1;
 	FShaderResourceViewRHIRef RaytracingTargetSRV;
 	FShaderResourceViewRHIRef UpsampledTargetSRV0;
 	FShaderResourceViewRHIRef UpsampledTargetSRV1;
-
+	FRWBufferByteAddress* StaticSceneVolume;
+	FRWBufferByteAddress* DynamicSceneVolume;
 	uint32 ResX,ResY;
+private:
+	FRWBufferByteAddress** currentVolume; // ptr-to-ptr to remember people that this is JUST AN UTILITY! IT IS NOT THE ACTUAL VOLUME!
+	
+	
 
 	LightRSMData lights[MAX_AHR_LIGHTS];
 	uint32 currentLightIDX;

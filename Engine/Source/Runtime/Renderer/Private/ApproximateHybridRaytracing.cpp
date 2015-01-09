@@ -42,7 +42,8 @@ void FApproximateHybridRaytracer::UpdateSettings()
 			// Destroy the volume
 			DynamicSceneVolume->Release();
 			// ... and recreate it
-			DynamicSceneVolume->Initialize(vSliceSize*vSliceSize*vSliceSize/32*4);
+			// Try to keep the dynamic scene volume on fast vram, as it is small, and it's the one that will get bounded to the shader at the end
+			DynamicSceneVolume->Initialize(vSliceSize*vSliceSize*vSliceSize/32*4,BUF_FastVRAM);
 		}
 		if(StaticSceneVolume)
 		{
@@ -119,6 +120,6 @@ void FApproximateHybridRaytracer::AppendLightRSM(LightRSMData& light)
 	}
 	else
 	{
-		//_DEBUG_MSG("Tried to add more lights to the ahr engine that the maximum supported , will be ignored");
+		UE_LOG(LogRenderer, Warning, TEXT("Tried to add more lights to the AHR engine that the maximum supported, will be ignored."));
 	}
 }
