@@ -43,7 +43,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 
 
 		float w = 1.0f / (g_epsilon + pow(abs(SceneDepth - z),20));
-		w *= 0.1f / (g_epsilon + 1 - pow(abs(dot(n,normal)),8));
+		w *= lerp(1.0f / (g_epsilon + 1 - pow(abs(dot(n,normal)),8)),1,0.5); // reduce a bit the normal influence
 
 		gidata += tGI.SampleLevel(samLinear, coords[i],0)*w;
 		weight_sum += w;
