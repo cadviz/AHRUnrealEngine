@@ -14,10 +14,13 @@
 #include "ApproximateHybridRaytracing.h"
 
 // @RyanTorant
-// for LightPropagationVolume feature or AHR, could be exposed
-// TODO: make this a changable variable
-const int ReflectiveShadowMapResolution = 512;
-
+// for LightPropagationVolume feature or AHR
+static TAutoConsoleVariable<int32> CVarReflectiveShadowMapResolution(
+	TEXT("r.ReflectiveShadowMapResolution"),
+	512,
+	TEXT("Resolution of the reflective shadow maps for the dynamic GI. Default 512"),
+	ECVF_RenderThreadSafe
+	);
 IMPLEMENT_UNIFORM_BUFFER_STRUCT(FGBufferResourceStruct,TEXT("GBuffers"));
 
 /*-----------------------------------------------------------------------------
@@ -1564,7 +1567,7 @@ FIntPoint FSceneRenderTargets::GetShadowDepthTextureResolution() const
 
 FIntPoint FSceneRenderTargets::GetReflectiveShadowMapTextureResolution() const
 {
-	return FIntPoint( ReflectiveShadowMapResolution, ReflectiveShadowMapResolution );
+	return FIntPoint( CVarReflectiveShadowMapResolution.GetValueOnRenderThread(), CVarReflectiveShadowMapResolution.GetValueOnRenderThread() );
 }
 
 FIntPoint FSceneRenderTargets::GetPreShadowCacheTextureResolution() const

@@ -730,6 +730,8 @@ void FDeferredShadingSceneRenderer::Render(FRHICommandListImmediate& RHICmdList)
 
 		// Pass-through if already initialized
 		//GSceneRenderTargets.AllocAHRTargets();
+
+		AHREngine.StartFrame();
 	}
 	
 	const bool bIsWireframe = ViewFamily.EngineShowFlags.Wireframe;

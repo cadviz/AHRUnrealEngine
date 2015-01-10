@@ -38,7 +38,7 @@ public:
 	}
 
 	// Main pipeline functions
-	void InitializeViewTargets(uint32 ResX,uint32 ResY);
+	void StartFrame();
 	void VoxelizeScene(FRHICommandListImmediate& RHICmdList,FViewInfo& View);
 	void TraceScene(FRHICommandListImmediate& RHICmdList,FViewInfo& View);
 	void Upsample(FRHICommandListImmediate& RHICmdList,FViewInfo& View);

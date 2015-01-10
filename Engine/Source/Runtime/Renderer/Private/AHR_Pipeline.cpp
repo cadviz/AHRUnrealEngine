@@ -41,7 +41,7 @@ private:
 };
 IMPLEMENT_SHADER_TYPE(,AHRPassVS,TEXT("AHRComposite"),TEXT("VS"),SF_Vertex);
 
-void  FApproximateHybridRaytracer::InitializeViewTargets(uint32 _resX,uint32 _resY)
+void  FApproximateHybridRaytracer::StartFrame()
 {	
 	// New frame, new starting idx
 	currentLightIDX = 0;
