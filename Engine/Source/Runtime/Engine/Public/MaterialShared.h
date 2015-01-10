@@ -32,6 +32,8 @@ class UMaterialInterface;
 class UTexture;
 struct FExpressionInput;
 struct FShaderCompilerEnvironment;
+// @RyanTorant
+struct __AHRPaletteEntry;
 
 #define ME_CAPTION_HEIGHT		18
 #define ME_STD_VPADDING			16
@@ -864,7 +866,7 @@ public:
 	virtual int32 GetMaterialDomain() const = 0; // See EMaterialDomain.
 	virtual bool IsTwoSided() const = 0;
 	virtual bool IsTangentSpaceNormal() const { return false; }
-	virtual bool ShouldInjectEmissiveIntoLPV() const { return false; }
+	virtual bool ShouldInjectEmissiveIntoDynamicGI() const { return false; }
 	virtual bool ShouldGenerateSphericalParticleNormals() const { return false; }
 	virtual	bool ShouldDisableDepthTest() const { return false; }
 	virtual	bool ShouldEnableResponsiveAA() const { return false; }
@@ -916,7 +918,9 @@ public:
 	virtual bool HasNormalConnected() const { return false; }
 	virtual bool RequiresSynchronousCompilation() const { return false; };
 	virtual bool IsDefaultMaterial() const { return false; };
-
+	// @RyanTorant
+	virtual FLinearColor GetAHREmissiveColor() const { return FLinearColor(0,0,0); }
+	virtual __AHRPaletteEntry* GetAHRPaletteState() const { return nullptr; }
 	/**
 	 * Should shaders compiled for this material be saved to disk?
 	 */
@@ -1434,7 +1438,7 @@ public:
 	ENGINE_API virtual int32 GetMaterialDomain() const override;
 	ENGINE_API virtual bool IsTwoSided() const;
 	ENGINE_API virtual bool IsTangentSpaceNormal() const;
-	ENGINE_API virtual bool ShouldInjectEmissiveIntoLPV() const;
+	ENGINE_API virtual bool ShouldInjectEmissiveIntoDynamicGI() const;
 	ENGINE_API virtual bool ShouldGenerateSphericalParticleNormals() const;
 	ENGINE_API virtual bool ShouldDisableDepthTest() const;
 	ENGINE_API virtual bool ShouldEnableResponsiveAA() const;
@@ -1484,6 +1488,9 @@ public:
 	ENGINE_API virtual bool IsDefaultMaterial() const;
 	ENGINE_API virtual float GetRefractionDepthBiasValue() const;
 	ENGINE_API virtual bool UseTranslucencyVertexFog() const;
+	ENGINE_API virtual FLinearColor GetAHREmissiveColor() const;
+	ENGINE_API virtual __AHRPaletteEntry* GetAHRPaletteState() const;
+
 	/**
 	 * Should shaders compiled for this material be saved to disk?
 	 */

@@ -437,7 +437,6 @@ public:
 	 */
 	ENGINE_API virtual void ApplyWorldOffset(FVector InOffset);
 
-
 protected:
 
 	/** Allow subclasses to override the primitive name. Used primarily by BSP. */

@@ -7,6 +7,7 @@
 #include "AHR_Voxelization.h"
 //#include <mutex>
 #include <vector>
+using namespace std;
 
 // Using a full screen quad at every stage instead of a cs as the targets are already setted for a quad. Also, not using groupshared memory.
 class AHRPassVS : public FGlobalShader
@@ -148,7 +149,7 @@ IMPLEMENT_SHADER_TYPE(,AHRDynamicStaticVolumeCombine,TEXT("AHRDynamicStaticVolum
 //pthread_mutex_t Mutex;
 FCriticalSection cs;
 uint32 prevGridRes = -1;
-std::vector<FName> prevStaticObjects;
+vector<FName> prevStaticObjects;
 
 void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmdList,FViewInfo& View)
 {
@@ -162,6 +163,23 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 	TArray<const FPrimitiveSceneInfo*,SceneRenderingAllocator> dynamicsObjects;
 	bool voxelizeStatic = false;
 
+
+	FLinearColor palette[256];
+	palette[0] = FLinearColor(0,0,0);
+	uint32 currentMatIDX = 0;
+
+	// Reset the state of the materials
+	for(auto obj : View.PrimitivesToVoxelize)
+	{
+		for(int n = 0;n < obj->StaticMeshes.Num();n++)
+		{
+			auto mat = obj->StaticMeshes[n].MaterialRenderProxy->GetMaterial(View.GetFeatureLevel());
+			auto state = mat->GetAHRPaletteState();
+			state->stored = false;
+		}
+	}
+
+
 	//cs.lock();
 	//pthread_mutex_lock(&Mutex);
 	{
@@ -172,6 +190,28 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 		bool staticListChanged = false;
 		for(auto obj : View.PrimitivesToVoxelize)
 		{
+			for(int n = 0;n < obj->StaticMeshes.Num();n++)
+			{
+				auto mat = obj->StaticMeshes[n].MaterialRenderProxy->GetMaterial(View.GetFeatureLevel());
+				auto state = mat->GetAHRPaletteState();
+
+				// If the material is not stored, increase the index and store
+				if(!state->stored && mat->ShouldInjectEmissiveIntoDynamicGI())
+				{
+					// Output a warning if we are out of bounds
+					if(currentMatIDX >= 256)
+					{
+						UE_LOG(LogRenderer, Warning, TEXT("Tried to add more emissive materials to the AHR engine that the maximum supported, will be ignored."));
+						break;
+					}
+
+					currentMatIDX++;
+					palette[currentMatIDX] = mat->GetAHREmissiveColor();
+					state->stored = true;
+					state->idx = currentMatIDX;
+				}
+			}
+
 			if(obj->Proxy->NeedsEveryFrameVoxelization())
 			{
 				dynamicsObjects.Add(obj);

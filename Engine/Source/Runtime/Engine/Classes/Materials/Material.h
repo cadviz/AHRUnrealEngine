@@ -10,6 +10,8 @@
 #include "Materials/MaterialFunction.h"
 
 #include "Material.generated.h"
+// @RyanTorant
+struct __AHRPaletteEntry { bool stored; uint8 idx; };
 
 #if WITH_EDITOR
 
@@ -478,6 +480,21 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Material, meta=(DisplayName = "Emissive (Dynamic Area Light)"), AdvancedDisplay)
 	uint32 bUseEmissiveForDynamicAreaLighting : 1;
 
+	// @RyanTorant
+	// Color that will be injected into the grid. This should actually be driven by the node editor.
+	// The color will be stored on a palette, so only 255 materials are supported. Index 0 is reserved for black
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Material, meta=(EditCondition="bUseEmissiveForDynamicAreaLighting"), AdvancedDisplay)
+	FLinearColor AHREmissiveColor;
+	
+	// @RyanTorant
+	// Temporal variable used during the voxelization stage
+	__AHRPaletteEntry AHRPaletteData;
+
+	// @RyanTorant
+	// Placeholder for the custom mask 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Material, meta=(EditCondition="Mask index"), AdvancedDisplay)
+	uint8 CustomMaskIndex;
+
 	/** Whether material uses BaseColor, Metallic, Specular */
 	UPROPERTY()
 	uint32 bPhysicallyBasedInputs_DEPRECATED : 1;
@@ -777,7 +794,8 @@ public:
 	ENGINE_API virtual bool GetTexturesInPropertyChain(EMaterialProperty InProperty, TArray<UTexture*>& OutTextures, 
 		TArray<FName>* OutTextureParamNames, class FStaticParameterSet* InStaticParameterSet) override;
 	ENGINE_API virtual void RecacheUniformExpressions() const override;
-
+	FLinearColor GetAHREmissiveColor() const { return AHREmissiveColor; }
+	__AHRPaletteEntry* GetAHRPaletteState()  { return &AHRPaletteData; }
 	ENGINE_API virtual float GetOpacityMaskClipValue_Internal() const;
 	ENGINE_API virtual EBlendMode GetBlendMode_Internal() const;
 	ENGINE_API virtual EMaterialShadingModel GetShadingModel_Internal() const;
