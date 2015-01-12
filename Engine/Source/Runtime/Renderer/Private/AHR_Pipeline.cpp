@@ -6,6 +6,7 @@
 #include "SceneFilterRendering.h"
 #include "AHR_Voxelization.h"
 //#include <mutex>
+//#include <thread>
 #include <vector>
 using namespace std;
 
@@ -95,6 +96,8 @@ public:
 	{
 		StaticVolume.Bind( Initializer.ParameterMap, TEXT("StaticVolume") );
 		DynamicVolume.Bind( Initializer.ParameterMap, TEXT("DynamicVolume") );
+		DynamicEmissiveVolume.Bind( Initializer.ParameterMap, TEXT("DynamicEmissiveVolume") );
+		StaticEmissiveVolume.Bind( Initializer.ParameterMap, TEXT("StaticEmissiveVolume") );
 	}
 
 	/** Serialization. */
@@ -103,6 +106,8 @@ public:
 		bool bShaderHasOutdatedParameters = FGlobalShader::Serialize( Ar );
 		Ar << StaticVolume;
 		Ar << DynamicVolume;
+		Ar << DynamicEmissiveVolume;
+		Ar << StaticEmissiveVolume;
 		return bShaderHasOutdatedParameters;
 	}
 
@@ -110,17 +115,18 @@ public:
 	 * Set parameters for this shader.
 	 */
 	
-	void SetParameters(FRHICommandList& RHICmdList, FUnorderedAccessViewRHIParamRef DynamicVolumeUAV,FShaderResourceViewRHIParamRef StaticVolumeSRV)
+	void SetParameters(FRHICommandList& RHICmdList, FUnorderedAccessViewRHIParamRef DynamicVolumeUAV,FUnorderedAccessViewRHIParamRef emissiveUAV,FShaderResourceViewRHIParamRef StaticVolumeSRV,FShaderResourceViewRHIParamRef staticEmissiveSRV)
 	{
 		FComputeShaderRHIParamRef ComputeShaderRHI = GetComputeShader();
+
 		if ( DynamicVolume.IsBound() )
-		{
 			RHICmdList.SetUAVParameter(ComputeShaderRHI, DynamicVolume.GetBaseIndex(), DynamicVolumeUAV);
-		}
 		if ( StaticVolume.IsBound() )
-		{
 			RHICmdList.SetShaderResourceViewParameter(ComputeShaderRHI,StaticVolume.GetBaseIndex(), StaticVolumeSRV);
-		}
+		if ( DynamicEmissiveVolume.IsBound() )
+			RHICmdList.SetUAVParameter(ComputeShaderRHI,DynamicEmissiveVolume.GetBaseIndex(), emissiveUAV);
+		if ( StaticEmissiveVolume.IsBound() )
+			RHICmdList.SetShaderResourceViewParameter(ComputeShaderRHI,StaticEmissiveVolume.GetBaseIndex(), staticEmissiveSRV);
 	}
 
 	/**
@@ -130,26 +136,125 @@ public:
 	{
 		FComputeShaderRHIParamRef ComputeShaderRHI = GetComputeShader();
 		if ( DynamicVolume.IsBound() )
-		{
 			RHICmdList.SetUAVParameter(ComputeShaderRHI, DynamicVolume.GetBaseIndex(), FUnorderedAccessViewRHIParamRef());
-		}
 		if ( StaticVolume.IsBound() )
-		{
 			RHICmdList.SetShaderResourceViewParameter(ComputeShaderRHI,StaticVolume.GetBaseIndex(), FShaderResourceViewRHIParamRef());
-		}
+		if ( DynamicEmissiveVolume.IsBound() )
+			RHICmdList.SetUAVParameter(ComputeShaderRHI,DynamicEmissiveVolume.GetBaseIndex(), FUnorderedAccessViewRHIParamRef());
+		if ( StaticEmissiveVolume.IsBound() )
+			RHICmdList.SetShaderResourceViewParameter(ComputeShaderRHI,StaticEmissiveVolume.GetBaseIndex(), FShaderResourceViewRHIParamRef());
 	}
 
 private:
 	FShaderResourceParameter StaticVolume;
 	FShaderResourceParameter DynamicVolume;
+	FShaderResourceParameter DynamicEmissiveVolume;
+	FShaderResourceParameter StaticEmissiveVolume;
 };
-IMPLEMENT_SHADER_TYPE(,AHRDynamicStaticVolumeCombine,TEXT("AHRDynamicStaticVolumeCombine"),TEXT("main"),SF_Compute);
+// I know, this is ugly. I'm lazy. Report me!
+class AHRDynamicStaticEmissiveVolumeCombine : public FGlobalShader
+{
+	DECLARE_SHADER_TYPE(AHRDynamicStaticEmissiveVolumeCombine,Global);
+
+public:
+
+	static bool ShouldCache(EShaderPlatform Platform)
+	{
+		return RHISupportsComputeShaders(Platform);
+	}
+
+	static void ModifyCompilationEnvironment( EShaderPlatform Platform, FShaderCompilerEnvironment& OutEnvironment )
+	{
+		FGlobalShader::ModifyCompilationEnvironment( Platform, OutEnvironment );
+	}
+
+	/** Default constructor. */
+	AHRDynamicStaticEmissiveVolumeCombine()
+	{
+	}
+
+	/** Initialization constructor. */
+	explicit AHRDynamicStaticEmissiveVolumeCombine( const ShaderMetaType::CompiledShaderInitializerType& Initializer )
+		: FGlobalShader(Initializer)
+	{
+		StaticVolume.Bind( Initializer.ParameterMap, TEXT("StaticVolume") );
+		DynamicVolume.Bind( Initializer.ParameterMap, TEXT("DynamicVolume") );
+		DynamicEmissiveVolume.Bind( Initializer.ParameterMap, TEXT("DynamicEmissiveVolume") );
+		StaticEmissiveVolume.Bind( Initializer.ParameterMap, TEXT("StaticEmissiveVolume") );
+	}
+
+	/** Serialization. */
+	virtual bool Serialize( FArchive& Ar ) override
+	{
+		bool bShaderHasOutdatedParameters = FGlobalShader::Serialize( Ar );
+		Ar << StaticVolume;
+		Ar << DynamicVolume;
+		Ar << DynamicEmissiveVolume;
+		Ar << StaticEmissiveVolume;
+		return bShaderHasOutdatedParameters;
+	}
+
+	/**
+	 * Set parameters for this shader.
+	 */
+	
+	void SetParameters(FRHICommandList& RHICmdList, FUnorderedAccessViewRHIParamRef DynamicVolumeUAV,FUnorderedAccessViewRHIParamRef emissiveUAV,FShaderResourceViewRHIParamRef StaticVolumeSRV,FShaderResourceViewRHIParamRef staticEmissiveSRV)
+	{
+		FComputeShaderRHIParamRef ComputeShaderRHI = GetComputeShader();
+
+		if ( DynamicVolume.IsBound() )
+			RHICmdList.SetUAVParameter(ComputeShaderRHI, DynamicVolume.GetBaseIndex(), DynamicVolumeUAV);
+		if ( StaticVolume.IsBound() )
+			RHICmdList.SetShaderResourceViewParameter(ComputeShaderRHI,StaticVolume.GetBaseIndex(), StaticVolumeSRV);
+		if ( DynamicEmissiveVolume.IsBound() )
+			RHICmdList.SetUAVParameter(ComputeShaderRHI,DynamicEmissiveVolume.GetBaseIndex(), emissiveUAV);
+		if ( StaticEmissiveVolume.IsBound() )
+			RHICmdList.SetShaderResourceViewParameter(ComputeShaderRHI,StaticEmissiveVolume.GetBaseIndex(), staticEmissiveSRV);
+	}
+
+	/**
+	 * Unbinds any buffers that have been bound.
+	 */
+	void UnbindBuffers(FRHICommandList& RHICmdList)
+	{
+		FComputeShaderRHIParamRef ComputeShaderRHI = GetComputeShader();
+
+		if ( DynamicVolume.IsBound() )
+			RHICmdList.SetUAVParameter(ComputeShaderRHI, DynamicVolume.GetBaseIndex(), FUnorderedAccessViewRHIParamRef());
+		if ( StaticVolume.IsBound() )
+			RHICmdList.SetShaderResourceViewParameter(ComputeShaderRHI,StaticVolume.GetBaseIndex(), FShaderResourceViewRHIParamRef());
+		if ( DynamicEmissiveVolume.IsBound() )
+			RHICmdList.SetUAVParameter(ComputeShaderRHI,DynamicEmissiveVolume.GetBaseIndex(), FUnorderedAccessViewRHIParamRef());
+		if ( StaticEmissiveVolume.IsBound() )
+			RHICmdList.SetShaderResourceViewParameter(ComputeShaderRHI,StaticEmissiveVolume.GetBaseIndex(), FShaderResourceViewRHIParamRef());
+	}
+
+private:
+	FShaderResourceParameter StaticVolume;
+	FShaderResourceParameter DynamicVolume;
+	FShaderResourceParameter DynamicEmissiveVolume;
+	FShaderResourceParameter StaticEmissiveVolume;
+};
+
+IMPLEMENT_SHADER_TYPE(,AHRDynamicStaticVolumeCombine,TEXT("AHRDynamicStaticVolumeCombine"),TEXT("mainBinary"),SF_Compute);
+IMPLEMENT_SHADER_TYPE(,AHRDynamicStaticEmissiveVolumeCombine,TEXT("AHRDynamicStaticVolumeCombine"),TEXT("mainEmissive"),SF_Compute);
 
 //std::mutex cs;
 //pthread_mutex_t Mutex;
 FCriticalSection cs;
 uint32 prevGridRes = -1;
 vector<FName> prevStaticObjects;
+FLinearColor prevPalette[256];
+//once_flag stdOnceFlag;
+template<class Function>
+void Once(Function&& f)
+{
+	static bool run = true;
+	if(run)
+		f();
+	run = false;
+	return;
+}
 
 void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmdList,FViewInfo& View)
 {
@@ -163,9 +268,14 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 	TArray<const FPrimitiveSceneInfo*,SceneRenderingAllocator> dynamicsObjects;
 	bool voxelizeStatic = false;
 
-
 	FLinearColor palette[256];
-	palette[0] = FLinearColor(0,0,0);
+	for(auto& c : palette) c = FLinearColor(0,0,0);
+
+	{
+		FScopeLock ScopeLock(&cs);
+		Once([=](){ for(auto& c : prevPalette) c = FLinearColor(0,0,0); });
+	}
+
 	uint32 currentMatIDX = 0;
 
 	// Reset the state of the materials
@@ -240,7 +350,43 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 
 			prevGridRes = gridRes;
 		}
+
+		// Check if the palette changed. If something have changed place on the palette we need to rebuild, as the indexes have changed as well
+		bool paletteChanged = false;
+		for(int i = 0; i < 256; i++) paletteChanged |= (prevPalette[i] != palette[i]);
+		if(paletteChanged)
+		{
+			// Recreate the texture in that case
+			for(int i = 0; i < 256; i++) prevPalette[i] = palette[i];
+
+			// Destroy the texture
+			EmissivePaletteTexture.SafeRelease();
+			EmissivePaletteSRV.SafeRelease();
+
+			FRHIResourceCreateInfo CreateInfo;
+			EmissivePaletteTexture = RHICreateTexture2D(256,1,PF_B8G8R8A8,1,1,TexCreate_ShaderResource,CreateInfo);
+
+			// Copy palette
+			uint8 palleteTexBuff[256*4];
+			for(int i = 0; i < 256; i++)
+			{
+				auto col = palette[i].Quantize();
+
+				palleteTexBuff[i*4]     =  col.B;
+				palleteTexBuff[i*4 + 1] =  col.G;
+				palleteTexBuff[i*4 + 2] =  col.R;
+				palleteTexBuff[i*4 + 3] =  0; // Alpha is not used for now
+			}
+
+			uint32 Stride = 0;
+			uint8* textureData = (uint8*)RHILockTexture2D( EmissivePaletteTexture, 0, RLM_WriteOnly, Stride, false );
+			FMemory::Memcpy(textureData, palleteTexBuff, 256*4);
+			RHIUnlockTexture2D( EmissivePaletteTexture, 0, false );
+
+			EmissivePaletteSRV = RHICreateShaderResourceView(EmissivePaletteTexture,0,1,PF_B8G8R8A8);
+		}
 	}
+
 	//pthread_mutex_unlock(&Mutex);
 	//cs.unlock();
 
@@ -251,6 +397,7 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 	{
 		// Clear
 		RHICmdList.ClearUAV(StaticSceneVolume->UAV, cls);
+		RHICmdList.ClearUAV(StaticEmissiveVolumeUAV, cls);
 		SetStaticVolumeAsActive();
 
 		TAHRVoxelizerElementPDI<FAHRVoxelizerDrawingPolicyFactory> Drawer(
@@ -269,6 +416,7 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 	
 	// Voxelize dynamic to the dynamic grid
 	RHICmdList.ClearUAV(DynamicSceneVolume->UAV, cls);
+	RHICmdList.ClearUAV(DynamicEmissiveVolumeUAV, cls);
 	SetDynamicVolumeAsActive();
 
 	TAHRVoxelizerElementPDI<FAHRVoxelizerDrawingPolicyFactory> Drawer(
@@ -287,9 +435,15 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 	// The dynamic grid is the one that gets binded as an SRV
 	TShaderMapRef<AHRDynamicStaticVolumeCombine> combineCS(GetGlobalShaderMap(View.GetFeatureLevel()));
 	RHICmdList.SetComputeShader(combineCS->GetComputeShader());
-	combineCS->SetParameters(RHICmdList, DynamicSceneVolume->UAV,StaticSceneVolume->SRV);
+	combineCS->SetParameters(RHICmdList, DynamicSceneVolume->UAV,DynamicEmissiveVolumeUAV,StaticSceneVolume->SRV,StaticEmissiveVolumeSRV);
 	DispatchComputeShader(RHICmdList, *combineCS, gridRes*gridRes*gridRes/32/256, 1 ,1 );
 	combineCS->UnbindBuffers(RHICmdList);
+
+	TShaderMapRef<AHRDynamicStaticEmissiveVolumeCombine> combineCSEmissive(GetGlobalShaderMap(View.GetFeatureLevel()));
+	RHICmdList.SetComputeShader(combineCSEmissive->GetComputeShader());
+	combineCSEmissive->SetParameters(RHICmdList, DynamicSceneVolume->UAV,DynamicEmissiveVolumeUAV,StaticSceneVolume->SRV,StaticEmissiveVolumeSRV);
+	DispatchComputeShader(RHICmdList, *combineCSEmissive, gridRes/8, gridRes/8 , gridRes/4 );
+	combineCSEmissive->UnbindBuffers(RHICmdList);
 }
 
 ///
@@ -375,13 +529,17 @@ public:
 		ShadowZ4.Bind(Initializer.ParameterMap, TEXT("ShadowZ4"));
 
 		cmpSampler.Bind(Initializer.ParameterMap, TEXT("cmpSampler"));
+
+		EmissiveVolume.Bind(Initializer.ParameterMap, TEXT("EmissiveVolume"));
+		EmissivePalette.Bind(Initializer.ParameterMap, TEXT("EmissivePalette"));
 	}
 
 	AHRTraceScenePS()
 	{
 	}
 
-	void SetParameters(FRHICommandList& RHICmdList, const FSceneView& View, const FShaderResourceViewRHIRef sceneVolumeSRV)
+	void SetParameters(	FRHICommandList& RHICmdList, const FSceneView& View, 
+						const FShaderResourceViewRHIRef sceneVolumeSRV, const FShaderResourceViewRHIRef paletteSRV, const FShaderResourceViewRHIRef emissiveVolumeSRV)
 	{
 		FRHIResourceCreateInfo CreateInfo;
 		static auto dummyTexture = RHICreateTexture2D(1,1,PF_ShadowDepth,1,1,TexCreate_ShaderResource,CreateInfo);
@@ -430,6 +588,10 @@ public:
 
 		if(SceneVolume.IsBound())
 			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,SceneVolume.GetBaseIndex(),sceneVolumeSRV);
+		if(EmissiveVolume.IsBound())
+			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,EmissiveVolume.GetBaseIndex(),emissiveVolumeSRV);
+		if(EmissivePalette.IsBound())
+			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,EmissivePalette.GetBaseIndex(),paletteSRV);
 		if(LinearSampler.IsBound())
 			RHICmdList.SetShaderSampler(ShaderRHI,LinearSampler.GetBaseIndex(),TStaticSamplerState<SF_Trilinear,AM_Wrap,AM_Wrap,AM_Wrap>::GetRHI());
 		if(cmpSampler.IsBound())
@@ -528,6 +690,9 @@ public:
 		Ar << ShadowZ2;
 		Ar << ShadowZ3;
 		Ar << ShadowZ4;
+
+		Ar << EmissiveVolume;
+		Ar << EmissivePalette;
 		return bShaderHasOutdatedParameters;
 	}
 
@@ -563,6 +728,9 @@ private:
 	FShaderResourceParameter ShadowZ2;
 	FShaderResourceParameter ShadowZ3;
 	FShaderResourceParameter ShadowZ4;
+
+	FShaderResourceParameter EmissivePalette;
+	FShaderResourceParameter EmissiveVolume;
 };
 IMPLEMENT_SHADER_TYPE(,AHRTraceScenePS,TEXT("AHRTraceScene"),TEXT("PS"),SF_Pixel);
 
@@ -593,7 +761,7 @@ void FApproximateHybridRaytracer::TraceScene(FRHICommandListImmediate& RHICmdLis
 	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PixelShader->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PixelShader);
 	VertexShader->SetParameters(RHICmdList,View);
 	// The dynamic grid should have both the static and dynamic data by now
-	PixelShader->SetParameters(RHICmdList, View, DynamicSceneVolume->SRV);
+	PixelShader->SetParameters(RHICmdList, View, DynamicSceneVolume->SRV,EmissivePaletteSRV,DynamicEmissiveVolumeSRV);
 
 	// Draw a quad mapping scene color to the view's render target
 	DrawRectangle( 

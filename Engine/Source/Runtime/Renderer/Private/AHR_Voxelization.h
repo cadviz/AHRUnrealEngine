@@ -197,8 +197,8 @@ public:
 		Mesh.VertexFactory->Set(*context->RHICmdList);
 	
 		// Bind the voxels UAV and bind a null depth-stencil buffer
-		FUnorderedAccessViewRHIParamRef uavs[] = { AHREngine.GetSceneVolumeUAV() };
-		context->RHICmdList->SetRenderTargets(0,nullptr,nullptr,1,uavs);
+		FUnorderedAccessViewRHIParamRef uavs[] = { AHREngine.GetSceneVolumeUAV(),AHREngine.GetEmissiveVolumeUAV() };
+		context->RHICmdList->SetRenderTargets(0,nullptr,nullptr,2,uavs);
 
 		//FMeshDrawingPolicy::SetMeshRenderState(RHICmdList, View,PrimitiveSceneProxy,Mesh,BatchElementIndex,bBackFace,FMeshDrawingPolicy::ElementDataType(),PolicyContext);
 	}

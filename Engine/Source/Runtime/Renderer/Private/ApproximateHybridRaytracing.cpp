@@ -37,6 +37,7 @@ void FApproximateHybridRaytracer::UpdateSettings()
 		CVarAHRVoxelSliceSize.AsVariable()->ClearFlags(ECVF_Changed);
 
 		uint32 vSliceSize = CVarAHRVoxelSliceSize.GetValueOnAnyThread();
+
 		if(DynamicSceneVolume)
 		{
 			// Destroy the volume
@@ -52,6 +53,24 @@ void FApproximateHybridRaytracer::UpdateSettings()
 			// ... and recreate it
 			StaticSceneVolume->Initialize(vSliceSize*vSliceSize*vSliceSize/32*4);
 		}
+
+		// Destroy the emissive grid and recreate
+		StaticEmissiveVolume.SafeRelease();
+		DynamicEmissiveVolume.SafeRelease();
+		StaticEmissiveVolumeSRV.SafeRelease();
+		DynamicEmissiveVolumeSRV.SafeRelease();
+		StaticEmissiveVolumeUAV.SafeRelease();
+		DynamicEmissiveVolumeUAV.SafeRelease();
+
+		FRHIResourceCreateInfo createInfo;
+		StaticEmissiveVolume = RHICreateTexture3D(vSliceSize,vSliceSize,vSliceSize,PF_R8_UINT,1,TexCreate_UAV | TexCreate_ShaderResource,createInfo);
+		DynamicEmissiveVolume = RHICreateTexture3D(vSliceSize,vSliceSize,vSliceSize,PF_R8_UINT,1,TexCreate_UAV | TexCreate_ShaderResource,createInfo);
+		
+		StaticEmissiveVolumeSRV = RHICreateShaderResourceView(StaticEmissiveVolume,0);
+		DynamicEmissiveVolumeSRV = RHICreateShaderResourceView(DynamicEmissiveVolume,0);
+
+		StaticEmissiveVolumeUAV = RHICreateUnorderedAccessView(StaticEmissiveVolume);
+		DynamicEmissiveVolumeUAV = RHICreateUnorderedAccessView(DynamicEmissiveVolume);
 	}
 }
 /*

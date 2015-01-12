@@ -1683,6 +1683,34 @@ FShaderResourceViewRHIRef FOpenGLDynamicRHI::RHICreateShaderResourceView(FTextur
 
 	return View;
 }
+// @RyanTorant
+FShaderResourceViewRHIRef FOpenGLDynamicRHI::RHICreateShaderResourceView(FTexture3DRHIParamRef Texture3DRHI, uint8 MipLevel)
+{
+	DYNAMIC_CAST_OPENGLRESOURCE(Texture3D,Texture3D);
+
+	FOpenGLShaderResourceView *View = 0;
+
+	if (FOpenGL::SupportsTextureView())
+	{
+		VERIFY_GL_SCOPE();
+
+		GLuint Resource = 0;
+
+		FOpenGL::GenTextures( 1, &Resource);
+		const FOpenGLTextureFormat& GLFormat = GOpenGLTextureFormats[Texture3D->GetFormat()];
+		const bool bSRGB = (Texture3D->GetFlags()&TexCreate_SRGB) != 0;
+		
+		FOpenGL::TextureView( Resource, Texture3D->Target, Texture3D->Resource, GLFormat.InternalFormat[bSRGB], MipLevel, 1, 0, 1);
+		
+		View = new FOpenGLShaderResourceView(this, Resource, Texture3D->Target, MipLevel, true);
+	}
+	else
+	{
+		View = new FOpenGLShaderResourceView(this, Texture3D->Resource, Texture3D->Target, MipLevel, false);
+	}
+
+	return View;
+}
 
 FShaderResourceViewRHIRef FOpenGLDynamicRHI::RHICreateShaderResourceView(FTexture2DRHIParamRef Texture2DRHI, uint8 MipLevel, uint8 NumMipLevels, uint8 Format)
 {

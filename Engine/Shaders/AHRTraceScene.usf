@@ -41,6 +41,9 @@ float3 to_vlocal(float3 worldPos)
 }
 
 ByteAddressBuffer SceneVolume;
+Texture3D<uint> EmissiveVolume;
+Texture2D<float3> EmissivePalette;
+
 SamplerState samLinear;
 SamplerComparisonState cmpSampler;
 
@@ -174,6 +177,9 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 					glossy += shadowFactor*sAlbedo.rgb*sAlbedo.w;
 				}
 
+				// Add emissive
+				glossy += EmissivePalette[uint2(EmissiveVolume[vpos],0)];
+
 				break;
 			}
 			spos += step;
@@ -281,6 +287,9 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 				
 				//acc += 1;
 
+				// Add emissive
+				diffuse += EmissivePalette[uint2(EmissiveVolume[vpos],0)];
+
 				break;
 			}
 			spos += step;
@@ -304,7 +313,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 #endif
 
 	//traced = ao;
-	//traced = diffuse.xyzz;
+	traced = diffuse.xyzz;
 
 	//traced = ao;
 	/*
@@ -326,7 +335,14 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 	uint bvoxD = SceneVolume.Load(bidxD*4);
 	traced = bvoxD & (1 << offsetD);*/
 
-	
+
+
+	/*
+	uint3 vposD = floor((to_vlocal(wPos)*0.5 + 0.5)*AHRTraceCB.SliceSize);
+	traced = EmissivePalette[uint2(EmissiveVolume[vposD],0)].xyzz;*/
+
+
+
 //#define _SHOW_VOXELS
 #ifdef _SHOW_VOXELS
 	traced = 0;

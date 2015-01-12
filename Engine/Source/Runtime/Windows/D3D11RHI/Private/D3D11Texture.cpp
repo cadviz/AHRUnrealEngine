@@ -1147,6 +1147,26 @@ FShaderResourceViewRHIRef FD3D11DynamicRHI::RHICreateShaderResourceView(FTexture
 
 	return new FD3D11ShaderResourceView(ShaderResourceView,Texture2D);
 }
+// @RyanTorant
+FShaderResourceViewRHIRef FD3D11DynamicRHI::RHICreateShaderResourceView(FTexture3DRHIParamRef Texture3DRHI, uint8 MipLevel)
+{
+	DYNAMIC_CAST_D3D11RESOURCE(Texture3D,Texture3D);
+
+	D3D11_TEXTURE3D_DESC TextureDesc;
+	Texture3D->GetResource()->GetDesc(&TextureDesc);
+
+	// Create a Shader Resource View
+	D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc;
+	SRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE3D;
+	SRVDesc.Texture3D.MostDetailedMip = MipLevel;
+	SRVDesc.Texture3D.MipLevels = 1;
+
+	SRVDesc.Format = TextureDesc.Format;
+	TRefCountPtr<ID3D11ShaderResourceView> ShaderResourceView;
+	VERIFYD3D11RESULT(Direct3DDevice->CreateShaderResourceView(Texture3D->GetResource(), &SRVDesc, (ID3D11ShaderResourceView**)ShaderResourceView.GetInitReference()));
+
+	return new FD3D11ShaderResourceView(ShaderResourceView,Texture3D);
+}
 
 FShaderResourceViewRHIRef FD3D11DynamicRHI::RHICreateShaderResourceView(FTexture2DRHIParamRef Texture2DRHI, uint8 MipLevel, uint8 NumMipLevels, uint8 Format)
 {

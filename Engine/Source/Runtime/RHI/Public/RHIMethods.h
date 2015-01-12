@@ -938,6 +938,18 @@ DEFINE_RHIMETHOD_GLOBAL_2(
 	return,return new FRHIShaderResourceView();
 	);
 
+// @RyanTorant
+/**
+* Creates a shader resource view for a 3d texture, viewing only a single
+* mip level. Useful when rendering to one mip while sampling from another.
+*/
+DEFINE_RHIMETHOD_GLOBAL_2(
+	FShaderResourceViewRHIRef,CreateShaderResourceView,
+	FTexture3DRHIParamRef,Texture3DRHI,
+	uint8, MipLevel,
+	return,return new FRHIShaderResourceView();
+	);
+
 /**FRHIResourceInfo
 * Creates a shader resource view for a 2d texture, with a different
 * format from the original.  Useful when sampling stencil.

@@ -47,9 +47,10 @@ public:
 	// Data functions
 	void UpdateSettings(); // Resizes the grid if needed
 	//void ClearGrids(FRHICommandListImmediate& RHICmdList);
-	void SetStaticVolumeAsActive(){ currentVolume = &StaticSceneVolume; }
-	void SetDynamicVolumeAsActive(){ currentVolume = &DynamicSceneVolume; }
+	void SetStaticVolumeAsActive(){ currentVolume = &StaticSceneVolume; currentEmissiveVolume = &StaticEmissiveVolumeUAV; }
+	void SetDynamicVolumeAsActive(){ currentVolume = &DynamicSceneVolume; currentEmissiveVolume = &DynamicEmissiveVolumeUAV; }
 	FUnorderedAccessViewRHIRef GetSceneVolumeUAV(){ return (*currentVolume)->UAV; }
+	FUnorderedAccessViewRHIRef GetEmissiveVolumeUAV(){ return *currentEmissiveVolume; }
 
 	void AppendLightRSM(LightRSMData& light);
 	LightRSMData* GetLightsList(){ return lights; }
@@ -58,21 +59,30 @@ public:
 	void InitDynamicRHI() override final;
 	void ReleaseDynamicRHI() override final;
 
-	// Public because, ... I'm Batman!
+	// Public because ..., I'm Batman!
 	FTexture2DRHIRef RaytracingTarget;
 	FTexture2DRHIRef UpsampledTarget0;
 	FTexture2DRHIRef UpsampledTarget1;
 	FShaderResourceViewRHIRef RaytracingTargetSRV;
 	FShaderResourceViewRHIRef UpsampledTargetSRV0;
 	FShaderResourceViewRHIRef UpsampledTargetSRV1;
+
 	FRWBufferByteAddress* StaticSceneVolume;
 	FRWBufferByteAddress* DynamicSceneVolume;
 	uint32 ResX,ResY;
 private:
 	FRWBufferByteAddress** currentVolume; // ptr-to-ptr to remember people that this is JUST AN UTILITY! IT IS NOT THE ACTUAL VOLUME!
-	
-	
+	FUnorderedAccessViewRHIRef* currentEmissiveVolume;
 
+	FTexture3DRHIRef StaticEmissiveVolume;
+	FTexture3DRHIRef DynamicEmissiveVolume;
+	FShaderResourceViewRHIRef StaticEmissiveVolumeSRV;
+	FShaderResourceViewRHIRef DynamicEmissiveVolumeSRV;
+	FUnorderedAccessViewRHIRef StaticEmissiveVolumeUAV;
+	FUnorderedAccessViewRHIRef DynamicEmissiveVolumeUAV;
+
+	FTexture2DRHIRef EmissivePaletteTexture;
+	FShaderResourceViewRHIRef EmissivePaletteSRV;
 	LightRSMData lights[MAX_AHR_LIGHTS];
 	uint32 currentLightIDX;
 };

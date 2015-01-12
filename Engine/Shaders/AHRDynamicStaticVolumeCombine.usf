@@ -1,8 +1,20 @@
 RWByteAddressBuffer DynamicVolume;
 ByteAddressBuffer StaticVolume;
 
+RWTexture3D<uint> DynamicEmissiveVolume;
+Texture3D<uint> StaticEmissiveVolume;
+
 [numthreads(256, 1, 1)]
-void main( uint3 DTid : SV_DispatchThreadID )
+void mainBinary( uint3 DTid : SV_DispatchThreadID )
 {
 	DynamicVolume.InterlockedOr(DTid.x*4,StaticVolume.Load(DTid.x*4));
+}
+
+[numthreads(8, 8, 4)] // try to keep x*y*z = 256, at least on NVIDIA hardware
+void mainEmissive( uint3 DTid : SV_DispatchThreadID )
+{
+	// Store only if the voxel wasn't empty
+	uint idx = StaticEmissiveVolume[DTid];
+	if(idx != 0) // To make this explicit. Could have done if(idx)
+		DynamicEmissiveVolume[DTid] = idx;
 }

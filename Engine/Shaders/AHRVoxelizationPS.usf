@@ -3,6 +3,7 @@
 #include "AHRVoxelizationCommon.usf"
 
 RWByteAddressBuffer SceneVolume : register (u0);
+RWTexture3D<uint> EmissiveVolume : register (u1);
 
 float3 to_vlocal(float3 worldPos)
 {
@@ -29,5 +30,8 @@ void Main(FAHRVoxelizationGSOut input)
 		uint offset = vidx2 - 32 * bidx;
 
 		SceneVolume.InterlockedOr(bidx*4, 1 << offset);
+
+		// Store directly, no atomic
+		EmissiveVolume[vpos2] = AHRVoxelizationCB.EmissiveIndex;
 	}
 }
