@@ -16,7 +16,9 @@ public:
 private:
 	/** Callback for creating a static mesh from valid selected brushes. */
 	FReply OnCreateStaticMesh();
-
+	// @RyanTorant
+	/** Callback for rebuilding the AHR grids */
+	//FReply OnAHRGridRebuild();
 private:
 	/** Holds a list of BSP brushes, used for converting to static meshes */
 	TArray< TWeakObjectPtr<ABrush> > SelectedBSPBrushes;

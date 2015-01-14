@@ -43,17 +43,19 @@ float3 to_vlocal(float3 worldPos)
 ByteAddressBuffer SceneVolume;
 Texture3D<uint> EmissiveVolume;
 Texture2D<float3> EmissivePalette;
+Texture2D<uint> SamplingKernel;
 
 SamplerState samLinear;
+SamplerState samPoint;
 SamplerComparisonState cmpSampler;
-
+/*
 static const uint seedkernel[16] = 
 { 
 	906459532, 72893876, 492795701, 532344103,
 	326635764, 417976112, 293516711, 189627760,
 	705480491, 423810863, 187018483, 239779822,
 	1740361530, 226519499, 1570237062, 389231761
-};
+};*/
 
 float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 {
@@ -70,12 +72,28 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 	float3 normal = ScreenSpaceData.GBuffer.WorldNormal;
 	float3 reflectVec = normalize(-reflect(-normalize(ScreenVector), normal));
 
-	uint2 DTid = InUV * AHRTraceCB.ScreenRes;
+	uint2 DTid = floor(InUV * AHRTraceCB.ScreenRes);
 
-	uint2 quadUV = (DTid.xy) % 4;
-	uint seed = seedkernel[quadUV.x + quadUV.y*4];
+	//uint2 quadUV = DTid.xy%4;//(DTid.xy + DTid.xy/32) % 4;
+	//uint seed = seedkernel[(quadUV.x + quadUV.y*4)%16];
+
+	//seed = wang_hash(DTid.x + DTid.y*AHRTraceCB.ScreenRes.x);
+
+	uint kh,kw;
+	SamplingKernel.GetDimensions(kh,kw);
+	// Using fast mod here.  x mod y = x & (y-1)
+	// Size MUST be a power of 2
+	uint seed =  SamplingKernel[DTid.xy & (uint2(kh,kw) - 1)];
 	NumberGenerator rng;
 	rng.SetSeed( seed );
+	
+
+	seed = wang_hash(DTid.x + DTid.y*AHRTraceCB.ScreenRes.x);
+
+
+	/*uint seed =  asuint(SamplingKernel.SampleLevel(samPoint,InUV,0));
+	NumberGenerator rng;
+	rng.SetSeed( seed );*/
 
 	uint bvox = -1;
 	uint prevbidx = -1;
@@ -139,7 +157,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 			}
 
 			uint3 vpos = floor((to_vlocal(spos)*0.5 + 0.5)*AHRTraceCB.SliceSize);
-			uint vidx = vpos.y + vpos.x*AHRTraceCB.SliceSize + vpos.z*AHRTraceCB.SliceSize*AHRTraceCB.SliceSize;
+			uint vidx = vpos.y + vpos.x*AHRTraceCB.SliceSize.x + vpos.z*AHRTraceCB.SliceSize.x*AHRTraceCB.SliceSize.y;
 
 #define ONE_OVER_32 0.03125f
 			uint bidx = floor(float(vidx) * ONE_OVER_32);
@@ -227,7 +245,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 			}
 
 			uint3 vpos = floor((to_vlocal(spos)*0.5 + 0.5)*AHRTraceCB.SliceSize);
-			uint vidx = vpos.y + vpos.x*AHRTraceCB.SliceSize + vpos.z*AHRTraceCB.SliceSize*AHRTraceCB.SliceSize;
+			uint vidx = vpos.y + vpos.x*AHRTraceCB.SliceSize.x + vpos.z*AHRTraceCB.SliceSize.x*AHRTraceCB.SliceSize.y;
 
 #define ONE_OVER_32 0.03125f
 			uint bidx = floor(float(vidx) * ONE_OVER_32);
@@ -283,12 +301,12 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 					diffuse += shadowFactor*sAlbedo.rgb*sAlbedo.w*rdist;
 				}
 				float rdist = magnitudeSquared(to_vlocal(spos)) / 3;
-				ao += (exp(-7*rdist*rdist) + 0.3)/1.3;//(i <= 8);
+				ao += 1;//(exp(-7*rdist*rdist) + 0.3)/1.3;//(i <= 8);
 				
 				//acc += 1;
 
 				// Add emissive
-				diffuse += EmissivePalette[uint2(EmissiveVolume[vpos],0)];
+				diffuse += EmissivePalette[uint2(EmissiveVolume[vpos],0)];///pow(magnitudeSquared(to_vlocal(spos)) + 1,4);
 
 				break;
 			}
@@ -313,7 +331,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 #endif
 
 	//traced = ao;
-	traced = diffuse.xyzz;
+	//traced = diffuse.xyzz;
 
 	//traced = ao;
 	/*
@@ -343,7 +361,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 
 
 
-//#define _SHOW_VOXELS
+#define _SHOW_VOXELS
 #ifdef _SHOW_VOXELS
 	traced = 0;
 	float3 dir = ScreenVector;
@@ -360,7 +378,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 			local.z > 1 || local.z < -1) break;
 
 		uint3 vpos = floor((local*0.5 + 0.5)*AHRTraceCB.SliceSize);
-		uint vidx = vpos.y + vpos.x*AHRTraceCB.SliceSize + vpos.z*AHRTraceCB.SliceSize*AHRTraceCB.SliceSize;
+		uint vidx = vpos.y + vpos.x*AHRTraceCB.SliceSize.x + vpos.z*AHRTraceCB.SliceSize.x*AHRTraceCB.SliceSize.y;
 		uint bidx = floor(float(vidx) * ONE_OVER_32);
 		uint offset = vidx - 32 * bidx;
 		
@@ -404,9 +422,5 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 	traced = ShadowZ0.SampleCmpLevelZero(cmpSampler, lpos.xy, lpos.z);
 	*/
 	
-
-
-
-
 	return traced;
 }

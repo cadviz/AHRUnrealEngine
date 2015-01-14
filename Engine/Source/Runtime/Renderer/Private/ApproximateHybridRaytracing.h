@@ -6,7 +6,7 @@
 #define MAX_AHR_LIGHTS 5
 
 extern TAutoConsoleVariable<int32> CVarApproximateHybridRaytracing;
-extern TAutoConsoleVariable<int32> CVarAHRVoxelSliceSize;
+extern TAutoConsoleVariable<int32> CVarAHRMaxSliceSize;
 extern TAutoConsoleVariable<int32> CVarAHRTraceReflections;
 
 struct LightRSMData
@@ -23,6 +23,18 @@ struct LightRSMData
 	FMatrix ViewProj;
 	FVector Offset;
 };
+struct AHRGridSettings
+{
+	FVector Bounds;
+	FVector Center;
+	float VoxelSize;
+	FIntVector SliceSize;
+};
+
+inline int fceil(int a,int b)
+{
+	return (a + b - 1)/b;
+}
 
 // Main class
 class FApproximateHybridRaytracer : public FRenderResource
@@ -38,7 +50,7 @@ public:
 	}
 
 	// Main pipeline functions
-	void StartFrame();
+	void StartFrame(FViewInfo& View);
 	void VoxelizeScene(FRHICommandListImmediate& RHICmdList,FViewInfo& View);
 	void TraceScene(FRHICommandListImmediate& RHICmdList,FViewInfo& View);
 	void Upsample(FRHICommandListImmediate& RHICmdList,FViewInfo& View);
@@ -47,6 +59,8 @@ public:
 	// Data functions
 	void UpdateSettings(); // Resizes the grid if needed
 	//void ClearGrids(FRHICommandListImmediate& RHICmdList);
+	void SetGridSettings(AHRGridSettings settings){ gridSettings = settings; }
+	AHRGridSettings GetGridSettings(){ return gridSettings; }
 	void SetStaticVolumeAsActive(){ currentVolume = &StaticSceneVolume; currentEmissiveVolume = &StaticEmissiveVolumeUAV; }
 	void SetDynamicVolumeAsActive(){ currentVolume = &DynamicSceneVolume; currentEmissiveVolume = &DynamicEmissiveVolumeUAV; }
 	FUnorderedAccessViewRHIRef GetSceneVolumeUAV(){ return (*currentVolume)->UAV; }
@@ -83,13 +97,15 @@ private:
 
 	FTexture2DRHIRef EmissivePaletteTexture;
 	FShaderResourceViewRHIRef EmissivePaletteSRV;
+	FTexture2DRHIRef SamplingKernel;
+	FShaderResourceViewRHIRef SamplingKernelSRV;
 	LightRSMData lights[MAX_AHR_LIGHTS];
 	uint32 currentLightIDX;
+
+	AHRGridSettings gridSettings;
 };
 
 extern TGlobalResource<FApproximateHybridRaytracer> AHREngine;
-
-int32 AHRGetVoxelResolution();
 
 // use for render thread only
 bool UseApproximateHybridRaytracingRT(ERHIFeatureLevel::Type InFeatureLevel);

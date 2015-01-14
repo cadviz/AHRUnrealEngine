@@ -41790,4 +41790,9 @@
       <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\Source\Runtime\Renderer\Public\AHRGlobalSignal.h">
+      <Filter>Source\Runtime\Renderer\Public</Filter>
+    </ClInclude>
+  </ItemGroup>
 </Project>

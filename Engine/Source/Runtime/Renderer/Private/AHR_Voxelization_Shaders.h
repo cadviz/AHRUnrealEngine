@@ -6,7 +6,7 @@
 BEGIN_UNIFORM_BUFFER_STRUCT(AHRVoxelizationCB,)
 	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector2D,ScreenRes)
 
-	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(uint32,SliceSize)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FIntVector,SliceSize)
 	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector,InvSceneBounds)
 	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector,WorldToVoxelOffset) // -SceneCenter/SceneBounds
 	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector,invVoxel)
@@ -105,13 +105,18 @@ public:
 		const auto ShaderRHI = GetGeometryShader();
 		AHRVoxelizationCB cbdata;
 
-		cbdata.SliceSize = CVarAHRVoxelSliceSize.GetValueOnRenderThread();
+		auto gridCFG = AHREngine.GetGridSettings();
+		cbdata.SliceSize.X = gridCFG.SliceSize.X;
+		cbdata.SliceSize.Y = gridCFG.SliceSize.Y;
+		cbdata.SliceSize.Z = gridCFG.SliceSize.Z;
 		cbdata.ScreenRes.X = View.Family->FamilySizeX/2;
 		cbdata.ScreenRes.Y = View.Family->FamilySizeY/2;
-		cbdata.invVoxel = FVector(1.0f / float(cbdata.SliceSize));
+		cbdata.invVoxel = FVector(1.0f / float(gridCFG.SliceSize.X),
+								  1.0f / float(gridCFG.SliceSize.Y),
+								  1.0f / float(gridCFG.SliceSize.Z));
 
-		cbdata.InvSceneBounds = FVector(1.0f) / View.FinalPostProcessSettings.AHRSceneScale;
-		cbdata.WorldToVoxelOffset = -FVector(View.FinalPostProcessSettings.AHRSceneCenterX,View.FinalPostProcessSettings.AHRSceneCenterY,View.FinalPostProcessSettings.AHRSceneCenterZ)*cbdata.InvSceneBounds; // -SceneCenter/SceneBounds
+		cbdata.InvSceneBounds = FVector(1.0f) / gridCFG.Bounds;
+		cbdata.WorldToVoxelOffset = -gridCFG.Center*cbdata.InvSceneBounds; // -SceneCenter/SceneBounds
 		cbdata.TriangleSizeMultiplier = View.FinalPostProcessSettings.TriangleSizeMultiplier;
 
 		SetUniformBufferParameterImmediate(RHICmdList, ShaderRHI,cb,cbdata);
@@ -161,14 +166,19 @@ public:
 		FMeshMaterialShader::SetParameters(RHICmdList, ShaderRHI, MaterialRenderProxy, MaterialResource, *View, ESceneRenderTargetsMode::DontSet);
 
 		AHRVoxelizationCB cbdata;
-
-		cbdata.SliceSize = CVarAHRVoxelSliceSize.GetValueOnRenderThread();
+		auto gridCFG = AHREngine.GetGridSettings();
+		cbdata.SliceSize.X = gridCFG.SliceSize.X;
+		cbdata.SliceSize.Y = gridCFG.SliceSize.Y;
+		cbdata.SliceSize.Z = gridCFG.SliceSize.Z;
 		cbdata.ScreenRes.X = View->Family->FamilySizeX/2;
 		cbdata.ScreenRes.Y = View->Family->FamilySizeY/2;
-		cbdata.invVoxel = FVector(1.0f / float(cbdata.SliceSize));
+		cbdata.invVoxel = FVector(1.0f / float(gridCFG.SliceSize.X),
+								  1.0f / float(gridCFG.SliceSize.Y),
+								  1.0f / float(gridCFG.SliceSize.Z));
 
-		cbdata.InvSceneBounds = FVector(1.0f) / View->FinalPostProcessSettings.AHRSceneScale;
-		cbdata.WorldToVoxelOffset = -FVector(View->FinalPostProcessSettings.AHRSceneCenterX,View->FinalPostProcessSettings.AHRSceneCenterY,View->FinalPostProcessSettings.AHRSceneCenterZ)*cbdata.InvSceneBounds; // -SceneCenter/SceneBounds
+		cbdata.InvSceneBounds = FVector(1.0f) / gridCFG.Bounds;
+		cbdata.WorldToVoxelOffset = -gridCFG.Center*cbdata.InvSceneBounds; // -SceneCenter/SceneBounds
+		cbdata.TriangleSizeMultiplier = View->FinalPostProcessSettings.TriangleSizeMultiplier;
 		cbdata.EmissiveIndex = MaterialResource.GetAHRPaletteState()->idx;
 
 		SetUniformBufferParameterImmediate(RHICmdList, ShaderRHI,cb,cbdata);

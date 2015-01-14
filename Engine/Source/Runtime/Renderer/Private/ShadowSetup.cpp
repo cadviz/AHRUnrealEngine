@@ -2108,9 +2108,9 @@ void FSceneRenderer::AddViewDependentWholeSceneShadowsForView(TArray<FProjectedS
 				{
 					// Generate the RSM shadow info
 					FWholeSceneProjectedShadowInitializer ProjectedShadowInitializer;
-					FVector center(Views[0].FinalPostProcessSettings.AHRSceneCenterX,Views[0].FinalPostProcessSettings.AHRSceneCenterY,Views[0].FinalPostProcessSettings.AHRSceneCenterZ);
-					FVector size(Views[0].FinalPostProcessSettings.AHRSceneScale);
-					FBox bounds(center - size,center + size);
+					auto gridCFG = AHREngine.GetGridSettings();
+					
+					FBox bounds(gridCFG.Center - gridCFG.Bounds,gridCFG.Center + gridCFG.Bounds);
 					if (LightSceneInfo.Proxy->GetViewDependentRsmWholeSceneProjectedShadowInitializer(View, bounds, ProjectedShadowInitializer))
 					{
 						const FIntPoint ShadowBufferResolution = GSceneRenderTargets.GetReflectiveShadowMapTextureResolution();

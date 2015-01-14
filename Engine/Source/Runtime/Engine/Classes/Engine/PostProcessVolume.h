@@ -46,19 +46,14 @@ class APostProcessVolume : public AVolume, public IInterface_PostProcessVolume
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=PostProcessVolume)
 	uint32 bUnbound:1;
 
+	// @RyanTorant
+	/** Whether this volume is used to set AHR grid settings                                            */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=PostProcessVolume)
+	uint32 bDefinesAHRGridSettings:1;
+
 	// Begin IInterface_PostProcessVolume Interface
 	ENGINE_API virtual bool EncompassesPoint(FVector Point, float SphereRadius/*=0.f*/, float* OutDistanceToPoint) override;
-	ENGINE_API virtual FPostProcessVolumeProperties GetProperties() const override
-	{
-		FPostProcessVolumeProperties Ret;
-		Ret.bIsEnabled = bEnabled != 0;
-		Ret.bIsUnbound = bUnbound != 0;
-		Ret.BlendRadius = BlendRadius;
-		Ret.BlendWeight = BlendWeight;
-		Ret.Priority = Priority;
-		Ret.Settings = &Settings;
-		return Ret;
-	}
+	ENGINE_API virtual FPostProcessVolumeProperties GetProperties() const override;
 	// End IInterface_PostProcessVolume Interface
 
 

@@ -10,6 +10,12 @@ class UInterface_PostProcessVolume : public UInterface
 	GENERATED_UINTERFACE_BODY()
 };
 
+struct __AHRGridBounds
+{
+	FVector Bounds;
+	FVector Center;
+};
+
 struct FPostProcessVolumeProperties
 {
 	const FPostProcessSettings* Settings;
@@ -18,6 +24,9 @@ struct FPostProcessVolumeProperties
 	float BlendWeight;
 	bool bIsEnabled;
 	bool bIsUnbound;
+	// @RyanTorant
+	bool bDefinesAHRGridSettings;
+	__AHRGridBounds AHRGridSettings;
 };
 
 class IInterface_PostProcessVolume

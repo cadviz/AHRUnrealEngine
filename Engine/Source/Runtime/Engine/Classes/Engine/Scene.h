@@ -280,22 +280,14 @@ struct FPostProcessSettings
 	uint32 bOverride_AHRInitialDisplacement:1;
 
 	UPROPERTY(BlueprintReadWrite, Category=Overrides, meta=(PinHiddenByDefault))
-	uint32 bOverride_AHRSceneCenterX:1;
-
-	UPROPERTY(BlueprintReadWrite, Category=Overrides, meta=(PinHiddenByDefault))
-	uint32 bOverride_AHRSceneCenterY:1;
-
-	UPROPERTY(BlueprintReadWrite, Category=Overrides, meta=(PinHiddenByDefault))
-	uint32 bOverride_AHRSceneCenterZ:1;
-
-	UPROPERTY(BlueprintReadWrite, Category=Overrides, meta=(PinHiddenByDefault))
-	uint32 bOverride_AHRSceneScale:1;
-
-	UPROPERTY(BlueprintReadWrite, Category=Overrides, meta=(PinHiddenByDefault))
 	uint32 bOverride_AHRLostRayColor:1;
 
 	UPROPERTY(BlueprintReadWrite, Category=Overrides, meta=(PinHiddenByDefault))
 	uint32 bOverride_TriangleSizeMultiplier:1;
+
+	UPROPERTY(BlueprintReadWrite, Category=Overrides, meta=(PinHiddenByDefault))
+	uint32 bOverride_AHRVoxelSize:1;
+	
 	// ---------------------------
 
 	UPROPERTY(BlueprintReadWrite, Category=Overrides, meta=(PinHiddenByDefault))
@@ -537,6 +529,14 @@ struct FPostProcessSettings
 
 	// @RyanTorant
 	// ---------------------
+	/** Toggles per frame rebuild of the grids */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=ApproximateHybridRaytracing, AdvancedDisplay, meta=(DisplayName = "Rebuild AHR Grids"))
+	uint32 AHRRebuildGrids:1;
+
+	/** Size of a voxel on unreal units. The slice size of the voxel volume is computed from this, but capped at AHRMaxSliceSize*/
+	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRVoxelSize", UIMin = "1", UIMax = "300", DisplayName = "Voxel Size") )
+	float AHRVoxelSize;
+
 	/** How strong is the indirect illumination from AHR. 0.0 is off, 1.0 is the "normal" value, but higher values can be used to boost the effect*/
 	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRIntensity", UIMin = "0", UIMax = "10", DisplayName = "Intensity") )
 	float AHRIntensity;
@@ -564,22 +564,6 @@ struct FPostProcessSettings
 	/** Initial displacement multiplier, in voxels */
 	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRInitialDisplacement", UIMin = "0", UIMax = "5", DisplayName = "Initial Displacement") )
 	float AHRInitialDisplacement;
-
-	/** Scene bounds scale */
-	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRSceneScale", UIMin = "10", UIMax = "2000", DisplayName = "Scene Bounds Scale") )
-	float AHRSceneScale;
-
-	/** Scene bounds scale */
-	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRSceneCenterX", UIMin = "-5000", UIMax = "5000", DisplayName = "Scene Bounds Center X") )
-	float AHRSceneCenterX;
-
-	/** Scene bounds scale */
-	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRSceneCenterY", UIMin = "-5000", UIMax = "5000", DisplayName = "Scene Bounds Center Y") )
-	float AHRSceneCenterY;
-
-	/** Scene bounds scale */
-	UPROPERTY(interp, Category=ApproximateHybridRaytracing, meta=(editcondition = "bOverride_AHRSceneCenterZ", UIMin = "-5000", UIMax = "5000", DisplayName = "Scene Bounds Center Z") )
-	float AHRSceneCenterZ;
 
 	/** Lost ray color. Should be something similar to the color of the sky */
 	UPROPERTY(interp, Category=ApproximateHybridRaytracing, AdvancedDisplay, meta=(editcondition = "bOverride_AHRLostRayColor", DisplayName = "Lost Ray Color"))
@@ -878,6 +862,10 @@ struct FPostProcessSettings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Misc)
 	TArray<UObject*> Blendables;
 
+	// @RyanTorant
+	FVector AHR_internal_SceneBounds;
+	FVector AHR_internal_SceneOrigins;
+
 	// good start values for a new volume, by default no value is overriding
 	FPostProcessSettings()
 	{
@@ -929,6 +917,7 @@ struct FPostProcessSettings
 		LPVTransmissionIntensity = 1.0f;
 
 		// @RyanTorant
+		AHRRebuildGrids = 0;
 		AHRIntensity = 1.0f;
 		AHRDiffuseRayCount = 9;
 		AHRGlossyRayCount = 2;
@@ -936,12 +925,11 @@ struct FPostProcessSettings
 		AHRGlossySamplesCount = 32;
 		AHRSamplesDisplacement = 2.2;
 		AHRInitialDisplacement = 1.98;
-		AHRSceneScale = 1000.0f;
-		AHRSceneCenterX = 0.0f;
-		AHRSceneCenterY = 0.0f;
-		AHRSceneCenterZ = 0.0f;
+		AHRVoxelSize = 10;
 		AHRLostRayColor = FLinearColor(0.4f, 0.675f, 0.99f);
 		TriangleSizeMultiplier = 1.0f;
+		AHR_internal_SceneBounds = FVector(1000,1000,1000);
+		AHR_internal_SceneOrigins = FVector(0,0,0);
 
 		AutoExposureLowPercent = 80.0f;
 		AutoExposureHighPercent = 98.3f;
@@ -1010,6 +998,7 @@ struct FPostProcessSettings
 		ScreenSpaceReflectionIntensity = 100.0f;
 		ScreenSpaceReflectionQuality = 50.0f;
 		ScreenSpaceReflectionMaxRoughness = 0.6f;
+
 	}
 
 	/**

@@ -23,7 +23,7 @@ void Main(FAHRVoxelizationGSOut input)
 		local.z <= 1 && local.z >= -1)
 	{
 		uint3 vpos2 = floor((local*0.5 + 0.5)*AHRVoxelizationCB.SliceSize);
-		uint vidx2 = vpos2.y + vpos2.x*AHRVoxelizationCB.SliceSize + vpos2.z*AHRVoxelizationCB.SliceSize*AHRVoxelizationCB.SliceSize;
+		uint vidx2 = vpos2.y + vpos2.x*AHRVoxelizationCB.SliceSize.x + vpos2.z*AHRVoxelizationCB.SliceSize.x*AHRVoxelizationCB.SliceSize.y;
 
 #define ONE_OVER_32 0.03125f
 		uint bidx = floor(float(vidx2) * ONE_OVER_32); 

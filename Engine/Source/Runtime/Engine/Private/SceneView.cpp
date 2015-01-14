@@ -684,10 +684,6 @@ void FSceneView::OverridePostProcessSettings(const FPostProcessSettings& Src, fl
 	LERP_PP(AHRGlossySamplesCount);
 	LERP_PP(AHRSamplesDisplacement);
 	LERP_PP(AHRInitialDisplacement);
-	LERP_PP(AHRSceneScale);
-	LERP_PP(AHRSceneCenterX);
-	LERP_PP(AHRSceneCenterY);
-	LERP_PP(AHRSceneCenterZ);
 	LERP_PP(AHRLostRayColor);
 	LERP_PP(TriangleSizeMultiplier);
 	
@@ -810,6 +806,9 @@ void FSceneView::OverridePostProcessSettings(const FPostProcessSettings& Src, fl
 		Dest.AmbientOcclusionRadiusInWS = Src.AmbientOcclusionRadiusInWS;
 	}
 
+	// @RyanTorant
+	Dest.AHRRebuildGrids = Src.AHRRebuildGrids;
+
 	if(Src.bOverride_AntiAliasingMethod)
 	{
 		Dest.AntiAliasingMethod = Src.AntiAliasingMethod;
@@ -849,6 +848,26 @@ UBlendableInterface::UBlendableInterface(const FObjectInitializer& ObjectInitial
 void DoPostProcessVolume(IInterface_PostProcessVolume* Volume, FVector ViewLocation, FSceneView* SceneView)
 {
 	const FPostProcessVolumeProperties VolumeProperties = Volume->GetProperties();
+
+	// @RyanTorant
+	// Check if the volume is a AHR settings volume
+	// The scene bounds and grid res settings for AHR are taken from there
+	// If to volumes overlap, and the camera is in the intersection, which volume to use is undefined. This implementation will take the settings from the last one on the list
+	if(VolumeProperties.bDefinesAHRGridSettings && !VolumeProperties.bIsUnbound)
+	{
+		float DistanceToPoint = 0.0f;
+		Volume->EncompassesPoint(ViewLocation, 0.0f, &DistanceToPoint);
+
+		if (DistanceToPoint >= 0.0f)
+		{
+			SceneView->FinalPostProcessSettings.AHR_internal_SceneBounds =  VolumeProperties.AHRGridSettings.Bounds;
+			SceneView->FinalPostProcessSettings.AHR_internal_SceneOrigins = VolumeProperties.AHRGridSettings.Center;
+			SceneView->FinalPostProcessSettings.AHRVoxelSize = VolumeProperties.Settings->AHRVoxelSize;
+		}
+
+		return; // Ignore ahr bounds volumes
+	}
+
 	if (!VolumeProperties.bIsEnabled)
 	{
 		return;
@@ -862,7 +881,7 @@ void DoPostProcessVolume(IInterface_PostProcessVolume* Volume, FVector ViewLocat
 		float SquaredBlendRadius = VolumeProperties.BlendRadius * VolumeProperties.BlendRadius;
 		Volume->EncompassesPoint(ViewLocation, 0.0f, &DistanceToPoint);
 
-		if (DistanceToPoint >= 0)
+		if (DistanceToPoint >= 0.0f)
 		{
 			if (DistanceToPoint > VolumeProperties.BlendRadius)
 			{
@@ -876,17 +895,17 @@ void DoPostProcessVolume(IInterface_PostProcessVolume* Volume, FVector ViewLocat
 				{
 					LocalWeight *= 1.0f - DistanceToPoint / VolumeProperties.BlendRadius;
 
-					check(LocalWeight >= 0 && LocalWeight <= 1.0f);
+					check(LocalWeight >= 0.0f && LocalWeight <= 1.0f);
 				}
 			}
 		}
 		else
 		{
-			LocalWeight = 0;
+			LocalWeight = 0.0f;
 		}
 	}
 
-	if (LocalWeight > 0)
+	if (LocalWeight > 0.0f)
 	{
 		SceneView->OverridePostProcessSettings(*VolumeProperties.Settings, LocalWeight);
 	}

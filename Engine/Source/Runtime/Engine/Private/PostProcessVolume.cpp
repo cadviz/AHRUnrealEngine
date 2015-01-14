@@ -15,6 +15,7 @@ APostProcessVolume::APostProcessVolume(const FObjectInitializer& ObjectInitializ
 	bEnabled = true;
 	BlendRadius = 100.0f;
 	BlendWeight = 1.0f;
+	bDefinesAHRGridSettings = false;
 }
 
 bool APostProcessVolume::EncompassesPoint(FVector Point, float SphereRadius/*=0.f*/, float* OutDistanceToPoint)
@@ -22,6 +23,25 @@ bool APostProcessVolume::EncompassesPoint(FVector Point, float SphereRadius/*=0.
 	return Super::EncompassesPoint(Point, SphereRadius, OutDistanceToPoint);
 }
 
+// @RyanTorant
+FPostProcessVolumeProperties APostProcessVolume::GetProperties() const
+{
+	auto brush = GetBrushComponent();
+		
+	FPostProcessVolumeProperties Ret;
+	Ret.bDefinesAHRGridSettings = bDefinesAHRGridSettings != 0;
+	Ret.bIsEnabled = bEnabled != 0;
+	Ret.bIsUnbound = bUnbound != 0;
+	Ret.BlendRadius = BlendRadius;
+	Ret.BlendWeight = BlendWeight;
+	Ret.Priority = Priority;
+	Ret.Settings = &Settings;
+
+	// @RyanTorant
+	Ret.AHRGridSettings.Bounds = brush->Bounds.BoxExtent;
+	Ret.AHRGridSettings.Center = brush->Bounds.Origin;
+	return Ret;
+}
 #if WITH_EDITOR
 void APostProcessVolume::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {

@@ -10,6 +10,8 @@
 #include "AssetSelection.h"
 #include "ClassIconFinder.h"
 #include "ScopedTransaction.h"
+// @RyanTorant
+#include "../../../Runtime/Renderer/Public/AHRGlobalSignal.h"
 
 #define LOCTEXT_NAMESPACE "BrushDetails"
 
@@ -306,6 +308,28 @@ void FBrushDetails::CustomizeDetails( IDetailLayoutBuilder& DetailLayout )
 			]
 		];
 	}
+	/*
+	// @RyanTorant
+	for(int32 ObjIdx=0; ObjIdx<SelectedObjects.Num(); ObjIdx++)
+	{
+		APostProcessVolume* tmpVol = Cast<APostProcessVolume>( SelectedObjects[ObjIdx].Get() );
+		// If we are on a post process volume, add the button to rebuild the grids
+		if(tmpVol != nullptr)
+		{
+			BrushHorizontalBox->AddSlot()
+			[
+				SNew( SButton )
+				.ToolTipText( LOCTEXT("AHRRebuildGrids_Tooltip", "Rebuilds the voxel grids associated with AHR. Useful when moving static objects").ToString() )
+				.OnClicked( this, &FBrushDetails::OnAHRGridRebuild )
+				.HAlign( HAlign_Center )
+				[
+					SNew( STextBlock )
+					.Text( LOCTEXT("AHRRebuildGrids", "Rebuild scene voxel representation").ToString() )
+					.Font( IDetailLayoutBuilder::GetDetailFont() )
+				]
+			];
+		}
+	}*/
 }
 END_SLATE_FUNCTION_BUILD_OPTIMIZATION
 
@@ -330,6 +354,14 @@ FReply FBrushDetails::OnCreateStaticMesh()
 
 	return FReply::Handled();
 }
+/*
+// @RyanTorant
+FReply FBrushDetails::OnAHRGridRebuild()
+{
+	// Signal the AHR engine we need to rebuild
+	AHRGlobalSignal_RebuildGrids.store(1);
+	return FReply::Handled();
+}*/
 
 #undef LOCTEXT_NAMESPACE
 

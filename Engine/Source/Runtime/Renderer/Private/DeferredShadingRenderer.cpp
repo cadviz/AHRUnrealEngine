@@ -684,6 +684,8 @@ void FDeferredShadingSceneRenderer::Render(FRHICommandListImmediate& RHICmdList)
 	// @RyanTorant
 	if(UseApproximateHybridRaytracingRT(FeatureLevel))
 	{
+		AHREngine.StartFrame(Views[0]);
+
 		// Rebuild the AHR grids if the size have changed BEFORE we do anything else
 		AHREngine.UpdateSettings();
 
@@ -716,22 +718,6 @@ void FDeferredShadingSceneRenderer::Render(FRHICommandListImmediate& RHICmdList)
 		// we will probably stall on occlusion queries, so might as well have the RHI thread and GPU work while we wait.
 		QUICK_SCOPE_CYCLE_COUNTER(STAT_PostInitViews_FlushDel);
 		FRHICommandListExecutor::GetImmediateCommandList().ImmediateFlush(EImmediateFlushType::FlushRHIThreadFlushResources);
-	}
-
-	// @RyanTorant
-	// Initialize the targets to the size of the view
-	if(UseApproximateHybridRaytracingRT(FeatureLevel))
-	{	/*
-		// Find the correct size
-		FIntPoint DesiredBufferSize = GSceneRenderTargets.ComputeDesiredSize(ViewFamily);
-		GSceneRenderTargets.QuantizeBufferSize(DesiredBufferSize.X, DesiredBufferSize.Y);
-
-		AHREngine.InitializeViewTargets(DesiredBufferSize.X,DesiredBufferSize.Y);*/
-
-		// Pass-through if already initialized
-		//GSceneRenderTargets.AllocAHRTargets();
-
-		AHREngine.StartFrame();
 	}
 	
 	const bool bIsWireframe = ViewFamily.EngineShowFlags.Wireframe;

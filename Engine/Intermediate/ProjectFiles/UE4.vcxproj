@@ -10470,6 +10470,7 @@
     <ClInclude Include="..\..\Source\Runtime\Renderer\Private\PostProcess\ScreenSpaceReflections.h" />
     <ClCompile Include="..\..\Source\Runtime\Renderer\Private\PostProcess\VisualizeTexture.cpp" />
     <ClInclude Include="..\..\Source\Runtime\Renderer\Private\PostProcess\VisualizeTexture.h" />
+    <ClInclude Include="..\..\Source\Runtime\Renderer\Public\AHRGlobalSignal.h" />
     <ClInclude Include="..\..\Source\Runtime\Renderer\Public\AtmosphereTextureParameters.h" />
     <ClInclude Include="..\..\Source\Runtime\Renderer\Public\HdrCustomResolveShaders.h" />
     <ClInclude Include="..\..\Source\Runtime\Renderer\Public\MaterialShader.h" />
