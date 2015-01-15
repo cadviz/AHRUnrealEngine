@@ -88,8 +88,8 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 	rng.SetSeed( seed );
 	
 
-	seed = wang_hash(DTid.x + DTid.y*AHRTraceCB.ScreenRes.x);
-
+	//seed = wang_hash(DTid.x + DTid.y*AHRTraceCB.ScreenRes.x);
+	//rng.SetSeed( seed );
 
 	/*uint seed =  asuint(SamplingKernel.SampleLevel(samPoint,InUV,0));
 	NumberGenerator rng;
@@ -157,7 +157,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 			}
 
 			uint3 vpos = floor((to_vlocal(spos)*0.5 + 0.5)*AHRTraceCB.SliceSize);
-			uint vidx = vpos.y + vpos.x*AHRTraceCB.SliceSize.x + vpos.z*AHRTraceCB.SliceSize.x*AHRTraceCB.SliceSize.y;
+			uint vidx = vpos.y + vpos.x*AHRTraceCB.SliceSize.y + vpos.z*AHRTraceCB.SliceSize.y*AHRTraceCB.SliceSize.x;
 
 #define ONE_OVER_32 0.03125f
 			uint bidx = floor(float(vidx) * ONE_OVER_32);
@@ -245,7 +245,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 			}
 
 			uint3 vpos = floor((to_vlocal(spos)*0.5 + 0.5)*AHRTraceCB.SliceSize);
-			uint vidx = vpos.y + vpos.x*AHRTraceCB.SliceSize.x + vpos.z*AHRTraceCB.SliceSize.x*AHRTraceCB.SliceSize.y;
+			uint vidx = vpos.y + vpos.x*AHRTraceCB.SliceSize.y + vpos.z*AHRTraceCB.SliceSize.y*AHRTraceCB.SliceSize.x;
 
 #define ONE_OVER_32 0.03125f
 			uint bidx = floor(float(vidx) * ONE_OVER_32);
@@ -361,7 +361,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 
 
 
-#define _SHOW_VOXELS
+//#define _SHOW_VOXELS
 #ifdef _SHOW_VOXELS
 	traced = 0;
 	float3 dir = ScreenVector;
@@ -378,7 +378,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 			local.z > 1 || local.z < -1) break;
 
 		uint3 vpos = floor((local*0.5 + 0.5)*AHRTraceCB.SliceSize);
-		uint vidx = vpos.y + vpos.x*AHRTraceCB.SliceSize.x + vpos.z*AHRTraceCB.SliceSize.x*AHRTraceCB.SliceSize.y;
+		uint vidx = vpos.y + vpos.x*AHRTraceCB.SliceSize.y + vpos.z*AHRTraceCB.SliceSize.y*AHRTraceCB.SliceSize.x;
 		uint bidx = floor(float(vidx) * ONE_OVER_32);
 		uint offset = vidx - 32 * bidx;
 		
