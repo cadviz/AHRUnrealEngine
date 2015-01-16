@@ -64,7 +64,18 @@ void FApproximateHybridRaytracer::UpdateSettings()
 			// ... and recreate it
 			StaticSceneVolume->Initialize(gridSettings.SliceSize.X*gridSettings.SliceSize.Y*gridSettings.SliceSize.Z/32*4);
 		}
-
+		
+		if(DynamicEmissiveVolume)
+		{
+			DynamicEmissiveVolume->Release();
+			DynamicEmissiveVolume->Initialize(gridSettings.SliceSize.X*gridSettings.SliceSize.Y*gridSettings.SliceSize.Z/4*4);
+		}
+		if(StaticEmissiveVolume)
+		{
+			StaticEmissiveVolume->Release();
+			StaticEmissiveVolume->Initialize(gridSettings.SliceSize.X*gridSettings.SliceSize.Y*gridSettings.SliceSize.Z/4*4);
+		}
+		/*
 		// Destroy the emissive grid and recreate
 		StaticEmissiveVolume.SafeRelease();
 		DynamicEmissiveVolume.SafeRelease();
@@ -81,7 +92,7 @@ void FApproximateHybridRaytracer::UpdateSettings()
 		DynamicEmissiveVolumeSRV = RHICreateShaderResourceView(DynamicEmissiveVolume,0);
 
 		StaticEmissiveVolumeUAV = RHICreateUnorderedAccessView(StaticEmissiveVolume);
-		DynamicEmissiveVolumeUAV = RHICreateUnorderedAccessView(DynamicEmissiveVolume);
+		DynamicEmissiveVolumeUAV = RHICreateUnorderedAccessView(DynamicEmissiveVolume);*/
 	}
 }
 /*
@@ -120,9 +131,16 @@ void FApproximateHybridRaytracer::InitDynamicRHI()
 
 	StaticSceneVolume = new FRWBufferByteAddress;
 	StaticSceneVolume->Initialize(gridSettings.SliceSize.X*gridSettings.SliceSize.Y*gridSettings.SliceSize.Z/32*4);
+
 	DynamicSceneVolume = new FRWBufferByteAddress;
 	DynamicSceneVolume->Initialize(gridSettings.SliceSize.X*gridSettings.SliceSize.Y*gridSettings.SliceSize.Z/32*4,BUF_FastVRAM);
 
+	DynamicEmissiveVolume = new FRWBufferByteAddress;
+	DynamicEmissiveVolume->Initialize(gridSettings.SliceSize.X*gridSettings.SliceSize.Y*gridSettings.SliceSize.Z/4*4);
+
+	StaticEmissiveVolume = new FRWBufferByteAddress;
+	StaticEmissiveVolume->Initialize(gridSettings.SliceSize.X*gridSettings.SliceSize.Y*gridSettings.SliceSize.Z/4*4);
+	/*
 	FRHIResourceCreateInfo CreateInfo;
 	StaticEmissiveVolume = RHICreateTexture3D(gridSettings.SliceSize.X,gridSettings.SliceSize.Y,gridSettings.SliceSize.Z,PF_R8_UINT,1,TexCreate_UAV | TexCreate_ShaderResource,CreateInfo);
 	DynamicEmissiveVolume = RHICreateTexture3D(gridSettings.SliceSize.X,gridSettings.SliceSize.Y,gridSettings.SliceSize.Z,PF_R8_UINT,1,TexCreate_UAV | TexCreate_ShaderResource,CreateInfo);
@@ -131,10 +149,11 @@ void FApproximateHybridRaytracer::InitDynamicRHI()
 	DynamicEmissiveVolumeSRV = RHICreateShaderResourceView(DynamicEmissiveVolume,0);
 
 	StaticEmissiveVolumeUAV = RHICreateUnorderedAccessView(StaticEmissiveVolume);
-	DynamicEmissiveVolumeUAV = RHICreateUnorderedAccessView(DynamicEmissiveVolume);
+	DynamicEmissiveVolumeUAV = RHICreateUnorderedAccessView(DynamicEmissiveVolume);*/
 
 	// Create the sampling kernel
 	// SIZE MUST BE A POWER OF 2
+	FRHIResourceCreateInfo CreateInfo;
 	SamplingKernel = RHICreateTexture2D(8,8,PF_R32_UINT,1,1,TexCreate_ShaderResource,CreateInfo);
 
 	// same kernel, rotated  

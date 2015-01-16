@@ -61,10 +61,10 @@ public:
 	//void ClearGrids(FRHICommandListImmediate& RHICmdList);
 	void SetGridSettings(AHRGridSettings settings){ gridSettings = settings; }
 	AHRGridSettings GetGridSettings(){ return gridSettings; }
-	void SetStaticVolumeAsActive(){ currentVolume = &StaticSceneVolume; currentEmissiveVolume = &StaticEmissiveVolumeUAV; }
-	void SetDynamicVolumeAsActive(){ currentVolume = &DynamicSceneVolume; currentEmissiveVolume = &DynamicEmissiveVolumeUAV; }
+	void SetStaticVolumeAsActive(){ currentVolume = &StaticSceneVolume; currentEmissiveVolume = &StaticEmissiveVolume; }
+	void SetDynamicVolumeAsActive(){ currentVolume = &DynamicSceneVolume; currentEmissiveVolume = &DynamicEmissiveVolume; }
 	FUnorderedAccessViewRHIRef GetSceneVolumeUAV(){ return (*currentVolume)->UAV; }
-	FUnorderedAccessViewRHIRef GetEmissiveVolumeUAV(){ return *currentEmissiveVolume; }
+	FUnorderedAccessViewRHIRef GetEmissiveVolumeUAV(){ return (*currentEmissiveVolume)->UAV; }
 
 	void AppendLightRSM(LightRSMData& light);
 	LightRSMData* GetLightsList(){ return lights; }
@@ -86,14 +86,22 @@ public:
 	uint32 ResX,ResY;
 private:
 	FRWBufferByteAddress** currentVolume; // ptr-to-ptr to remember people that this is JUST AN UTILITY! IT IS NOT THE ACTUAL VOLUME!
-	FUnorderedAccessViewRHIRef* currentEmissiveVolume;
+	FRWBufferByteAddress** currentEmissiveVolume;
+
+	/* 
+	// Not using a texture3D as:
+	// a) ClearUAV causes a BSOD on tex3D with format R8_UINT on AMD hardware. I reported the bug at the 15/1/2015
+	// b) I should be faster to use a raw buffer, as the emissive clear should be faster. Unprofiled
 
 	FTexture3DRHIRef StaticEmissiveVolume;
 	FTexture3DRHIRef DynamicEmissiveVolume;
 	FShaderResourceViewRHIRef StaticEmissiveVolumeSRV;
 	FShaderResourceViewRHIRef DynamicEmissiveVolumeSRV;
 	FUnorderedAccessViewRHIRef StaticEmissiveVolumeUAV;
-	FUnorderedAccessViewRHIRef DynamicEmissiveVolumeUAV;
+	FUnorderedAccessViewRHIRef DynamicEmissiveVolumeUAV;*/
+
+	FRWBufferByteAddress* StaticEmissiveVolume;
+	FRWBufferByteAddress* DynamicEmissiveVolume;
 
 	FTexture2DRHIRef EmissivePaletteTexture;
 	FShaderResourceViewRHIRef EmissivePaletteSRV;

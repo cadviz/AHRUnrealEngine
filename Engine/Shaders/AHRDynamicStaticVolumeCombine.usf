@@ -1,20 +1,59 @@
+#include "AHRCommon.usf"
+
 RWByteAddressBuffer DynamicVolume;
 ByteAddressBuffer StaticVolume;
 
-RWTexture3D<uint> DynamicEmissiveVolume;
-Texture3D<uint> StaticEmissiveVolume;
+RWByteAddressBuffer DynamicEmissiveVolume;
+ByteAddressBuffer StaticEmissiveVolume;
 
-[numthreads(256, 1, 1)]
+uint3 gridRes;
+
+[numthreads(8, 8, 4)]
 void mainBinary( uint3 DTid : SV_DispatchThreadID )
 {
-	DynamicVolume.InterlockedOr(DTid.x*4,StaticVolume.Load(DTid.x*4));
+	uint idx = DTid.x + DTid.y*gridRes.x + DTid.z*gridRes.x*gridRes.y;
+
+	DynamicVolume.InterlockedOr(idx*4,StaticVolume.Load(idx*4));
 }
 
 [numthreads(8, 8, 4)] // try to keep x*y*z = 256, at least on NVIDIA hardware
 void mainEmissive( uint3 DTid : SV_DispatchThreadID )
 {
 	// Store only if the voxel wasn't empty
-	uint idx = StaticEmissiveVolume[DTid];
-	if(idx != 0) // To make this explicit. Could have done if(idx)
-		DynamicEmissiveVolume[DTid] = idx;
+	uint idx = DTid.x + DTid.y*gridRes.x + DTid.z*gridRes.x*gridRes.y;
+
+	uint vpacked = StaticEmissiveVolume.Load(idx*4);
+
+	uint idx0 = vpacked & B32(00000000, 00000000, 00000000, 11111111);
+	uint idx1 = vpacked & B32(00000000, 00000000, 11111111, 00000000);
+	uint idx2 = vpacked & B32(00000000, 11111111, 00000000, 00000000);
+	uint idx3 = vpacked & B32(11111111, 00000000, 00000000, 00000000);
+
+	
+	// Load the data from that Dynamic, as we only will change dynamic if the data from static is != 0
+	uint final = DynamicEmissiveVolume.Load(idx*4);
+
+	if(idx0 != 0) 
+	{
+		final &= B32(11111111, 11111111, 11111111, 00000000); // mask
+		final |= idx0; // replace the masked part with the idx
+	}
+	if(idx1 != 0) 
+	{
+		final &= B32(11111111, 11111111, 00000000, 11111111);
+		final |= idx1;
+	}
+	if(idx2 != 0) 
+	{
+		final &= B32(11111111, 00000000, 11111111, 11111111);
+		final |= idx2;
+	}
+	if(idx3 != 0) 
+	{
+		final &= B32(00000000, 11111111, 11111111, 11111111);
+		final |= idx3;
+	}
+
+	// Store
+	DynamicEmissiveVolume.Store(idx*4,final);
 }

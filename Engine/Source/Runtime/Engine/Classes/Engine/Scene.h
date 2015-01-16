@@ -865,6 +865,7 @@ struct FPostProcessSettings
 	// @RyanTorant
 	FVector AHR_internal_SceneBounds;
 	FVector AHR_internal_SceneOrigins;
+	bool AHR_internal_initialized;
 
 	// good start values for a new volume, by default no value is overriding
 	FPostProcessSettings()
@@ -917,6 +918,7 @@ struct FPostProcessSettings
 		LPVTransmissionIntensity = 1.0f;
 
 		// @RyanTorant
+		AHR_internal_initialized = false;
 		AHRRebuildGrids = 0;
 		AHRIntensity = 1.0f;
 		AHRDiffuseRayCount = 9;

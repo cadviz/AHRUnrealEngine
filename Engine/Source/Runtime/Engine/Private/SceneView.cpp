@@ -863,6 +863,7 @@ void DoPostProcessVolume(IInterface_PostProcessVolume* Volume, FVector ViewLocat
 			SceneView->FinalPostProcessSettings.AHR_internal_SceneBounds =  VolumeProperties.AHRGridSettings.Bounds;
 			SceneView->FinalPostProcessSettings.AHR_internal_SceneOrigins = VolumeProperties.AHRGridSettings.Center;
 			SceneView->FinalPostProcessSettings.AHRVoxelSize = VolumeProperties.Settings->AHRVoxelSize;
+			SceneView->FinalPostProcessSettings.AHR_internal_initialized = true;
 		}
 
 		return; // Ignore ahr bounds volumes

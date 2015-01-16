@@ -5,6 +5,7 @@
 #include "SceneUtils.h"
 #include "SceneFilterRendering.h"
 #include "AHR_Voxelization.h"
+#include "math.h"
 //#include "../Public/AHRGlobalSignal.h"
 
 //std::atomic<unsigned int> AHRGlobalSignal_RebuildGrids;
@@ -51,38 +52,38 @@ void  FApproximateHybridRaytracer::StartFrame(FViewInfo& View)
 {	
 	// New frame, new starting idx
 	currentLightIDX = 0;
-
-	gridSettings.Bounds = View.FinalPostProcessSettings.AHR_internal_SceneBounds;
-	gridSettings.Center = View.FinalPostProcessSettings.AHR_internal_SceneOrigins;
-	gridSettings.VoxelSize = View.FinalPostProcessSettings.AHRVoxelSize;
-
-	uint32 maxVal = CVarAHRMaxSliceSize.GetValueOnRenderThread();
-	auto imin = [](uint32 a, uint32 b){ uint32 tmp = a < b; return a*tmp + (1 - tmp)*b; };
-	auto imax = [](uint32 a, uint32 b){ uint32 tmp = a > b; return a*tmp + (1 - tmp)*b; };
-
-	gridSettings.SliceSize.X = imax(imin(ceil(gridSettings.Bounds.X / gridSettings.VoxelSize),maxVal),1);
-	gridSettings.SliceSize.Y = imax(imin(ceil(gridSettings.Bounds.Y / gridSettings.VoxelSize),maxVal),1);
-	gridSettings.SliceSize.Z = imax(imin(ceil(gridSettings.Bounds.Z / gridSettings.VoxelSize),maxVal),1);
-	/*
-	if(_resX != ResX || _resY != ResY && _resX >= 128 && _resY >= 128) // If you are rendering to a target less than 128x128, you are doing it wrong. This is to bypass auxiliary views
+	
+	// Check if the bounds are valid
+	if(View.FinalPostProcessSettings.AHR_internal_initialized)
 	{
-		// Destroy the prev targets
+		gridSettings.Bounds = View.FinalPostProcessSettings.AHR_internal_SceneBounds;
+		gridSettings.Center = View.FinalPostProcessSettings.AHR_internal_SceneOrigins;
+		gridSettings.VoxelSize = View.FinalPostProcessSettings.AHRVoxelSize;
 
-		// Store size
-		ResX = _resX; ResY = _resY;
+		gridSettings.SliceSize.X = ceil(gridSettings.Bounds.X / gridSettings.VoxelSize);
+		gridSettings.SliceSize.Y = ceil(gridSettings.Bounds.Y / gridSettings.VoxelSize);
+		gridSettings.SliceSize.Z = ceil(gridSettings.Bounds.Z / gridSettings.VoxelSize);
 
-		// The view size changed, so we have to rebuild the targets
-		FRHIResourceCreateInfo CreateInfo;
-		
-		// PF_FloatRGBA is 16 bits float per component. Nice documentation Epic ...
-		RaytracingTarget = RHICreateTexture2D(ResX/2,ResY/2,PF_FloatRGBA,1,1,TexCreate_RenderTargetable | TexCreate_ShaderResource,CreateInfo);
-		UpsampledTarget0 = RHICreateTexture2D(ResX/2,ResY/2,PF_FloatRGBA,1,1,TexCreate_RenderTargetable | TexCreate_ShaderResource,CreateInfo);
-		UpsampledTarget1 = RHICreateTexture2D(ResX,ResY,PF_FloatRGBA,1,1,TexCreate_RenderTargetable | TexCreate_ShaderResource,CreateInfo);
-		
-		RaytracingTargetSRV = RHICreateShaderResourceView(RaytracingTarget,0);
-		UpsampledTargetSRV0 = RHICreateShaderResourceView(UpsampledTarget0,0);
-		UpsampledTargetSRV1 = RHICreateShaderResourceView(UpsampledTarget1,0);
-	}*/
+		if(gridSettings.SliceSize.X < 1)
+			gridSettings.SliceSize.X = 1;
+		else if(gridSettings.SliceSize.Y < 1)
+			gridSettings.SliceSize.Y = 1;
+		else if(gridSettings.SliceSize.Z < 1)
+			gridSettings.SliceSize.Z = 1;
+	
+		uint32 maxVal = CVarAHRMaxSliceSize.GetValueOnRenderThread();
+		maxVal = maxVal*maxVal*maxVal;
+
+		if(uint32(gridSettings.SliceSize.X*gridSettings.SliceSize.Y*gridSettings.SliceSize.Z) > maxVal)
+		{
+			// Get the voxel size from the max
+			gridSettings.VoxelSize = cbrt(gridSettings.Bounds.X*gridSettings.Bounds.Y*gridSettings.Bounds.Z/maxVal);
+
+			gridSettings.SliceSize.X = ceil(gridSettings.Bounds.X / gridSettings.VoxelSize);
+			gridSettings.SliceSize.Y = ceil(gridSettings.Bounds.Y / gridSettings.VoxelSize);
+			gridSettings.SliceSize.Z = ceil(gridSettings.Bounds.Z / gridSettings.VoxelSize);
+		}
+	}
 }
 
 class AHRDynamicStaticVolumeCombine : public FGlobalShader
@@ -114,6 +115,7 @@ public:
 		DynamicVolume.Bind( Initializer.ParameterMap, TEXT("DynamicVolume") );
 		DynamicEmissiveVolume.Bind( Initializer.ParameterMap, TEXT("DynamicEmissiveVolume") );
 		StaticEmissiveVolume.Bind( Initializer.ParameterMap, TEXT("StaticEmissiveVolume") );
+		gridRes.Bind( Initializer.ParameterMap, TEXT("gridRes") );
 	}
 
 	/** Serialization. */
@@ -124,6 +126,7 @@ public:
 		Ar << DynamicVolume;
 		Ar << DynamicEmissiveVolume;
 		Ar << StaticEmissiveVolume;
+		Ar << gridRes;
 		return bShaderHasOutdatedParameters;
 	}
 
@@ -131,7 +134,10 @@ public:
 	 * Set parameters for this shader.
 	 */
 	
-	void SetParameters(FRHICommandList& RHICmdList, FUnorderedAccessViewRHIParamRef DynamicVolumeUAV,FUnorderedAccessViewRHIParamRef emissiveUAV,FShaderResourceViewRHIParamRef StaticVolumeSRV,FShaderResourceViewRHIParamRef staticEmissiveSRV)
+	void SetParameters(FRHICommandList& RHICmdList, FUnorderedAccessViewRHIParamRef DynamicVolumeUAV,FUnorderedAccessViewRHIParamRef emissiveUAV,
+													FShaderResourceViewRHIParamRef StaticVolumeSRV,FShaderResourceViewRHIParamRef staticEmissiveSRV,
+													FIntVector inGridRes
+													)
 	{
 		FComputeShaderRHIParamRef ComputeShaderRHI = GetComputeShader();
 
@@ -143,6 +149,8 @@ public:
 			RHICmdList.SetUAVParameter(ComputeShaderRHI,DynamicEmissiveVolume.GetBaseIndex(), emissiveUAV);
 		if ( StaticEmissiveVolume.IsBound() )
 			RHICmdList.SetShaderResourceViewParameter(ComputeShaderRHI,StaticEmissiveVolume.GetBaseIndex(), staticEmissiveSRV);
+
+		SetShaderValue(RHICmdList, ComputeShaderRHI, gridRes, inGridRes );
 	}
 
 	/**
@@ -166,6 +174,7 @@ private:
 	FShaderResourceParameter DynamicVolume;
 	FShaderResourceParameter DynamicEmissiveVolume;
 	FShaderResourceParameter StaticEmissiveVolume;
+	FShaderParameter gridRes;
 };
 // I know, this is ugly. I'm lazy. Report me!
 class AHRDynamicStaticEmissiveVolumeCombine : public FGlobalShader
@@ -197,6 +206,7 @@ public:
 		DynamicVolume.Bind( Initializer.ParameterMap, TEXT("DynamicVolume") );
 		DynamicEmissiveVolume.Bind( Initializer.ParameterMap, TEXT("DynamicEmissiveVolume") );
 		StaticEmissiveVolume.Bind( Initializer.ParameterMap, TEXT("StaticEmissiveVolume") );
+		gridRes.Bind( Initializer.ParameterMap, TEXT("gridRes") );
 	}
 
 	/** Serialization. */
@@ -207,6 +217,7 @@ public:
 		Ar << DynamicVolume;
 		Ar << DynamicEmissiveVolume;
 		Ar << StaticEmissiveVolume;
+		Ar << gridRes;
 		return bShaderHasOutdatedParameters;
 	}
 
@@ -214,7 +225,9 @@ public:
 	 * Set parameters for this shader.
 	 */
 	
-	void SetParameters(FRHICommandList& RHICmdList, FUnorderedAccessViewRHIParamRef DynamicVolumeUAV,FUnorderedAccessViewRHIParamRef emissiveUAV,FShaderResourceViewRHIParamRef StaticVolumeSRV,FShaderResourceViewRHIParamRef staticEmissiveSRV)
+	void SetParameters(FRHICommandList& RHICmdList, FUnorderedAccessViewRHIParamRef DynamicVolumeUAV,FUnorderedAccessViewRHIParamRef emissiveUAV,
+													FShaderResourceViewRHIParamRef StaticVolumeSRV,FShaderResourceViewRHIParamRef staticEmissiveSRV,
+													FIntVector inGridRes)
 	{
 		FComputeShaderRHIParamRef ComputeShaderRHI = GetComputeShader();
 
@@ -226,6 +239,8 @@ public:
 			RHICmdList.SetUAVParameter(ComputeShaderRHI,DynamicEmissiveVolume.GetBaseIndex(), emissiveUAV);
 		if ( StaticEmissiveVolume.IsBound() )
 			RHICmdList.SetShaderResourceViewParameter(ComputeShaderRHI,StaticEmissiveVolume.GetBaseIndex(), staticEmissiveSRV);
+
+		SetShaderValue(RHICmdList, ComputeShaderRHI, gridRes, inGridRes );
 	}
 
 	/**
@@ -250,6 +265,7 @@ private:
 	FShaderResourceParameter DynamicVolume;
 	FShaderResourceParameter DynamicEmissiveVolume;
 	FShaderResourceParameter StaticEmissiveVolume;
+	FShaderParameter gridRes;
 };
 
 IMPLEMENT_SHADER_TYPE(,AHRDynamicStaticVolumeCombine,TEXT("AHRDynamicStaticVolumeCombine"),TEXT("mainBinary"),SF_Compute);
@@ -258,7 +274,7 @@ IMPLEMENT_SHADER_TYPE(,AHRDynamicStaticEmissiveVolumeCombine,TEXT("AHRDynamicSta
 //std::mutex cs;
 //pthread_mutex_t Mutex;
 FCriticalSection cs;
-FIntVector prevGridRes(-1,-1,-1);
+AHRGridSettings prevGridSettings;
 vector<FName> prevStaticObjects;
 FLinearColor prevPalette[256];
 //once_flag stdOnceFlag;
@@ -361,10 +377,13 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 			}
 		}
 		// Voxelize static only once, to the static grid. Revoxelize static if something changed (add, delete, grid res changed)
-		voxelizeStatic = prevGridRes != gridSettings.SliceSize ||
-							  prevStaticObjects.size() != staticObjects.Num() ||
-							  staticListChanged ||
-							  RebuildGrids;
+		voxelizeStatic = prevGridSettings.Bounds != gridSettings.Bounds ||
+						 prevGridSettings.Center != gridSettings.Center ||
+						 prevGridSettings.SliceSize != gridSettings.SliceSize ||
+						 prevStaticObjects.size() != staticObjects.Num() ||
+					     staticListChanged ||
+						 RebuildGrids;
+
 		if(voxelizeStatic)
 		{
 			// we are going to voxelize, so store state
@@ -372,7 +391,7 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 			for(auto obj : staticObjects)
 				prevStaticObjects.push_back(obj->Proxy->GetOwnerName());
 
-			prevGridRes = gridSettings.SliceSize;
+			prevGridSettings = gridSettings;
 		}
 
 		// Check if the palette changed
@@ -422,7 +441,7 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 	{
 		// Clear
 		RHICmdList.ClearUAV(StaticSceneVolume->UAV, cls);
-		RHICmdList.ClearUAV(StaticEmissiveVolumeUAV, cls);
+		RHICmdList.ClearUAV(StaticEmissiveVolume->UAV, cls);
 		SetStaticVolumeAsActive();
 
 		TAHRVoxelizerElementPDI<FAHRVoxelizerDrawingPolicyFactory> Drawer(
@@ -441,7 +460,7 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 	
 	// Voxelize dynamic to the dynamic grid
 	RHICmdList.ClearUAV(DynamicSceneVolume->UAV, cls);
-	RHICmdList.ClearUAV(DynamicEmissiveVolumeUAV, cls);
+	RHICmdList.ClearUAV(DynamicEmissiveVolume->UAV, cls);
 	SetDynamicVolumeAsActive();
 
 	TAHRVoxelizerElementPDI<FAHRVoxelizerDrawingPolicyFactory> Drawer(
@@ -460,14 +479,22 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 	// The dynamic grid is the one that gets binded as an SRV
 	TShaderMapRef<AHRDynamicStaticVolumeCombine> combineCS(GetGlobalShaderMap(View.GetFeatureLevel()));
 	RHICmdList.SetComputeShader(combineCS->GetComputeShader());
-	combineCS->SetParameters(RHICmdList, DynamicSceneVolume->UAV,DynamicEmissiveVolumeUAV,StaticSceneVolume->SRV,StaticEmissiveVolumeSRV);
-	DispatchComputeShader(RHICmdList, *combineCS, gridSettings.SliceSize.X*gridSettings.SliceSize.Y*gridSettings.SliceSize.Z/32/256, 1 ,1 );
+
+	uint32 l = gridSettings.SliceSize.X*gridSettings.SliceSize.Y*gridSettings.SliceSize.Z/32;
+	uint32 x = ceil(cbrt(l / 256.0f)); // cbrt = cubic root
+	combineCS->SetParameters(RHICmdList, DynamicSceneVolume->UAV,DynamicEmissiveVolume->UAV,StaticSceneVolume->SRV,StaticEmissiveVolume->SRV,FIntVector(x*8,x*8,x*4));
+	DispatchComputeShader(RHICmdList, *combineCS, x, x, x);
+
 	combineCS->UnbindBuffers(RHICmdList);
 	
 	TShaderMapRef<AHRDynamicStaticEmissiveVolumeCombine> combineCSEmissive(GetGlobalShaderMap(View.GetFeatureLevel()));
 	RHICmdList.SetComputeShader(combineCSEmissive->GetComputeShader());
-	combineCSEmissive->SetParameters(RHICmdList, DynamicSceneVolume->UAV,DynamicEmissiveVolumeUAV,StaticSceneVolume->SRV,StaticEmissiveVolumeSRV);
-	DispatchComputeShader(RHICmdList, *combineCSEmissive, gridSettings.SliceSize.X/8, gridSettings.SliceSize.Y/8 , gridSettings.SliceSize.Z/4 );
+
+	l = gridSettings.SliceSize.X*gridSettings.SliceSize.Y*gridSettings.SliceSize.Z/4;
+	x = ceil(cbrt(l / 256.0f)); // cbrt = cubic root
+	combineCSEmissive->SetParameters(RHICmdList, DynamicSceneVolume->UAV,DynamicEmissiveVolume->UAV,StaticSceneVolume->SRV,StaticEmissiveVolume->SRV,FIntVector(x*8,x*8,x*4));
+	DispatchComputeShader(RHICmdList, *combineCSEmissive, x, x ,x);
+
 	combineCSEmissive->UnbindBuffers(RHICmdList);
 }
 
@@ -812,7 +839,7 @@ void FApproximateHybridRaytracer::TraceScene(FRHICommandListImmediate& RHICmdLis
 	PixelShader->SetParameters(RHICmdList, View, 
 								DynamicSceneVolume->SRV,
 								EmissivePaletteSRV,
-								DynamicEmissiveVolumeSRV,
+								DynamicEmissiveVolume->SRV,
 								SamplingKernelSRV);
 
 	// Draw a quad mapping scene color to the view's render target

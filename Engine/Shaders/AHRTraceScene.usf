@@ -41,7 +41,8 @@ float3 to_vlocal(float3 worldPos)
 }
 
 ByteAddressBuffer SceneVolume;
-Texture3D<uint> EmissiveVolume;
+ByteAddressBuffer EmissiveVolume;
+//Texture3D<uint> EmissiveVolume;
 Texture2D<float3> EmissivePalette;
 Texture2D<uint> SamplingKernel;
 
@@ -97,6 +98,8 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 
 	uint bvox = -1;
 	uint prevbidx = -1;
+	uint ebvox = -1;
+	uint prevebidx = -1;
 	float3 rkernel = {-0.721016, 0.692918, -1.0};
 
 	// Construct normal space
@@ -159,9 +162,9 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 			uint3 vpos = floor((to_vlocal(spos)*0.5 + 0.5)*AHRTraceCB.SliceSize);
 			uint vidx = vpos.y + vpos.x*AHRTraceCB.SliceSize.y + vpos.z*AHRTraceCB.SliceSize.y*AHRTraceCB.SliceSize.x;
 
-#define ONE_OVER_32 0.03125f
-			uint bidx = floor(float(vidx) * ONE_OVER_32);
-			uint offset = vidx - 32 * bidx;
+//#define ONE_OVER_32 0.03125f
+			uint bidx = vidx/32u;//floor(float(vidx) * ONE_OVER_32);
+			uint offset = vidx - 32u * bidx;
 
 			if (bidx != prevbidx)
 			{
@@ -196,7 +199,16 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 				}
 
 				// Add emissive
-				glossy += EmissivePalette[uint2(EmissiveVolume[vpos],0)];
+				uint ebidx = vidx/4u;
+				uint eoffset = vidx - 4u * ebidx;
+
+				if (ebidx != prevebidx)
+				{
+					ebvox = EmissiveVolume.Load(ebidx*4u);
+					prevebidx = ebidx;
+				}
+				uint eidx = (ebvox & (B8(11111111) << eoffset*8u)) >> eoffset*8u;
+				glossy += EmissivePalette[uint2(eidx,0)];
 
 				break;
 			}
@@ -247,9 +259,9 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 			uint3 vpos = floor((to_vlocal(spos)*0.5 + 0.5)*AHRTraceCB.SliceSize);
 			uint vidx = vpos.y + vpos.x*AHRTraceCB.SliceSize.y + vpos.z*AHRTraceCB.SliceSize.y*AHRTraceCB.SliceSize.x;
 
-#define ONE_OVER_32 0.03125f
-			uint bidx = floor(float(vidx) * ONE_OVER_32);
-			uint offset = vidx - 32 * bidx;
+//#define ONE_OVER_32 0.03125f
+			uint bidx = vidx/32u;//floor(float(vidx) * ONE_OVER_32);
+			uint offset = vidx - 32u * bidx;
 
 			if (bidx != prevbidx)
 			{
@@ -306,7 +318,17 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 				//acc += 1;
 
 				// Add emissive
-				diffuse += EmissivePalette[uint2(EmissiveVolume[vpos],0)];///pow(magnitudeSquared(to_vlocal(spos)) + 1,4);
+				uint ebidx = vidx/4u;
+				uint eoffset = vidx - 4u * ebidx;
+
+				if (ebidx != prevebidx)
+				{
+					ebvox = EmissiveVolume.Load(ebidx*4u);
+					prevebidx = ebidx;
+				}
+				uint eidx = (ebvox & (B8(11111111) << eoffset*8u)) >> eoffset*8u;
+				diffuse += EmissivePalette[uint2(eidx,0)];
+				//diffuse += EmissivePalette[uint2(EmissiveVolume[vpos],0)];///pow(magnitudeSquared(to_vlocal(spos)) + 1,4);
 
 				break;
 			}
@@ -379,8 +401,8 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 
 		uint3 vpos = floor((local*0.5 + 0.5)*AHRTraceCB.SliceSize);
 		uint vidx = vpos.y + vpos.x*AHRTraceCB.SliceSize.y + vpos.z*AHRTraceCB.SliceSize.y*AHRTraceCB.SliceSize.x;
-		uint bidx = floor(float(vidx) * ONE_OVER_32);
-		uint offset = vidx - 32 * bidx;
+		uint bidx = vidx/32u;//floor(float(vidx) * ONE_OVER_32);
+		uint offset = vidx - 32u * bidx;
 		
 		if (bidx != prevbidx2)
 		{
@@ -395,7 +417,23 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 
 			break;
 		}
+		
+				/*uint ebidx = vidx/4u;
+				uint eoffset = vidx - 4u * ebidx;
 
+				if (ebidx != prevebidx)
+				{
+					ebvox = EmissiveVolume.Load(ebidx*4u);
+					prevebidx = ebidx;
+				}
+				uint eidx = (ebvox & (B8(11111111) << eoffset*8u)) >> eoffset*8u;
+				if(eidx != 0)
+				{
+					traced = EmissivePalette[uint2(eidx,0)].rgbb;
+					break;
+				}*/
+				
+				
 		spos += step;
 	}
 

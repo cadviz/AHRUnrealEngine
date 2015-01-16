@@ -3,7 +3,7 @@
 #include "AHRVoxelizationCommon.usf"
 
 RWByteAddressBuffer SceneVolume : register (u0);
-RWTexture3D<uint> EmissiveVolume : register (u1);
+RWByteAddressBuffer EmissiveVolume : register (u1);
 
 float3 to_vlocal(float3 worldPos)
 {
@@ -25,13 +25,23 @@ void Main(FAHRVoxelizationGSOut input)
 		uint3 vpos2 = floor((local*0.5 + 0.5)*AHRVoxelizationCB.SliceSize);
 		uint vidx2 = vpos2.y + vpos2.x*AHRVoxelizationCB.SliceSize.y + vpos2.z*AHRVoxelizationCB.SliceSize.y*AHRVoxelizationCB.SliceSize.x;
 
-#define ONE_OVER_32 0.03125f
-		uint bidx = floor(float(vidx2) * ONE_OVER_32); 
-		uint offset = vidx2 - 32 * bidx;
+//#define ONE_OVER_32 0.03125f
+		uint bidx = vidx2/32u;//floor(float(vidx2) * ONE_OVER_32);
+		uint offset = vidx2 - 32u * bidx;
 
 		SceneVolume.InterlockedOr(bidx*4, 1 << offset);
 
-		// Store directly, no atomic
-		EmissiveVolume[vpos2] = AHRVoxelizationCB.EmissiveIndex;
+		// Store emissive
+		uint ebidx = vidx2/4u;
+		uint eoffset = vidx2 - 4u * ebidx;
+		eoffset *= 8u;
+		uint emask = ~(B8(11111111) << eoffset);
+
+		// This should be implemented with a CAS
+		EmissiveVolume.InterlockedAnd(ebidx*4, emask); // mask 
+		EmissiveVolume.InterlockedOr(ebidx*4, AHRVoxelizationCB.EmissiveIndex << eoffset);
+		//uint vox = EmissiveVolume.Load(ebidx*4);
+		//vox = (vox & emask) | (AHRVoxelizationCB.EmissiveIndex << eoffset);
+		//EmissiveVolume.Store(ebidx*4,vox);
 	}
 }
