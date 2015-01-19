@@ -400,7 +400,8 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 		if(paletteChanged)
 		{
 			// TODO: a dynamic texture could be more efficient, specially if the material emissive color is driven trough blueprints/c++ code and changes often
-			// Recreate the texture in that case
+
+			// Recreate the texture
 			for(int i = 0; i < 256; i++) prevPalette[i] = palette[i];
 
 			// Destroy the texture
@@ -419,7 +420,7 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 				palleteTexBuff[i*4]     =  col.B;
 				palleteTexBuff[i*4 + 1] =  col.G;
 				palleteTexBuff[i*4 + 2] =  col.R;
-				palleteTexBuff[i*4 + 3] =  0; // Alpha is not used for now
+				palleteTexBuff[i*4 + 3] =  col.A; // Alpha is used as a multiplier
 			}
 
 			uint32 Stride = 0;
@@ -869,9 +870,9 @@ void FApproximateHybridRaytracer::TraceScene(FRHICommandListImmediate& RHICmdLis
 ///
 /// Upsampling and composite
 ///
-class AHRUpsamplePS : public FGlobalShader
+class AHRBlurH : public FGlobalShader
 {
-	DECLARE_SHADER_TYPE(AHRUpsamplePS,Global)
+	DECLARE_SHADER_TYPE(AHRBlurH,Global)
 public:
 
 	static bool ShouldCache(EShaderPlatform Platform)
@@ -882,20 +883,20 @@ public:
 	static void ModifyCompilationEnvironment(EShaderPlatform Platform, FShaderCompilerEnvironment& OutEnvironment)
 	{
 		FGlobalShader::ModifyCompilationEnvironment(Platform, OutEnvironment);
-		if(CVarAHRTraceReflections.GetValueOnRenderThread() == 1)
-			OutEnvironment.SetDefine(TEXT("_GLOSSY"),1);
 	}
 
-	AHRUpsamplePS(const ShaderMetaType::CompiledShaderInitializerType& Initializer)
+	AHRBlurH(const ShaderMetaType::CompiledShaderInitializerType& Initializer)
 	:	FGlobalShader(Initializer)
 	{
 		DeferredParameters.Bind(Initializer.ParameterMap);
 		GIBufferTexture.Bind(Initializer.ParameterMap, TEXT("tGI"));
 		LinearSampler.Bind(Initializer.ParameterMap, TEXT("samLinear"));
 		BlurKernelSize.Bind(Initializer.ParameterMap,TEXT("size"));
+		zMax.Bind(Initializer.ParameterMap,TEXT("zMax"));
+		NormalTex.Bind(Initializer.ParameterMap,TEXT("NormalTex"));
 	}
 
-	AHRUpsamplePS()
+	AHRBlurH()
 	{
 	}
 
@@ -907,10 +908,13 @@ public:
 
 		if(GIBufferTexture.IsBound())
 			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,GIBufferTexture.GetBaseIndex(),giSRV);
+		if(NormalTex.IsBound())
+			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,NormalTex.GetBaseIndex(),AHREngine.DownsampledNormalSRV);
 		if(LinearSampler.IsBound())
 			RHICmdList.SetShaderSampler(ShaderRHI,LinearSampler.GetBaseIndex(),TStaticSamplerState<SF_Trilinear,AM_Wrap,AM_Wrap,AM_Wrap>::GetRHI());
 
 		SetShaderValue(RHICmdList, ShaderRHI, BlurKernelSize,blurKernelSize);
+		SetShaderValue(RHICmdList, ShaderRHI, zMax,View.PixelToWorld(0,0,1).Z);
 	}
 
 	virtual bool Serialize(FArchive& Ar)
@@ -920,6 +924,8 @@ public:
 		Ar << GIBufferTexture;
 		Ar << LinearSampler;
 		Ar << BlurKernelSize;
+		Ar << zMax;
+		Ar << NormalTex;
 		return bShaderHasOutdatedParameters;
 	}
 
@@ -933,16 +939,264 @@ public:
 private:
 	FDeferredPixelShaderParameters DeferredParameters;
 	FShaderResourceParameter GIBufferTexture;
+	FShaderResourceParameter NormalTex;
 	FShaderResourceParameter LinearSampler;
 	FShaderParameter BlurKernelSize;
+	FShaderParameter zMax;
 };
-IMPLEMENT_SHADER_TYPE(,AHRUpsamplePS,TEXT("AHRUpsample"),TEXT("PS"),SF_Pixel);
+class AHRBlurV : public FGlobalShader
+{
+	DECLARE_SHADER_TYPE(AHRBlurV,Global)
+public:
+
+	static bool ShouldCache(EShaderPlatform Platform)
+	{
+		return IsFeatureLevelSupported(Platform, ERHIFeatureLevel::SM5);
+	}
+
+	static void ModifyCompilationEnvironment(EShaderPlatform Platform, FShaderCompilerEnvironment& OutEnvironment)
+	{
+		FGlobalShader::ModifyCompilationEnvironment(Platform, OutEnvironment);
+	}
+
+	AHRBlurV(const ShaderMetaType::CompiledShaderInitializerType& Initializer)
+	:	FGlobalShader(Initializer)
+	{
+		DeferredParameters.Bind(Initializer.ParameterMap);
+		GIBufferTexture.Bind(Initializer.ParameterMap, TEXT("tGI"));
+		LinearSampler.Bind(Initializer.ParameterMap, TEXT("samLinear"));
+		BlurKernelSize.Bind(Initializer.ParameterMap,TEXT("size"));
+		zMax.Bind(Initializer.ParameterMap,TEXT("zMax"));
+		NormalTex.Bind(Initializer.ParameterMap,TEXT("NormalTex"));
+	}
+
+	AHRBlurV()
+	{
+	}
+
+	void SetParameters(FRHICommandList& RHICmdList, const FSceneView& View, const FShaderResourceViewRHIRef giSRV,float blurKernelSize)
+	{
+		const FPixelShaderRHIParamRef ShaderRHI = GetPixelShader();
+		FGlobalShader::SetParameters(RHICmdList, ShaderRHI,View);
+		DeferredParameters.Set(RHICmdList, ShaderRHI, View);
+
+		if(GIBufferTexture.IsBound())
+			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,GIBufferTexture.GetBaseIndex(),giSRV);
+		if(NormalTex.IsBound())
+			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,NormalTex.GetBaseIndex(),AHREngine.DownsampledNormalSRV);
+		if(LinearSampler.IsBound())
+			RHICmdList.SetShaderSampler(ShaderRHI,LinearSampler.GetBaseIndex(),TStaticSamplerState<SF_Trilinear,AM_Wrap,AM_Wrap,AM_Wrap>::GetRHI());
+
+		SetShaderValue(RHICmdList, ShaderRHI, BlurKernelSize,blurKernelSize);
+		SetShaderValue(RHICmdList, ShaderRHI, zMax,View.PixelToWorld(0,0,1).Z);
+	}
+
+	virtual bool Serialize(FArchive& Ar)
+	{		
+		bool bShaderHasOutdatedParameters = FGlobalShader::Serialize(Ar);
+		Ar << DeferredParameters;
+		Ar << GIBufferTexture;
+		Ar << LinearSampler;
+		Ar << BlurKernelSize;
+		Ar << zMax;
+		Ar << NormalTex;
+		return bShaderHasOutdatedParameters;
+	}
+
+	FGlobalBoundShaderState& GetBoundShaderState()
+	{
+		static FGlobalBoundShaderState State;
+
+		return State;
+	}
+
+private:
+	FDeferredPixelShaderParameters DeferredParameters;
+	FShaderResourceParameter GIBufferTexture;
+	FShaderResourceParameter NormalTex;
+	FShaderResourceParameter LinearSampler;
+	FShaderParameter BlurKernelSize;
+	FShaderParameter zMax;
+};
+class AHRNormalDownsample : public FGlobalShader
+{
+	DECLARE_SHADER_TYPE(AHRNormalDownsample,Global)
+public:
+
+	static bool ShouldCache(EShaderPlatform Platform)
+	{
+		return IsFeatureLevelSupported(Platform, ERHIFeatureLevel::SM5);
+	}
+
+	static void ModifyCompilationEnvironment(EShaderPlatform Platform, FShaderCompilerEnvironment& OutEnvironment)
+	{
+		FGlobalShader::ModifyCompilationEnvironment(Platform, OutEnvironment);
+	}
+
+	AHRNormalDownsample(const ShaderMetaType::CompiledShaderInitializerType& Initializer)
+	:	FGlobalShader(Initializer)
+	{
+		DeferredParameters.Bind(Initializer.ParameterMap);
+	}
+
+	AHRNormalDownsample()
+	{
+	}
+
+	void SetParameters(FRHICommandList& RHICmdList, const FSceneView& View)
+	{
+		const FPixelShaderRHIParamRef ShaderRHI = GetPixelShader();
+		FGlobalShader::SetParameters(RHICmdList, ShaderRHI,View);
+		DeferredParameters.Set(RHICmdList, ShaderRHI, View);
+	}
+
+	virtual bool Serialize(FArchive& Ar)
+	{		
+		bool bShaderHasOutdatedParameters = FGlobalShader::Serialize(Ar);
+		Ar << DeferredParameters;
+		return bShaderHasOutdatedParameters;
+	}
+
+	FGlobalBoundShaderState& GetBoundShaderState()
+	{
+		static FGlobalBoundShaderState State;
+
+		return State;
+	}
+
+private:
+	FDeferredPixelShaderParameters DeferredParameters;
+};
+//IMPLEMENT_SHADER_TYPE(,AHRUpsamplePS,TEXT("AHRUpsample"),TEXT("PS"),SF_Pixel);
+IMPLEMENT_SHADER_TYPE(,AHRBlurH,TEXT("AHRUpsample"),TEXT("BlurH"),SF_Pixel);
+IMPLEMENT_SHADER_TYPE(,AHRBlurV,TEXT("AHRUpsample"),TEXT("BlurV"),SF_Pixel);
+IMPLEMENT_SHADER_TYPE(,AHRNormalDownsample,TEXT("AHRUpsample"),TEXT("NormalDownsample"),SF_Pixel);
 
 void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,FViewInfo& View)
 {
 	SCOPED_DRAW_EVENT(RHICmdList,AHRUpsample);
 
+	RHICmdList.SetRasterizerState(TStaticRasterizerState<FM_Solid, CM_None>::GetRHI());
+	RHICmdList.SetDepthStencilState(TStaticDepthStencilState<false, CF_Always>::GetRHI());
+	RHICmdList.SetViewport(View.ViewRect.Min.X, View.ViewRect.Min.Y, 0.0f, View.ViewRect.Max.X/2, View.ViewRect.Max.Y/2, 1.0f);
+
+
+	// Get the shaders
+	TShaderMapRef<AHRPassVS> VertexShader(View.ShaderMap);
+	TShaderMapRef<AHRNormalDownsample> PSNormalDownsample(View.ShaderMap);
+	TShaderMapRef<AHRBlurH> PSBlurH(View.ShaderMap);
+	TShaderMapRef<AHRBlurV> PSBlurV(View.ShaderMap);
 	
+	///////// First pass to downsample the normals
+	SetRenderTarget(RHICmdList, DownsampledNormal, FTextureRHIRef());
+
+	// Clear the target before drawing
+	RHICmdList.Clear(true, FLinearColor::Black, false, 1.0f, false, 0, FIntRect());
+
+	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PSNormalDownsample->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PSNormalDownsample);
+	VertexShader->SetParameters(RHICmdList,View);
+	PSNormalDownsample->SetParameters(RHICmdList, View);
+
+	// Draw!
+	DrawRectangle( 
+				RHICmdList,
+				0, 0,
+				View.ViewRect.Width()/2, View.ViewRect.Height()/2,
+				View.ViewRect.Min.X, View.ViewRect.Min.Y, 
+				View.ViewRect.Width(), View.ViewRect.Height(),
+				View.ViewRect.Size()/2,
+				GSceneRenderTargets.GetBufferSizeXY(),
+				*VertexShader,
+				EDRF_UseTriangleOptimization);
+
+	///////// Pass 0
+	SetRenderTarget(RHICmdList, UpsampledTarget0, FTextureRHIRef());
+
+	// Clear the target before drawing
+	RHICmdList.Clear(true, FLinearColor::Black, false, 1.0f, false, 0, FIntRect());
+
+	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PSBlurH->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PSBlurH);
+	VertexShader->SetParameters(RHICmdList,View);
+	PSBlurH->SetParameters(RHICmdList, View, RaytracingTargetSRV,1.5);
+
+	// Draw!
+	DrawRectangle( 
+				RHICmdList,
+				0, 0,
+				View.ViewRect.Width()/2, View.ViewRect.Height()/2,
+				View.ViewRect.Min.X, View.ViewRect.Min.Y, 
+				View.ViewRect.Width(), View.ViewRect.Height(),
+				View.ViewRect.Size()/2,
+				GSceneRenderTargets.GetBufferSizeXY(),
+				*VertexShader,
+				EDRF_UseTriangleOptimization);
+
+	///////// Pass 1
+	SetRenderTarget(RHICmdList, UpsampledTarget1, FTextureRHIRef());
+
+	// Clear the target before drawing
+	RHICmdList.Clear(true, FLinearColor::Black, false, 1.0f, false, 0, FIntRect());
+
+	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PSBlurV->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PSBlurV);
+	VertexShader->SetParameters(RHICmdList,View);
+	PSBlurV->SetParameters(RHICmdList, View, UpsampledTargetSRV0,1.5);
+
+	// Draw!
+	DrawRectangle( 
+				RHICmdList,
+				0, 0,
+				View.ViewRect.Width()/2, View.ViewRect.Height()/2,
+				View.ViewRect.Min.X, View.ViewRect.Min.Y, 
+				View.ViewRect.Width(), View.ViewRect.Height(),
+				View.ViewRect.Size()/2,
+				GSceneRenderTargets.GetBufferSizeXY(),
+				*VertexShader,
+				EDRF_UseTriangleOptimization);
+
+	///////// Pass 2
+	SetRenderTarget(RHICmdList, UpsampledTarget0, FTextureRHIRef());
+
+	// Clear the target before drawing
+	RHICmdList.Clear(true, FLinearColor::Black, false, 1.0f, false, 0, FIntRect());
+
+	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PSBlurH->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PSBlurH);
+	VertexShader->SetParameters(RHICmdList,View);
+	PSBlurH->SetParameters(RHICmdList, View, UpsampledTargetSRV1,1.5);
+
+	// Draw!
+	DrawRectangle( 
+				RHICmdList,
+				0, 0,
+				View.ViewRect.Width()/2, View.ViewRect.Height()/2,
+				View.ViewRect.Min.X, View.ViewRect.Min.Y, 
+				View.ViewRect.Width(), View.ViewRect.Height(),
+				View.ViewRect.Size()/2,
+				GSceneRenderTargets.GetBufferSizeXY(),
+				*VertexShader,
+				EDRF_UseTriangleOptimization);
+
+	///////// Pass 3
+	SetRenderTarget(RHICmdList, UpsampledTarget1, FTextureRHIRef());
+
+	// Clear the target before drawing
+	RHICmdList.Clear(true, FLinearColor::Black, false, 1.0f, false, 0, FIntRect());
+
+	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PSBlurV->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PSBlurV);
+	VertexShader->SetParameters(RHICmdList,View);
+	PSBlurV->SetParameters(RHICmdList, View, UpsampledTargetSRV0,1.5);
+
+	// Draw!
+	DrawRectangle( 
+				RHICmdList,
+				0, 0,
+				View.ViewRect.Width()/2, View.ViewRect.Height()/2,
+				View.ViewRect.Min.X, View.ViewRect.Min.Y, 
+				View.ViewRect.Width(), View.ViewRect.Height(),
+				View.ViewRect.Size()/2,
+				GSceneRenderTargets.GetBufferSizeXY(),
+				*VertexShader,
+				EDRF_UseTriangleOptimization);
+#if 0
 	RHICmdList.SetRasterizerState(TStaticRasterizerState<FM_Solid, CM_None>::GetRHI());
 	RHICmdList.SetDepthStencilState(TStaticDepthStencilState<false, CF_Always>::GetRHI());
 
@@ -1001,6 +1255,7 @@ void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,
 				GSceneRenderTargets.GetBufferSizeXY(),
 				*VertexShader,
 				EDRF_UseTriangleOptimization);
+#endif
 }
 
 BEGIN_UNIFORM_BUFFER_STRUCT(AHRCompositeCB,)

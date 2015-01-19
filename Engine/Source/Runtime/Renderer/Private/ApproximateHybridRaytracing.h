@@ -77,9 +77,11 @@ public:
 	FTexture2DRHIRef RaytracingTarget;
 	FTexture2DRHIRef UpsampledTarget0;
 	FTexture2DRHIRef UpsampledTarget1;
+	FTexture2DRHIRef DownsampledNormal;
 	FShaderResourceViewRHIRef RaytracingTargetSRV;
 	FShaderResourceViewRHIRef UpsampledTargetSRV0;
 	FShaderResourceViewRHIRef UpsampledTargetSRV1;
+	FShaderResourceViewRHIRef DownsampledNormalSRV;
 
 	FRWBufferByteAddress* StaticSceneVolume;
 	FRWBufferByteAddress* DynamicSceneVolume;

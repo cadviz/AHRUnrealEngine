@@ -43,7 +43,7 @@ float3 to_vlocal(float3 worldPos)
 ByteAddressBuffer SceneVolume;
 ByteAddressBuffer EmissiveVolume;
 //Texture3D<uint> EmissiveVolume;
-Texture2D<float3> EmissivePalette;
+Texture2D EmissivePalette;
 Texture2D<uint> SamplingKernel;
 
 SamplerState samLinear;
@@ -208,7 +208,8 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 					prevebidx = ebidx;
 				}
 				uint eidx = (ebvox & (B8(11111111) << eoffset*8u)) >> eoffset*8u;
-				glossy += EmissivePalette[uint2(eidx,0)];
+				float4 ecolor = EmissivePalette[uint2(eidx,0)];
+				glossy += ecolor*ecolor.a;
 
 				break;
 			}
@@ -327,7 +328,8 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 					prevebidx = ebidx;
 				}
 				uint eidx = (ebvox & (B8(11111111) << eoffset*8u)) >> eoffset*8u;
-				diffuse += EmissivePalette[uint2(eidx,0)];
+				float4 ecolor = EmissivePalette[uint2(eidx,0)];
+				diffuse += ecolor*ecolor.a;
 				//diffuse += EmissivePalette[uint2(EmissiveVolume[vpos],0)];///pow(magnitudeSquared(to_vlocal(spos)) + 1,4);
 
 				break;

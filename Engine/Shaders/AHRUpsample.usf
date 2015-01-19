@@ -2,15 +2,17 @@
 #include "Common.usf"
 #include "DeferredShadingCommon.usf"
 
-Texture2D<float4> tGI;
+Texture2D tGI;
+Texture2D NormalTex;
 SamplerState samLinear;
 float size;
+float zMax;
 
 static const float g_epsilon = 0.0001;
 
 float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 {
-	float SceneDepth = CalcSceneDepth(InUV)*0.0001f;
+	float SceneDepth = CalcSceneDepth(InUV)*0.01f;
 	//float3 WorldPosition = ScreenVector * SceneDepth + View.ViewOrigin.xyz;
 	//float3 depth_hires = distanceSquared(SceneDepth,View.ViewOrigin.xyz);
 
@@ -36,19 +38,103 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 	[unroll]
 	for (int i = 0; i < 9; i++) 
 	{
-		float z = CalcSceneDepth(coords[i])*0.0001f;
+		float z = CalcSceneDepth(coords[i])*0.01f;
 		float3 n = GetScreenSpaceData(coords[i]).GBuffer.WorldNormal;
 		//float3 wp = ScreenVector * z + View.ViewOrigin.xyz;
 		//float3 linearZ = distanceSquared(SceneDepth,View.ViewOrigin.xyz);
 
 
 		float w = 1.0f / (g_epsilon + pow(abs(SceneDepth - z),20));
-		w *= lerp(1.0f / (g_epsilon + 1 - pow(abs(dot(n,normal)),8)),1,0.5); // reduce a bit the normal influence
+		w *= lerp(1.0f / (g_epsilon + 1 - pow(abs(dot(n,normal)),8)),1,0.1); // reduce a bit the normal influence
 
 		gidata += tGI.SampleLevel(samLinear, coords[i],0)*w;
 		weight_sum += w;
 	}
 	gidata /= weight_sum;
 
+
 	return gidata;
+}
+
+static const int FilterSize = 13;
+static const float2 PixelOffsets [ FilterSize ] =
+{
+    { -6, 0 },
+    { -5, 0 },
+    { -4, 0 },
+    { -3, 0 },
+    { -2, 0 },
+    { -1, 0 },
+    {  0, 0 },
+    {  1, 0 },
+    {  2, 0 },
+    {  3, 0 },
+    {  4, 0 },
+    {  5, 0 },
+    {  6, 0 },
+};
+
+float4 BlurH(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
+{
+	float4 color = 0;
+	float wacc = 1;
+
+	float z = CalcSceneDepth(InUV)*0.001f;
+	float2 scale = View.ViewSizeAndSceneTexelSize.zw*size;
+	float3 normal = NormalTex.SampleLevel(samLinear, InUV,0)*2-1;
+
+	[unroll]
+	for (int i = 0; i < FilterSize; i++) 
+    {
+		float pz = CalcSceneDepth(InUV + PixelOffsets[i].xy*scale)*0.001f;
+		float3 n = NormalTex.SampleLevel(samLinear, InUV + PixelOffsets[i].xy*scale*2,0)*2-1;
+
+		float w = 1.0f / (g_epsilon + pow(abs(z - pz),2.5));
+		w *= 1.0f / (g_epsilon + 1 - pow(saturate(abs(dot(n,normal))),2.2));
+
+		color += tGI.SampleLevel(samLinear, InUV + PixelOffsets[i].xy*scale*2,0)*w;
+		wacc += w;
+	}
+	 
+	return color/wacc;
+}
+
+float4 BlurV(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
+{
+	float4 color = 0;
+	float wacc = 1;
+
+	float z = CalcSceneDepth(InUV)*0.001f;
+	float2 scale = View.ViewSizeAndSceneTexelSize.zw*size;
+	float3 normal = NormalTex.SampleLevel(samLinear, InUV,0)*2-1;
+
+	[unroll]
+	for (int i = 0; i < FilterSize; i++) 
+    {
+		float pz = CalcSceneDepth(InUV + PixelOffsets[i].yx*scale)*0.001f;
+		float3 n = NormalTex.SampleLevel(samLinear, InUV + PixelOffsets[i].xy*scale*2,0)*2-1;
+
+		float w = 1.0f / (g_epsilon + pow(abs(z - pz),2.5));
+		w *= 1.0f / (g_epsilon + 1 - pow(saturate(abs(dot(n,normal))),2.2));
+
+		color += tGI.SampleLevel(samLinear, InUV + PixelOffsets[i].yx*scale*2,0)*w;
+		wacc += w;
+	}
+	 
+	return color/wacc;
+}
+
+float4 NormalDownsample(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
+{
+	float2 scale = View.ViewSizeAndSceneTexelSize.zw*1.75;
+
+	float3 n0 = GetScreenSpaceData(InUV).GBuffer.WorldNormal;
+	float3 n1 = GetScreenSpaceData(InUV + float2(scale.x,0)).GBuffer.WorldNormal;
+	float3 n2 = GetScreenSpaceData(InUV + float2(-scale.x,0)).GBuffer.WorldNormal;
+	float3 n3 = GetScreenSpaceData(InUV + float2(0,scale.y)).GBuffer.WorldNormal;
+	float3 n4 = GetScreenSpaceData(InUV + float2(0,-scale.y)).GBuffer.WorldNormal;
+
+	float3 normal = (n0 + n1 + n2 + n3 + n4)/5;
+
+	return float4(normal*0.5+0.5,0);
 }

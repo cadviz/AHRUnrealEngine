@@ -390,16 +390,24 @@ void FSceneRenderTargets::AllocAHRTargets()
 	FPooledRenderTargetDesc DescUp0(FPooledRenderTargetDesc::Create2DDesc(BufferSize/2, PF_FloatRGBA, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
 	GRenderTargetPool.FindFreeElement(DescUp0, AHRUpsampledTarget0, TEXT("AHRUpsampledTarget0"));
 
-	FPooledRenderTargetDesc DescUp1(FPooledRenderTargetDesc::Create2DDesc(BufferSize, PF_FloatRGBA, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
+	FPooledRenderTargetDesc DescUp1(FPooledRenderTargetDesc::Create2DDesc(BufferSize/2, PF_FloatRGBA, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
 	GRenderTargetPool.FindFreeElement(DescUp1, AHRUpsampledTarget1, TEXT("AHRUpsampledTarget1"));
+
+	FPooledRenderTargetDesc DescUp2(FPooledRenderTargetDesc::Create2DDesc(BufferSize/2, PF_FloatRGBA, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
+	GRenderTargetPool.FindFreeElement(DescUp2, AHRDownsampledNormal, TEXT("AHRDownsampledNormal"));
 
 	// Bind them to the AHR engine
 	AHREngine.RaytracingTarget = AHRRaytracingTarget->GetRenderTargetItem().TargetableTexture->GetTexture2D();
 	AHREngine.RaytracingTargetSRV = RHICreateShaderResourceView(AHRRaytracingTarget->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D(),0);
+
 	AHREngine.UpsampledTarget0 = AHRUpsampledTarget0->GetRenderTargetItem().TargetableTexture->GetTexture2D();
 	AHREngine.UpsampledTargetSRV0 = RHICreateShaderResourceView(AHRUpsampledTarget0->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D(),0);
+
 	AHREngine.UpsampledTarget1 = AHRUpsampledTarget1->GetRenderTargetItem().TargetableTexture->GetTexture2D();
 	AHREngine.UpsampledTargetSRV1 = RHICreateShaderResourceView(AHRUpsampledTarget1->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D(),0);
+
+	AHREngine.DownsampledNormal = AHRDownsampledNormal->GetRenderTargetItem().TargetableTexture->GetTexture2D();
+	AHREngine.DownsampledNormalSRV = RHICreateShaderResourceView(AHRDownsampledNormal->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D(),0);
 
 	// Set the screen resolution in the AHR engine
 	AHREngine.ResX = BufferSize.X;
