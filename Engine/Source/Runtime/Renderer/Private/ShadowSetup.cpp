@@ -2110,6 +2110,9 @@ void FSceneRenderer::AddViewDependentWholeSceneShadowsForView(TArray<FProjectedS
 					FWholeSceneProjectedShadowInitializer ProjectedShadowInitializer;
 					auto gridCFG = AHREngine.GetGridSettings();
 					
+					// Enlarge the bounds to cover the scene
+					gridCFG.Bounds *= 2;
+
 					FBox bounds(gridCFG.Center - gridCFG.Bounds,gridCFG.Center + gridCFG.Bounds);
 					if (LightSceneInfo.Proxy->GetViewDependentRsmWholeSceneProjectedShadowInitializer(View, bounds, ProjectedShadowInitializer))
 					{

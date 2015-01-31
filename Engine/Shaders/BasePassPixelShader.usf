@@ -516,8 +516,9 @@ void Main(
 	,out float4 OutGBufferB : SV_Target2
 	,out float4 OutGBufferC : SV_Target3
 	,out float4 OutGBufferD : SV_Target4
+	,out float4 OutGBufferF : SV_Target5
 	#if ALLOW_STATIC_LIGHTING
-		,out float4 OutGBufferE : SV_Target5
+		,out float4 OutGBufferE : SV_Target6
 	#endif
 #endif
 
@@ -772,6 +773,9 @@ void Main(
 
 		float QuantizationBias = PseudoRandom( MaterialParameters.SVPosition.xy ) * 0.5 - 0.5;
 		EncodeGBuffer(GBuffer, OutGBufferA, OutGBufferB, OutGBufferC, OutGBufferD, OutGBufferE, QuantizationBias);
+		// @RyanTorant
+		// Store the unmapped normal
+		OutGBufferF = float4(normalize(mul(float3(0,0,1),MaterialParameters.TangentToWorld))*0.5+0.5,0);
 	#endif 
 	
 

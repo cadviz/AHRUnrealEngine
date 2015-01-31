@@ -1,8 +1,9 @@
 // @RyanTorant
 #include "Common.usf"
 #include "DeferredShadingCommon.usf"
+#include "AHRCommon.usf"
 
-Texture2D tGI;
+Texture2D<uint4> tGI;
 Texture2D NormalTex;
 SamplerState samLinear;
 float size;
@@ -55,6 +56,20 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 
 	return gidata;
 }
+float4 NormalDownsample(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
+{
+	float2 scale = View.ViewSizeAndSceneTexelSize.zw*1.75;
+
+	float3 n0 = GetScreenSpaceData(InUV).GBuffer.WorldNormal;
+	float3 n1 = GetScreenSpaceData(InUV + float2(scale.x,0)).GBuffer.WorldNormal;
+	float3 n2 = GetScreenSpaceData(InUV + float2(-scale.x,0)).GBuffer.WorldNormal;
+	float3 n3 = GetScreenSpaceData(InUV + float2(0,scale.y)).GBuffer.WorldNormal;
+	float3 n4 = GetScreenSpaceData(InUV + float2(0,-scale.y)).GBuffer.WorldNormal;
+
+	float3 normal = (n0 + n1 + n2 + n3 + n4)/5;
+
+	return float4(normal*0.5+0.5,0);
+}
 
 static const int FilterSize = 13;
 static const float2 PixelOffsets [ FilterSize ] =
@@ -74,14 +89,15 @@ static const float2 PixelOffsets [ FilterSize ] =
     {  6, 0 },
 };
 
-float4 BlurH(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
+uint4 BlurH(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 {
+/*
 	float4 color = 0;
 	float wacc = 1;
 
 	float z = CalcSceneDepth(InUV)*0.001f;
 	float2 scale = View.ViewSizeAndSceneTexelSize.zw*size;
-	float3 normal = NormalTex.SampleLevel(samLinear, InUV,0)*2-1;
+	float3 normal = normalize(NormalTex.SampleLevel(samLinear, InUV,0)*2-1);
 
 	[unroll]
 	for (int i = 0; i < FilterSize; i++) 
@@ -96,11 +112,43 @@ float4 BlurH(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGE
 		wacc += w;
 	}
 	 
-	return color/wacc;
+	return color/wacc;*/
+
+	float4x4 sph = 0;
+	float wacc = 1;
+
+	float z = CalcSceneDepth(InUV)*0.001f;
+	uint2 DTid = floor(InUV * View.ViewSizeAndSceneTexelSize.xy/2);
+	float2 scale = View.ViewSizeAndSceneTexelSize.zw*size;
+
+	[unroll]
+	for (int i = 0; i < FilterSize; i++) 
+    {
+		float pz = CalcSceneDepth(InUV + PixelOffsets[i].xy*scale)*0.001f;
+		float w = 1.0f / (g_epsilon + pow(abs(z - pz),2.5));
+
+		uint4 s = tGI[DTid.xy + PixelOffsets[i].xy*size];
+		float4x4 ds = Decode4SPH(s);
+
+		sph[0] += ds[0]*w;
+		sph[1] += ds[1]*w;
+		sph[2] += ds[2]*w;
+		sph[3] += ds[3]*w;
+
+		wacc += w;
+	}
+
+	sph[0] /= wacc;
+	sph[1] /= wacc;
+	sph[2] /= wacc;
+	sph[3] /= wacc;
+
+	return Encode4SPH(sph[0],sph[1],sph[2],sph[3]);
 }
 
-float4 BlurV(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
+uint4 BlurV(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 {
+/*
 	float4 color = 0;
 	float wacc = 1;
 
@@ -121,20 +169,37 @@ float4 BlurV(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGE
 		wacc += w;
 	}
 	 
-	return color/wacc;
+	return color/wacc;*/
+
+		float4x4 sph = 0;
+	float wacc = 1;
+
+	float z = CalcSceneDepth(InUV)*0.001f;
+	uint2 DTid = floor(InUV * View.ViewSizeAndSceneTexelSize.xy/2);
+	float2 scale = View.ViewSizeAndSceneTexelSize.zw*size;
+
+	[unroll]
+	for (int i = 0; i < FilterSize; i++) 
+    {
+		float pz = CalcSceneDepth(InUV + PixelOffsets[i].yx*scale)*0.001f;
+		float w = 1.0f / (g_epsilon + pow(abs(z - pz),2.5));
+
+		uint4 s = tGI[DTid.yx + PixelOffsets[i].yx*size];
+		float4x4 ds = Decode4SPH(s);
+
+		sph[0] += ds[0]*w;
+		sph[1] += ds[1]*w;
+		sph[2] += ds[2]*w;
+		sph[3] += ds[3]*w;
+
+		wacc += w;
+	}
+
+	sph[0] /= wacc;
+	sph[1] /= wacc;
+	sph[2] /= wacc;
+	sph[3] /= wacc;
+
+	return Encode4SPH(sph[0],sph[1],sph[2],sph[3]);
 }
 
-float4 NormalDownsample(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
-{
-	float2 scale = View.ViewSizeAndSceneTexelSize.zw*1.75;
-
-	float3 n0 = GetScreenSpaceData(InUV).GBuffer.WorldNormal;
-	float3 n1 = GetScreenSpaceData(InUV + float2(scale.x,0)).GBuffer.WorldNormal;
-	float3 n2 = GetScreenSpaceData(InUV + float2(-scale.x,0)).GBuffer.WorldNormal;
-	float3 n3 = GetScreenSpaceData(InUV + float2(0,scale.y)).GBuffer.WorldNormal;
-	float3 n4 = GetScreenSpaceData(InUV + float2(0,-scale.y)).GBuffer.WorldNormal;
-
-	float3 normal = (n0 + n1 + n2 + n3 + n4)/5;
-
-	return float4(normal*0.5+0.5,0);
-}

@@ -18,22 +18,25 @@ void Main(FAHRVoxelizationGSOut input)
 {
 	// Only voxelize if we are inside the bounds
 	float3 local = to_vlocal(input.wPos);
-	if( local.x <= 1 && local.x >= -1 &&
-		local.y <= 1 && local.y >= -1 &&
-		local.z <= 1 && local.z >= -1)
+	if( local.x > 1 || local.x < -1 ||
+		local.y > 1 || local.y < -1 ||
+		local.z > 1 || local.z < -1)
 	{
-		uint3 vpos2 = floor((local*0.5 + 0.5)*AHRVoxelizationCB.SliceSize);
-		uint vidx2 = vpos2.y + vpos2.x*AHRVoxelizationCB.SliceSize.y + vpos2.z*AHRVoxelizationCB.SliceSize.y*AHRVoxelizationCB.SliceSize.x;
+		discard;
+	}
+	else
+	{
+		uint3 vpos = floor((local*0.5 + 0.5)*AHRVoxelizationCB.SliceSize);
+		uint vidx = vpos.y + vpos.x*AHRVoxelizationCB.SliceSize.y + vpos.z*AHRVoxelizationCB.SliceSize.y*AHRVoxelizationCB.SliceSize.x;
 
-//#define ONE_OVER_32 0.03125f
-		uint bidx = vidx2/32u;//floor(float(vidx2) * ONE_OVER_32);
-		uint offset = vidx2 - 32u * bidx;
+		uint bidx = vidx >> 5;// shifting right n bits on a uint is the same as dividing by 2^n
+		uint offset = vidx - 32u * bidx;
 
 		SceneVolume.InterlockedOr(bidx*4, 1 << offset);
 
 		// Store emissive
-		uint ebidx = vidx2/4u;
-		uint eoffset = vidx2 - 4u * ebidx;
+		uint ebidx = vidx >> 2;
+		uint eoffset = vidx - 4u * ebidx;
 		eoffset *= 8u;
 		uint emask = ~(B8(11111111) << eoffset);
 

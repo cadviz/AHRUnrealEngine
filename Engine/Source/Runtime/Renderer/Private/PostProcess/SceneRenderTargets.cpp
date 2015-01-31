@@ -323,18 +323,21 @@ void FSceneRenderTargets::BeginRenderingGBuffer(FRHICommandList& RHICmdList, ERe
 	// Set the scene color surface as the render target, and the scene depth surface as the depth-stencil target.
 	if (CurrentFeatureLevel >= ERHIFeatureLevel::SM4)
 	{
+		// @RyanTorant
+		// Added one more target for the unmapped object normals
 		FRHIRenderTargetView RenderTargets[6];
 		RenderTargets[0] = FRHIRenderTargetView(GetSceneColorSurface(), 0, -1, ColorLoadAction, ERenderTargetStoreAction::EStore);
 		RenderTargets[1] = FRHIRenderTargetView(GSceneRenderTargets.GBufferA->GetRenderTargetItem().TargetableTexture, 0, -1, ColorLoadAction, ERenderTargetStoreAction::EStore);
 		RenderTargets[2] = FRHIRenderTargetView(GSceneRenderTargets.GBufferB->GetRenderTargetItem().TargetableTexture, 0, -1, ColorLoadAction, ERenderTargetStoreAction::EStore);
 		RenderTargets[3] = FRHIRenderTargetView(GSceneRenderTargets.GBufferC->GetRenderTargetItem().TargetableTexture, 0, -1, ColorLoadAction, ERenderTargetStoreAction::EStore);
 		RenderTargets[4] = FRHIRenderTargetView(GSceneRenderTargets.GBufferD->GetRenderTargetItem().TargetableTexture, 0, -1, ColorLoadAction, ERenderTargetStoreAction::EStore);
+		RenderTargets[5] = FRHIRenderTargetView(GSceneRenderTargets.GBufferF->GetRenderTargetItem().TargetableTexture, 0, -1, ColorLoadAction, ERenderTargetStoreAction::EStore);
 
 		uint32 MRTCount = ARRAY_COUNT(RenderTargets);
 
 		if (bAllowStaticLighting)
 		{
-			RenderTargets[5] = FRHIRenderTargetView(GSceneRenderTargets.GBufferE->GetRenderTargetItem().TargetableTexture, 0, -1, ColorLoadAction, ERenderTargetStoreAction::EStore);
+			RenderTargets[6] = FRHIRenderTargetView(GSceneRenderTargets.GBufferE->GetRenderTargetItem().TargetableTexture, 0, -1, ColorLoadAction, ERenderTargetStoreAction::EStore);
 		}
 		else
 		{
@@ -346,9 +349,9 @@ void FSceneRenderTargets::BeginRenderingGBuffer(FRHICommandList& RHICmdList, ERe
 		if (ColorLoadAction == ERenderTargetLoadAction::EClear)
 		{
 			Info.ClearColors[0] = ClearColor;
-			Info.ClearColors[1] = Info.ClearColors[2] = Info.ClearColors[3] = FLinearColor::Transparent;
+			Info.ClearColors[1] = Info.ClearColors[2] = Info.ClearColors[3] = Info.ClearColors[5] = FLinearColor::Transparent;
 			Info.ClearColors[4] = FLinearColor(0, 1, 1, 1);
-			Info.ClearColors[5] = FLinearColor(1, 1, 1, 1);
+			Info.ClearColors[6] = FLinearColor(1, 1, 1, 1);
 		}
 		Info.DepthClearValue = 0.0f;
 
@@ -384,17 +387,14 @@ void FSceneRenderTargets::AllocAHRTargets()
 	if(AHRRaytracingTarget) return; // Already initialized
 
 	// Create the targets
-	FPooledRenderTargetDesc DescTracing(FPooledRenderTargetDesc::Create2DDesc(BufferSize/2, PF_FloatRGBA, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
+	FPooledRenderTargetDesc DescTracing(FPooledRenderTargetDesc::Create2DDesc(BufferSize/2, PF_R32G32B32A32_UINT, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
 	GRenderTargetPool.FindFreeElement(DescTracing, AHRRaytracingTarget, TEXT("RaytracingTarget"));
 
-	FPooledRenderTargetDesc DescUp0(FPooledRenderTargetDesc::Create2DDesc(BufferSize/2, PF_FloatRGBA, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
+	FPooledRenderTargetDesc DescUp0(FPooledRenderTargetDesc::Create2DDesc(BufferSize/2, PF_R32G32B32A32_UINT, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
 	GRenderTargetPool.FindFreeElement(DescUp0, AHRUpsampledTarget0, TEXT("AHRUpsampledTarget0"));
 
-	FPooledRenderTargetDesc DescUp1(FPooledRenderTargetDesc::Create2DDesc(BufferSize/2, PF_FloatRGBA, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
+	FPooledRenderTargetDesc DescUp1(FPooledRenderTargetDesc::Create2DDesc(BufferSize/2, PF_R32G32B32A32_UINT, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
 	GRenderTargetPool.FindFreeElement(DescUp1, AHRUpsampledTarget1, TEXT("AHRUpsampledTarget1"));
-
-	FPooledRenderTargetDesc DescUp2(FPooledRenderTargetDesc::Create2DDesc(BufferSize/2, PF_FloatRGBA, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
-	GRenderTargetPool.FindFreeElement(DescUp2, AHRDownsampledNormal, TEXT("AHRDownsampledNormal"));
 
 	// Bind them to the AHR engine
 	AHREngine.RaytracingTarget = AHRRaytracingTarget->GetRenderTargetItem().TargetableTexture->GetTexture2D();
@@ -405,9 +405,6 @@ void FSceneRenderTargets::AllocAHRTargets()
 
 	AHREngine.UpsampledTarget1 = AHRUpsampledTarget1->GetRenderTargetItem().TargetableTexture->GetTexture2D();
 	AHREngine.UpsampledTargetSRV1 = RHICreateShaderResourceView(AHRUpsampledTarget1->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D(),0);
-
-	AHREngine.DownsampledNormal = AHRDownsampledNormal->GetRenderTargetItem().TargetableTexture->GetTexture2D();
-	AHREngine.DownsampledNormalSRV = RHICreateShaderResourceView(AHRDownsampledNormal->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D(),0);
 
 	// Set the screen resolution in the AHR engine
 	AHREngine.ResX = BufferSize.X;
@@ -493,6 +490,8 @@ void FSceneRenderTargets::ReleaseGBufferTargets()
 	GBufferC.SafeRelease();
 	GBufferD.SafeRelease();
 	GBufferE.SafeRelease();
+	// @RyanTorant
+	GBufferF.SafeRelease();
 }
 
 void FSceneRenderTargets::AllocGBufferTargets()
@@ -524,6 +523,14 @@ void FSceneRenderTargets::AllocGBufferTargets()
 
 		FPooledRenderTargetDesc Desc(FPooledRenderTargetDesc::Create2DDesc(BufferSize, NormalGBufferFormat, TexCreate_None, TexCreate_RenderTargetable, false));
 		GRenderTargetPool.FindFreeElement(Desc, GBufferA, TEXT("GBufferA"));
+
+		// @RyanTorant
+		// Also create the target for no-normal mapped normals
+		FPooledRenderTargetDesc Desc2(FPooledRenderTargetDesc::Create2DDesc(BufferSize, NormalGBufferFormat, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
+		GRenderTargetPool.FindFreeElement(Desc, GBufferF, TEXT("GBufferF"));
+
+		// And pass a pointer to the AHR engine
+		AHREngine.ObjectNormalSRV = RHICreateShaderResourceView(GBufferF->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D(),0);
 	}
 
 	// Create the specular color and power g-buffer.
@@ -832,7 +839,8 @@ void FSceneRenderTargets::ResolveGBufferSurfaces(FRHICommandList& RHICmdList, co
 		RHICmdList.CopyToResolveTarget(GSceneRenderTargets.GBufferB->GetRenderTargetItem().TargetableTexture, GSceneRenderTargets.GBufferB->GetRenderTargetItem().ShaderResourceTexture, true, FResolveParams(ResolveRect));
 		RHICmdList.CopyToResolveTarget(GSceneRenderTargets.GBufferC->GetRenderTargetItem().TargetableTexture, GSceneRenderTargets.GBufferC->GetRenderTargetItem().ShaderResourceTexture, true, FResolveParams(ResolveRect));
 		RHICmdList.CopyToResolveTarget(GSceneRenderTargets.GBufferD->GetRenderTargetItem().TargetableTexture, GSceneRenderTargets.GBufferD->GetRenderTargetItem().ShaderResourceTexture, true, FResolveParams(ResolveRect));
-		
+		// @RyanTorant
+		RHICmdList.CopyToResolveTarget(GSceneRenderTargets.GBufferF->GetRenderTargetItem().TargetableTexture, GSceneRenderTargets.GBufferD->GetRenderTargetItem().ShaderResourceTexture, true, FResolveParams(ResolveRect));
 		if (bAllowStaticLighting)
 		{
 			RHICmdList.CopyToResolveTarget(GSceneRenderTargets.GBufferE->GetRenderTargetItem().TargetableTexture, GSceneRenderTargets.GBufferE->GetRenderTargetItem().ShaderResourceTexture, true, FResolveParams(ResolveRect));

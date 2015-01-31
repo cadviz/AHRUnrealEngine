@@ -81,7 +81,7 @@ public:
 	FShaderResourceViewRHIRef RaytracingTargetSRV;
 	FShaderResourceViewRHIRef UpsampledTargetSRV0;
 	FShaderResourceViewRHIRef UpsampledTargetSRV1;
-	FShaderResourceViewRHIRef DownsampledNormalSRV;
+	FShaderResourceViewRHIRef ObjectNormalSRV;
 
 	FRWBufferByteAddress* StaticSceneVolume;
 	FRWBufferByteAddress* DynamicSceneVolume;

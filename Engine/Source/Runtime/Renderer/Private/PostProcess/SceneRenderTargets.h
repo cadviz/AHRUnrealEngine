@@ -457,6 +457,10 @@ public:
 	TRefCountPtr<IPooledRenderTarget> GBufferC;
 	TRefCountPtr<IPooledRenderTarget> GBufferD;
 	TRefCountPtr<IPooledRenderTarget> GBufferE;
+	// @RyanTorant
+	// This buffer stores the object normals in world space, without any normal mapping
+	// Format is PF_A2B10G10R10 or PF_FloatRGBA if using high precision buffers
+	TRefCountPtr<IPooledRenderTarget> GBufferF; 
 
 	// DBuffer: For decals before base pass (only temporarily available after early z pass and until base pass)
 	TRefCountPtr<IPooledRenderTarget> DBufferA;

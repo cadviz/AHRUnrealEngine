@@ -45,6 +45,7 @@ ByteAddressBuffer EmissiveVolume;
 //Texture3D<uint> EmissiveVolume;
 Texture2D EmissivePalette;
 Texture2D<uint> SamplingKernel;
+Texture2D ObjNormal;
 
 SamplerState samLinear;
 SamplerState samPoint;
@@ -100,7 +101,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 	uint prevbidx = -1;
 	uint ebvox = -1;
 	uint prevebidx = -1;
-	float3 rkernel = {-0.721016, 0.692918, -1.0};
+	//float3 rkernel = {-0.721016, 0.692918, -1.0};
 
 	// Construct normal space
 	float3 tangent = normalize(rkernel - normal * dot(rkernel, normal));
@@ -151,7 +152,11 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 		// Instead of breaking on hit, accumulate alpha and break when it's big enough
 		for (uint i = 0; i < AHRTraceCB.GlossySamplesCount; i++)
 		{
-			if(magnitudeSquared(to_vlocal(spos)) > 3) 
+			//if(magnitudeSquared(to_vlocal(spos)) > 3) 
+			float3 local = to_vlocal(spos);
+			if( local.x > 1 || local.x < -1 ||
+				local.y > 1 || local.y < -1 ||
+				local.z > 1 || local.z < -1)
 			{
 				// Here we could intersect the ray with the sky sphere and take that color...
 				//glossy += AHRTraceCB.LostRayColor;//float3(0.4f, 0.675f, 0.99f);
@@ -162,8 +167,9 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 			uint3 vpos = floor((to_vlocal(spos)*0.5 + 0.5)*AHRTraceCB.SliceSize);
 			uint vidx = vpos.y + vpos.x*AHRTraceCB.SliceSize.y + vpos.z*AHRTraceCB.SliceSize.y*AHRTraceCB.SliceSize.x;
 
-//#define ONE_OVER_32 0.03125f
-			uint bidx = vidx/32u;//floor(float(vidx) * ONE_OVER_32);
+
+			//uint bidx = vidx >> 5;// shifting right n bits on a uint is the same as dividing by 2^n
+			uint bidx = vidx / 32u; // have to do the udiv instead of the shift cause the stupid fxc.exe tries to unroll the loop when using the shift
 			uint offset = vidx - 32u * bidx;
 
 			if (bidx != prevbidx)
@@ -199,7 +205,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 				}
 
 				// Add emissive
-				uint ebidx = vidx/4u;
+				uint ebidx = vidx / 4u; // same here. / 4u instead of >> 2. hate you fxc
 				uint eoffset = vidx - 4u * ebidx;
 
 				if (ebidx != prevebidx)
@@ -220,6 +226,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 #endif
 
 	float ao = 0;
+	
 	for (uint r = 0; r < AHRTraceCB.DiffuseRayCount; r++)
 	{
 		float3 dir = 0;
@@ -246,10 +253,14 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 		//float3 spos = wPos + step*1.9f*dispAngleMult;
 
 		step *= AHRTraceCB.SamplesDispMultiplier;
-
+		
 		for (uint i = 0; i < AHRTraceCB.DiffuseSamplesCount; i++)
 		{
-			if(magnitudeSquared(to_vlocal(spos)) > 3) 
+			//if(magnitudeSquared(to_vlocal(spos)) > 3) 
+			float3 local = to_vlocal(spos);
+			if( local.x > 1 || local.x < -1 ||
+				local.y > 1 || local.y < -1 ||
+				local.z > 1 || local.z < -1)
 			{
 				// Here we could intersect the ray with the sky sphere and take that color...
 				//diffuse += AHRTraceCB.LostRayColor;//float3(0.4f, 0.675f, 0.99f);
@@ -260,8 +271,8 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 			uint3 vpos = floor((to_vlocal(spos)*0.5 + 0.5)*AHRTraceCB.SliceSize);
 			uint vidx = vpos.y + vpos.x*AHRTraceCB.SliceSize.y + vpos.z*AHRTraceCB.SliceSize.y*AHRTraceCB.SliceSize.x;
 
-//#define ONE_OVER_32 0.03125f
-			uint bidx = vidx/32u;//floor(float(vidx) * ONE_OVER_32);
+			//uint bidx = vidx >> 5;// shifting right n bits on a uint is the same as dividing by 2^n
+			uint bidx = vidx / 32u; // have to do the udiv instead of the shift cause the stupid fxc.exe tries to unroll the loop when using the shift
 			uint offset = vidx - 32u * bidx;
 
 			if (bidx != prevbidx)
@@ -314,12 +325,12 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 					diffuse += shadowFactor*sAlbedo.rgb*sAlbedo.w*rdist;
 				}
 				float rdist = magnitudeSquared(to_vlocal(spos)) / 3;
-				ao += 1;//(exp(-7*rdist*rdist) + 0.3)/1.3;//(i <= 8);
+				ao += (i <= 24);//(exp(-7*rdist*rdist) + 0.3)/1.3;//(i <= 8);
 				
 				//acc += 1;
 
 				// Add emissive
-				uint ebidx = vidx/4u;
+				uint ebidx = vidx / 4u; // same here. / 4u instead of >> 2. hate you fxc
 				uint eoffset = vidx - 4u * ebidx;
 
 				if (ebidx != prevebidx)
@@ -329,7 +340,8 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 				}
 				uint eidx = (ebvox & (B8(11111111) << eoffset*8u)) >> eoffset*8u;
 				float4 ecolor = EmissivePalette[uint2(eidx,0)];
-				diffuse += ecolor*ecolor.a;
+				//diffuse += ecolor*ecolor.a*200/distanceSquared(wPos,spos);
+				diffuse += ecolor*ecolor.a*10;
 				//diffuse += EmissivePalette[uint2(EmissiveVolume[vpos],0)];///pow(magnitudeSquared(to_vlocal(spos)) + 1,4);
 
 				break;
@@ -463,4 +475,144 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 	*/
 	
 	return traced;
+}
+
+uint4 PS_SPHI(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
+{
+	float SceneDepth = CalcSceneDepth(InUV);
+	float3 wPos = ScreenVector * SceneDepth + View.ViewOrigin.xyz;
+
+	uint2 DTid = floor(InUV * AHRTraceCB.ScreenRes);
+
+	// Construct normal space
+	float3 normal = normalize(ObjNormal.SampleLevel(samLinear,InUV,0).xyz*2 - 1);
+	float3 tangent = normalize(rkernel - normal * dot(rkernel, normal));
+	float3 bitangent = cross(normal, tangent);
+
+	uint kh,kw;
+	SamplingKernel.GetDimensions(kh,kw);
+	// Using fast mod here.  x mod y = x & (y-1)
+	// Size MUST be a power of 2
+	uint seed =  SamplingKernel[DTid.xy & (uint2(kh,kw) - 1)];
+	NumberGenerator rng;
+	rng.SetSeed( seed );
+
+	uint bvox = -1;
+	uint prevbidx = -1;
+	uint ebvox = -1;
+	uint prevebidx = -1;
+
+	float4x4 sphs;
+	for(int n = 0;n < 4; n++)
+	{
+		float3 rn = rayKernel[n].xzy;
+		rn = normalize(rn.x * bitangent + (rn.y * tangent + (rn.z * normal)));
+
+		for (uint r = 0; r < AHRTraceCB.DiffuseRayCount; r++)
+		{
+			float3 step = 0;
+
+			// Convert to vector space
+
+			step.x = rng.GetRandomFloat(0, 1)*2-1;
+			step.y = rng.GetRandomFloat(0, 1)*2-1;
+			step.z = 1;
+
+			// Apply dispersion
+			step.xy *= 0.35;
+
+			// Convert to vector space
+			float3 rt = normalize(rkernel - rn * dot(rkernel, rn));
+			float3 rbt = cross(rn, rt);
+			step = normalize(step.x * rt + (step.y * rbt + (step.z * rn)));
+
+			float angleCos = saturate(dot(step,normal));
+			float dispAngleMult = sqrt(1 - angleCos*angleCos)/(angleCos + 0.01) + 1;
+
+			step = step*AHRTraceCB.invVoxel/AHRTraceCB.InvSceneBounds;
+			float3 spos = wPos + step*AHRTraceCB.InitialDispMult*dispAngleMult;
+
+			step *= AHRTraceCB.SamplesDispMultiplier;
+			for (uint i = 0; i < AHRTraceCB.DiffuseSamplesCount; i++)
+			{
+				float3 local = to_vlocal(spos);
+				if( local.x > 1 || local.x < -1 ||
+					local.y > 1 || local.y < -1 ||
+					local.z > 1 || local.z < -1)
+				{
+					// Here we could intersect the ray with the sky sphere and take that color...
+					//sphs[n] += AHRTraceCB.LostRayColor;//float3(0.4f, 0.675f, 0.99f);
+					break;
+				}
+
+				uint3 vpos = floor((local*0.5 + 0.5)*AHRTraceCB.SliceSize);
+				uint vidx = vpos.y + vpos.x*AHRTraceCB.SliceSize.y + vpos.z*AHRTraceCB.SliceSize.y*AHRTraceCB.SliceSize.x;
+				uint bidx = vidx >> 5;// shifting right n bits on a uint is the same as dividing by 2^n
+				uint offset = vidx - 32u * bidx;
+
+				if(bidx != prevbidx)
+				{
+					bvox = SceneVolume.Load(bidx*4);
+					prevbidx = bidx;
+				}
+
+				if(bvox & (1 << offset))
+				{
+					// Light sampling "loop"
+					{
+						float4 lpos = fmul(spos,AHRShadowMatrices.Matrix0);
+
+						//re-homogenize position after interpolation
+						lpos.xyz /= lpos.w;
+
+						//transform clip space coords to texture space coords (-1:1 to 0:1)
+						lpos.x = lpos.x*0.5 + 0.5;
+						lpos.y = -lpos.y*0.5 + 0.5;
+
+						float4 sAlbedo = ShadowAlbedo0.SampleLevel(samLinear,lpos.xy,0);
+						float4 sNormal = ShadowNormals0.SampleLevel(samLinear,lpos.xy,0);
+						//float biasAngleMult = sqrt(1 - albedo.w*albedo.w)/(albedo.w + 0.01) + 1; // the w component stores the dot of the sun dir and normal
+						float biasAngleMult = 1;
+						sAlbedo.w = 1;
+						float shadowFactor = ShadowZ0.SampleCmpLevelZero(cmpSampler, lpos.xy, lpos.z);
+				
+						sphs[n].rgb += shadowFactor*sAlbedo.rgb*sAlbedo.w;
+					}
+
+					// Add emissive
+					uint ebidx = vidx / 4u; // same here. / 4u instead of >> 2. hate you fxc
+					uint eoffset = vidx - 4u * ebidx;
+
+					if (ebidx != prevebidx)
+					{
+						ebvox = EmissiveVolume.Load(ebidx*4u);
+						prevebidx = ebidx;
+					}
+					uint eidx = (ebvox & (B8(11111111) << eoffset*8u)) >> eoffset*8u;
+					float4 ecolor = EmissivePalette[uint2(eidx,0)];
+					sphs[n].rgb += ecolor*ecolor.a;
+
+					sphs[n].w += (i <= 16); // max ao samples
+					break;
+				}
+				spos += step;
+			}
+		}
+		sphs[n] /= AHRTraceCB.DiffuseRayCount;
+	}
+
+	sphs[0].w = 1.0f - saturate(sphs[0].w);
+	sphs[1].w = 1.0f - saturate(sphs[1].w);
+	sphs[2].w = 1.0f - saturate(sphs[2].w);
+	sphs[3].w = 1.0f - saturate(sphs[3].w);
+
+
+
+	/*sphs[0] = float4(1,0,0,1);
+	sphs[1] = float4(1,1,0,1);
+	sphs[2] = float4(0,1,0,1);
+	sphs[3] = float4(0,0,1,1);*/
+
+
+	return Encode4SPH(sphs[0],sphs[1],sphs[2],sphs[3]);
 }

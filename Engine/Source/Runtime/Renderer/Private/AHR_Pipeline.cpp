@@ -588,6 +588,8 @@ public:
 
 		SamplingKernel.Bind(Initializer.ParameterMap, TEXT("SamplingKernel"));
 		samPoint.Bind(Initializer.ParameterMap, TEXT("samPoint"));
+
+		ObjNormal.Bind(Initializer.ParameterMap, TEXT("ObjNormal"));
 	}
 
 	AHRTraceScenePS()
@@ -668,6 +670,9 @@ public:
 			RHICmdList.SetShaderSampler(ShaderRHI,LinearSampler.GetBaseIndex(),TStaticSamplerState<SF_Point,AM_Wrap,AM_Wrap,AM_Wrap>::GetRHI());
 
 		FSamplerStateRHIParamRef SamplerStateLinear  = TStaticSamplerState<SF_Bilinear,AM_Clamp,AM_Clamp,AM_Clamp>::GetRHI();
+
+		if(ObjNormal.IsBound())
+			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,ObjNormal.GetBaseIndex(),AHREngine.ObjectNormalSRV);
 
 		if(ShadowAlbedo0.IsBound() && lList[0].IsValid)
 			SetTextureParameter(RHICmdList, ShaderRHI, ShadowAlbedo0, LinearSampler, SamplerStateLinear,  lList[0].Albedo );
@@ -766,6 +771,8 @@ public:
 		
 		Ar << SamplingKernel;
 		Ar << samPoint;
+
+		Ar << ObjNormal;
 		return bShaderHasOutdatedParameters;
 	}
 
@@ -807,12 +814,15 @@ private:
 
 	FShaderResourceParameter SamplingKernel;
 	FShaderResourceParameter samPoint;
+
+	FShaderResourceParameter ObjNormal;
 };
-IMPLEMENT_SHADER_TYPE(,AHRTraceScenePS,TEXT("AHRTraceScene"),TEXT("PS"),SF_Pixel);
+IMPLEMENT_SHADER_TYPE(,AHRTraceScenePS,TEXT("AHRTraceScene"),TEXT("PS_SPHI"),SF_Pixel);
 
 void FApproximateHybridRaytracer::TraceScene(FRHICommandListImmediate& RHICmdList,FViewInfo& View)
 {
 	SCOPED_DRAW_EVENT(RHICmdList,AHRTraceScene);
+	RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA>::GetRHI());
 
 	// Draw a full screen quad into the half res target
 	// Trace the GI and reflections if they are enabled
@@ -909,7 +919,7 @@ public:
 		if(GIBufferTexture.IsBound())
 			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,GIBufferTexture.GetBaseIndex(),giSRV);
 		if(NormalTex.IsBound())
-			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,NormalTex.GetBaseIndex(),AHREngine.DownsampledNormalSRV);
+			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,NormalTex.GetBaseIndex(),AHREngine.ObjectNormalSRV);
 		if(LinearSampler.IsBound())
 			RHICmdList.SetShaderSampler(ShaderRHI,LinearSampler.GetBaseIndex(),TStaticSamplerState<SF_Trilinear,AM_Wrap,AM_Wrap,AM_Wrap>::GetRHI());
 
@@ -983,7 +993,7 @@ public:
 		if(GIBufferTexture.IsBound())
 			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,GIBufferTexture.GetBaseIndex(),giSRV);
 		if(NormalTex.IsBound())
-			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,NormalTex.GetBaseIndex(),AHREngine.DownsampledNormalSRV);
+			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,NormalTex.GetBaseIndex(),AHREngine.ObjectNormalSRV);
 		if(LinearSampler.IsBound())
 			RHICmdList.SetShaderSampler(ShaderRHI,LinearSampler.GetBaseIndex(),TStaticSamplerState<SF_Trilinear,AM_Wrap,AM_Wrap,AM_Wrap>::GetRHI());
 
@@ -1018,64 +1028,15 @@ private:
 	FShaderParameter BlurKernelSize;
 	FShaderParameter zMax;
 };
-class AHRNormalDownsample : public FGlobalShader
-{
-	DECLARE_SHADER_TYPE(AHRNormalDownsample,Global)
-public:
-
-	static bool ShouldCache(EShaderPlatform Platform)
-	{
-		return IsFeatureLevelSupported(Platform, ERHIFeatureLevel::SM5);
-	}
-
-	static void ModifyCompilationEnvironment(EShaderPlatform Platform, FShaderCompilerEnvironment& OutEnvironment)
-	{
-		FGlobalShader::ModifyCompilationEnvironment(Platform, OutEnvironment);
-	}
-
-	AHRNormalDownsample(const ShaderMetaType::CompiledShaderInitializerType& Initializer)
-	:	FGlobalShader(Initializer)
-	{
-		DeferredParameters.Bind(Initializer.ParameterMap);
-	}
-
-	AHRNormalDownsample()
-	{
-	}
-
-	void SetParameters(FRHICommandList& RHICmdList, const FSceneView& View)
-	{
-		const FPixelShaderRHIParamRef ShaderRHI = GetPixelShader();
-		FGlobalShader::SetParameters(RHICmdList, ShaderRHI,View);
-		DeferredParameters.Set(RHICmdList, ShaderRHI, View);
-	}
-
-	virtual bool Serialize(FArchive& Ar)
-	{		
-		bool bShaderHasOutdatedParameters = FGlobalShader::Serialize(Ar);
-		Ar << DeferredParameters;
-		return bShaderHasOutdatedParameters;
-	}
-
-	FGlobalBoundShaderState& GetBoundShaderState()
-	{
-		static FGlobalBoundShaderState State;
-
-		return State;
-	}
-
-private:
-	FDeferredPixelShaderParameters DeferredParameters;
-};
 //IMPLEMENT_SHADER_TYPE(,AHRUpsamplePS,TEXT("AHRUpsample"),TEXT("PS"),SF_Pixel);
 IMPLEMENT_SHADER_TYPE(,AHRBlurH,TEXT("AHRUpsample"),TEXT("BlurH"),SF_Pixel);
 IMPLEMENT_SHADER_TYPE(,AHRBlurV,TEXT("AHRUpsample"),TEXT("BlurV"),SF_Pixel);
-IMPLEMENT_SHADER_TYPE(,AHRNormalDownsample,TEXT("AHRUpsample"),TEXT("NormalDownsample"),SF_Pixel);
 
 void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,FViewInfo& View)
 {
 	SCOPED_DRAW_EVENT(RHICmdList,AHRUpsample);
 
+	RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA>::GetRHI());
 	RHICmdList.SetRasterizerState(TStaticRasterizerState<FM_Solid, CM_None>::GetRHI());
 	RHICmdList.SetDepthStencilState(TStaticDepthStencilState<false, CF_Always>::GetRHI());
 	RHICmdList.SetViewport(View.ViewRect.Min.X, View.ViewRect.Min.Y, 0.0f, View.ViewRect.Max.X/2, View.ViewRect.Max.Y/2, 1.0f);
@@ -1083,31 +1044,8 @@ void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,
 
 	// Get the shaders
 	TShaderMapRef<AHRPassVS> VertexShader(View.ShaderMap);
-	TShaderMapRef<AHRNormalDownsample> PSNormalDownsample(View.ShaderMap);
 	TShaderMapRef<AHRBlurH> PSBlurH(View.ShaderMap);
 	TShaderMapRef<AHRBlurV> PSBlurV(View.ShaderMap);
-	
-	///////// First pass to downsample the normals
-	SetRenderTarget(RHICmdList, DownsampledNormal, FTextureRHIRef());
-
-	// Clear the target before drawing
-	RHICmdList.Clear(true, FLinearColor::Black, false, 1.0f, false, 0, FIntRect());
-
-	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PSNormalDownsample->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PSNormalDownsample);
-	VertexShader->SetParameters(RHICmdList,View);
-	PSNormalDownsample->SetParameters(RHICmdList, View);
-
-	// Draw!
-	DrawRectangle( 
-				RHICmdList,
-				0, 0,
-				View.ViewRect.Width()/2, View.ViewRect.Height()/2,
-				View.ViewRect.Min.X, View.ViewRect.Min.Y, 
-				View.ViewRect.Width(), View.ViewRect.Height(),
-				View.ViewRect.Size()/2,
-				GSceneRenderTargets.GetBufferSizeXY(),
-				*VertexShader,
-				EDRF_UseTriangleOptimization);
 
 	///////// Pass 0
 	SetRenderTarget(RHICmdList, UpsampledTarget0, FTextureRHIRef());
@@ -1117,7 +1055,7 @@ void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,
 
 	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PSBlurH->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PSBlurH);
 	VertexShader->SetParameters(RHICmdList,View);
-	PSBlurH->SetParameters(RHICmdList, View, RaytracingTargetSRV,1.5);
+	PSBlurH->SetParameters(RHICmdList, View, RaytracingTargetSRV,1.0);
 
 	// Draw!
 	DrawRectangle( 
@@ -1139,7 +1077,7 @@ void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,
 
 	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PSBlurV->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PSBlurV);
 	VertexShader->SetParameters(RHICmdList,View);
-	PSBlurV->SetParameters(RHICmdList, View, UpsampledTargetSRV0,1.5);
+	PSBlurV->SetParameters(RHICmdList, View, UpsampledTargetSRV0,1.0);
 
 	// Draw!
 	DrawRectangle( 
@@ -1152,7 +1090,8 @@ void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,
 				GSceneRenderTargets.GetBufferSizeXY(),
 				*VertexShader,
 				EDRF_UseTriangleOptimization);
-
+//#define TWO_PASS_BLUR
+#ifdef TWO_PASS_BLUR
 	///////// Pass 2
 	SetRenderTarget(RHICmdList, UpsampledTarget0, FTextureRHIRef());
 
@@ -1161,7 +1100,7 @@ void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,
 
 	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PSBlurH->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PSBlurH);
 	VertexShader->SetParameters(RHICmdList,View);
-	PSBlurH->SetParameters(RHICmdList, View, UpsampledTargetSRV1,1.5);
+	PSBlurH->SetParameters(RHICmdList, View, UpsampledTargetSRV1,1.0);
 
 	// Draw!
 	DrawRectangle( 
@@ -1183,7 +1122,7 @@ void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,
 
 	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PSBlurV->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PSBlurV);
 	VertexShader->SetParameters(RHICmdList,View);
-	PSBlurV->SetParameters(RHICmdList, View, UpsampledTargetSRV0,1.5);
+	PSBlurV->SetParameters(RHICmdList, View, UpsampledTargetSRV0,1.0);
 
 	// Draw!
 	DrawRectangle( 
@@ -1193,65 +1132,6 @@ void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,
 				View.ViewRect.Min.X, View.ViewRect.Min.Y, 
 				View.ViewRect.Width(), View.ViewRect.Height(),
 				View.ViewRect.Size()/2,
-				GSceneRenderTargets.GetBufferSizeXY(),
-				*VertexShader,
-				EDRF_UseTriangleOptimization);
-#if 0
-	RHICmdList.SetRasterizerState(TStaticRasterizerState<FM_Solid, CM_None>::GetRHI());
-	RHICmdList.SetDepthStencilState(TStaticDepthStencilState<false, CF_Always>::GetRHI());
-
-	// Get the shaders
-	TShaderMapRef<AHRPassVS> VertexShader(View.ShaderMap);
-	TShaderMapRef<AHRUpsamplePS> PixelShader(View.ShaderMap);
-
-	///////// Pass 0
-
-	// Set the viewport, raster state , depth stencil and render target
-	RHICmdList.SetViewport(View.ViewRect.Min.X, View.ViewRect.Min.Y, 0.0f, View.ViewRect.Max.X/2, View.ViewRect.Max.Y/2, 1.0f);
-	SetRenderTarget(RHICmdList, UpsampledTarget0, FTextureRHIRef());
-	
-	// Clear the target before drawing
-	RHICmdList.Clear(true, FLinearColor::Black, false, 1.0f, false, 0, FIntRect());
-
-	// Bound shader parameters
-	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PixelShader->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PixelShader);
-	VertexShader->SetParameters(RHICmdList,View);
-	PixelShader->SetParameters(RHICmdList, View, RaytracingTargetSRV,2.8);
-
-	// Draw!
-	DrawRectangle( 
-				RHICmdList,
-				0, 0,
-				View.ViewRect.Width()/2, View.ViewRect.Height()/2,
-				View.ViewRect.Min.X, View.ViewRect.Min.Y, 
-				View.ViewRect.Width(), View.ViewRect.Height(),
-				View.ViewRect.Size()/2,
-				GSceneRenderTargets.GetBufferSizeXY(),
-				*VertexShader,
-				EDRF_UseTriangleOptimization);
-
-	///////// Pass 1
-	
-	// Set the viewport, raster state , depth stencil and render target
-	RHICmdList.SetViewport(View.ViewRect.Min.X, View.ViewRect.Min.Y, 0.0f, View.ViewRect.Max.X, View.ViewRect.Max.Y, 1.0f);
-	SetRenderTarget(RHICmdList, UpsampledTarget1, FTextureRHIRef());
-
-	// Clear the target before drawing
-	RHICmdList.Clear(true, FLinearColor::Black, false, 1.0f, false, 0, FIntRect());
-
-	// Bound shader parameters
-	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PixelShader->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PixelShader);
-	VertexShader->SetParameters(RHICmdList,View);
-	PixelShader->SetParameters(RHICmdList, View, UpsampledTargetSRV0,1.8);
-
-	// Draw!
-	DrawRectangle( 
-				RHICmdList,
-				0, 0,
-				View.ViewRect.Width(), View.ViewRect.Height(),
-				View.ViewRect.Min.X, View.ViewRect.Min.Y, 
-				View.ViewRect.Width(), View.ViewRect.Height(),
-				View.ViewRect.Size(),
 				GSceneRenderTargets.GetBufferSizeXY(),
 				*VertexShader,
 				EDRF_UseTriangleOptimization);
@@ -1285,6 +1165,7 @@ public:
 		GIBufferTexture.Bind(Initializer.ParameterMap, TEXT("tGI"));
 		LinearSampler.Bind(Initializer.ParameterMap, TEXT("samLinear"));
 		cb.Bind(Initializer.ParameterMap,TEXT("AHRCompositeCB"));
+		ObjNormal.Bind(Initializer.ParameterMap,TEXT("ObjNormal"));
 	}
 
 	AHRCompositePS()
@@ -1301,7 +1182,8 @@ public:
 			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,GIBufferTexture.GetBaseIndex(),giSRV);
 		if(LinearSampler.IsBound())
 			RHICmdList.SetShaderSampler(ShaderRHI,LinearSampler.GetBaseIndex(),TStaticSamplerState<SF_Trilinear,AM_Wrap,AM_Wrap,AM_Wrap>::GetRHI());
-
+		if(ObjNormal.IsBound())
+			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,ObjNormal.GetBaseIndex(),AHREngine.ObjectNormalSRV);
 		AHRCompositeCB cbdata;
 
 		cbdata.GIMultiplier = View.FinalPostProcessSettings.AHRIntensity;
@@ -1316,6 +1198,7 @@ public:
 		Ar << GIBufferTexture;
 		Ar << LinearSampler;
 		Ar << cb;
+		Ar << ObjNormal;
 		return bShaderHasOutdatedParameters;
 	}
 
@@ -1330,6 +1213,7 @@ private:
 	FDeferredPixelShaderParameters DeferredParameters;
 	FShaderResourceParameter GIBufferTexture;
 	FShaderResourceParameter LinearSampler;
+	FShaderResourceParameter ObjNormal;
 	TShaderUniformBufferParameter<AHRCompositeCB> cb;
 };
 IMPLEMENT_SHADER_TYPE(,AHRCompositePS,TEXT("AHRComposite"),TEXT("PS"),SF_Pixel);
@@ -1342,8 +1226,8 @@ void FApproximateHybridRaytracer::Composite(FRHICommandListImmediate& RHICmdList
 	// Only one view at a time for now (1/11/2014)
 
 	// Set additive blending
-	RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_One, BO_Add, BF_One, BF_One>::GetRHI());
-	//RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_Zero, BO_Add, BF_One, BF_Zero>::GetRHI());
+	//RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_One, BO_Add, BF_One, BF_One>::GetRHI());
+	RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_Zero, BO_Add, BF_One, BF_Zero>::GetRHI());
 
 	// add gi and multiply scene color by ao
 	// final = gi + ao*direct

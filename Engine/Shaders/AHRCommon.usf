@@ -623,3 +623,70 @@ float Ternary(bool Cond,float a,float b)
 {
 	return a * Cond + b * (1-Cond);
 }
+
+static const float3 rkernel = {-0.721016, 0.692918, -1.0};
+static const float3 rayKernel[4] = { float3(0,1,0), float3(0,0.7,-0.7), float3(-0.612,0.7,0.35), float3(0.612,0.7,0.35) };
+
+uint4 Encode4SPH(float4 sph0,float4 sph1, float4 sph2, float4 sph3)
+{
+	uint4x4 encoded;
+
+	sph0 = saturate(sph0); sph1 = saturate(sph1); sph2 = saturate(sph2); sph3 = saturate(sph3);
+
+	// Using R9G9B9A5
+	encoded[0].x = floor(sph0.r*511);
+	encoded[0].y = floor(sph0.g*511);
+	encoded[0].z = floor(sph0.b*511);
+	encoded[0].w = floor(sph0.w*31);
+
+	encoded[1].x = floor(sph1.r*511);
+	encoded[1].y = floor(sph1.g*511);
+	encoded[1].z = floor(sph1.b*511);
+	encoded[1].w = floor(sph1.w*31);
+
+	encoded[2].x = floor(sph2.r*511);
+	encoded[2].y = floor(sph2.g*511);
+	encoded[2].z = floor(sph2.b*511);
+	encoded[2].w = floor(sph2.w*31);
+
+	encoded[3].x = floor(sph3.r*511);
+	encoded[3].y = floor(sph3.g*511);
+	encoded[3].z = floor(sph3.b*511);
+	encoded[3].w = floor(sph3.w*31);
+
+	uint4 final = 0;
+
+	final.x = encoded[0].x | (encoded[0].y  << 9) | (encoded[0].z << 18) | (encoded[0].w << 27);
+	final.y = encoded[1].x | (encoded[1].y  << 9) | (encoded[1].z << 18) | (encoded[1].w << 27);
+	final.z = encoded[2].x | (encoded[2].y  << 9) | (encoded[2].z << 18) | (encoded[2].w << 27);
+	final.w = encoded[3].x | (encoded[3].y  << 9) | (encoded[3].z << 18) | (encoded[3].w << 27);
+
+	return final;
+}
+
+float4x4 Decode4SPH(uint4 encoded)
+{
+	float4x4 final;
+
+	final[0].r = float((encoded.x & B32(00000000, 00000000, 00000001, 11111111)) ) / 511.0f;
+	final[0].g = float((encoded.x & B32(00000000, 00000011, 11111110, 00000000)) >> 9) / 511.0f;
+	final[0].b = float((encoded.x & B32(00000111, 11111100, 00000000, 00000000)) >> 18) / 511.0f;
+	final[0].w = float((encoded.x & B32(11111000, 00000000, 00000000, 00000000)) >> 27) / 31.0f;
+
+	final[1].r = float((encoded.y & B32(00000000, 00000000, 00000001, 11111111)) ) / 511.0f;
+	final[1].g = float((encoded.y & B32(00000000, 00000011, 11111110, 00000000)) >> 9) / 511.0f;
+	final[1].b = float((encoded.y & B32(00000111, 11111100, 00000000, 00000000)) >> 18) / 511.0f;
+	final[1].w = float((encoded.y & B32(11111000, 00000000, 00000000, 00000000)) >> 27) / 31.0f;
+
+	final[2].r = float((encoded.z & B32(00000000, 00000000, 00000001, 11111111)) ) / 511.0f;
+	final[2].g = float((encoded.z & B32(00000000, 00000011, 11111110, 00000000)) >> 9) / 511.0f;
+	final[2].b = float((encoded.z & B32(00000111, 11111100, 00000000, 00000000)) >> 18) / 511.0f;
+	final[2].w = float((encoded.z & B32(11111000, 00000000, 00000000, 00000000)) >> 27) / 31.0f;
+
+	final[3].r = float((encoded.w & B32(00000000, 00000000, 00000001, 11111111)) ) / 511.0f;
+	final[3].g = float((encoded.w & B32(00000000, 00000011, 11111110, 00000000)) >> 9) / 511.0f;
+	final[3].b = float((encoded.w & B32(00000111, 11111100, 00000000, 00000000)) >> 18) / 511.0f;
+	final[3].w = float((encoded.w & B32(11111000, 00000000, 00000000, 00000000)) >> 27) / 31.0f;
+
+	return final;
+}
