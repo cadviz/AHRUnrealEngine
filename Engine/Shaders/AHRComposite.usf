@@ -48,6 +48,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 	v2 = normalize(rayKernel[2].x * bitangent + (rayKernel[2].z * tangent + (rayKernel[2].y * lnormal)));
 	v3 = normalize(rayKernel[3].x * bitangent + (rayKernel[3].z * tangent + (rayKernel[3].y * lnormal)));
 
+	//float3 ivec = normalize(-reflect(-normalize(ScreenVector), ScreenSpaceData.GBuffer.WorldNormal));
 	float3 ivec = ScreenSpaceData.GBuffer.WorldNormal;
 	float4 coeffs = float4(pow(saturate(dot(ivec,v0)),3)+0.001f,
 						   pow(saturate(dot(ivec,v1)),3)+0.001f,
@@ -60,7 +61,8 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 					sph[3] * coeffs.w;
 	interp /= coeffs.x + coeffs.y + coeffs.z + coeffs.w;
 
-	float3 fcolor = interp;//interp*AHRCompositeCB.GIMultiplier*ScreenSpaceData.GBuffer.DiffuseColor;
+	//float3 fcolor = interp;
+	float3 fcolor = interp*AHRCompositeCB.GIMultiplier*max(float3(0.085f,0.085f,0.085f),ScreenSpaceData.GBuffer.DiffuseColor);
 	
 	return float4(fcolor,1);
 }

@@ -482,7 +482,7 @@ uint4 PS_SPHI(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARG
 	float SceneDepth = CalcSceneDepth(InUV);
 	float3 wPos = ScreenVector * SceneDepth + View.ViewOrigin.xyz;
 
-	uint2 DTid = floor(InUV * AHRTraceCB.ScreenRes);
+	uint2 DTid = round(InUV * AHRTraceCB.ScreenRes);
 
 	// Construct normal space
 	float3 normal = normalize(ObjNormal.SampleLevel(samLinear,InUV,0).xyz*2 - 1);

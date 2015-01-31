@@ -91,34 +91,13 @@ static const float2 PixelOffsets [ FilterSize ] =
 
 uint4 BlurH(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 {
-/*
-	float4 color = 0;
-	float wacc = 1;
-
-	float z = CalcSceneDepth(InUV)*0.001f;
-	float2 scale = View.ViewSizeAndSceneTexelSize.zw*size;
-	float3 normal = normalize(NormalTex.SampleLevel(samLinear, InUV,0)*2-1);
-
-	[unroll]
-	for (int i = 0; i < FilterSize; i++) 
-    {
-		float pz = CalcSceneDepth(InUV + PixelOffsets[i].xy*scale)*0.001f;
-		float3 n = NormalTex.SampleLevel(samLinear, InUV + PixelOffsets[i].xy*scale*2,0)*2-1;
-
-		float w = 1.0f / (g_epsilon + pow(abs(z - pz),2.5));
-		w *= 1.0f / (g_epsilon + 1 - pow(saturate(abs(dot(n,normal))),2.2));
-
-		color += tGI.SampleLevel(samLinear, InUV + PixelOffsets[i].xy*scale*2,0)*w;
-		wacc += w;
-	}
-	 
-	return color/wacc;*/
-
 	float4x4 sph = 0;
 	float wacc = 1;
 
 	float z = CalcSceneDepth(InUV)*0.001f;
-	uint2 DTid = floor(InUV * View.ViewSizeAndSceneTexelSize.xy/2);
+	uint2 res;
+	tGI.GetDimensions(res.x,res.y);
+	uint2 DTid = round(InUV*res);
 	float2 scale = View.ViewSizeAndSceneTexelSize.zw*size;
 
 	[unroll]
@@ -127,7 +106,7 @@ uint4 BlurH(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET
 		float pz = CalcSceneDepth(InUV + PixelOffsets[i].xy*scale)*0.001f;
 		float w = 1.0f / (g_epsilon + pow(abs(z - pz),2.5));
 
-		uint4 s = tGI[DTid.xy + PixelOffsets[i].xy*size];
+		uint4 s = tGI[DTid.xy + PixelOffsets[i].xy];
 		float4x4 ds = Decode4SPH(s);
 
 		sph[0] += ds[0]*w;
@@ -148,35 +127,14 @@ uint4 BlurH(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET
 
 uint4 BlurV(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 {
-/*
-	float4 color = 0;
+	float4x4 sph = 0;
 	float wacc = 1;
 
 	float z = CalcSceneDepth(InUV)*0.001f;
-	float2 scale = View.ViewSizeAndSceneTexelSize.zw*size;
-	float3 normal = NormalTex.SampleLevel(samLinear, InUV,0)*2-1;
-
-	[unroll]
-	for (int i = 0; i < FilterSize; i++) 
-    {
-		float pz = CalcSceneDepth(InUV + PixelOffsets[i].yx*scale)*0.001f;
-		float3 n = NormalTex.SampleLevel(samLinear, InUV + PixelOffsets[i].xy*scale*2,0)*2-1;
-
-		float w = 1.0f / (g_epsilon + pow(abs(z - pz),2.5));
-		w *= 1.0f / (g_epsilon + 1 - pow(saturate(abs(dot(n,normal))),2.2));
-
-		color += tGI.SampleLevel(samLinear, InUV + PixelOffsets[i].yx*scale*2,0)*w;
-		wacc += w;
-	}
-	 
-	return color/wacc;*/
-
-		float4x4 sph = 0;
-	float wacc = 1;
-
-	float z = CalcSceneDepth(InUV)*0.001f;
-	uint2 DTid = floor(InUV * View.ViewSizeAndSceneTexelSize.xy/2);
-	float2 scale = View.ViewSizeAndSceneTexelSize.zw*size;
+	uint2 res;
+	tGI.GetDimensions(res.x,res.y);
+	uint2 DTid = round(InUV*res);
+	float2 scale = View.ViewSizeAndSceneTexelSize.zw;
 
 	[unroll]
 	for (int i = 0; i < FilterSize; i++) 
@@ -184,7 +142,7 @@ uint4 BlurV(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET
 		float pz = CalcSceneDepth(InUV + PixelOffsets[i].yx*scale)*0.001f;
 		float w = 1.0f / (g_epsilon + pow(abs(z - pz),2.5));
 
-		uint4 s = tGI[DTid.yx + PixelOffsets[i].yx*size];
+		uint4 s = tGI[DTid.xy + PixelOffsets[i].yx];
 		float4x4 ds = Decode4SPH(s);
 
 		sph[0] += ds[0]*w;
