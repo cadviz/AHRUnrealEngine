@@ -2104,7 +2104,7 @@ void FSceneRenderer::AddViewDependentWholeSceneShadowsForView(TArray<FProjectedS
 			{
 				// @RyanTorant
 				// Again, if you have AHR enabled, you don't have LPV enabled. 'Nuff said
-				if(UseApproximateHybridRaytracingRT(Views[0].FeatureLevel))
+				if(UseApproximateHybridRaytracingRT(FeatureLevel) && Views[0].Family->FamilySizeX > 256 && Views[0].Family->FamilySizeY > 256) // bypass aux. views
 				{
 					// Generate the RSM shadow info
 					FWholeSceneProjectedShadowInitializer ProjectedShadowInitializer;

@@ -1875,7 +1875,7 @@ void FSceneRenderer::ComputeViewVisibility(FRHICommandListImmediate& RHICmdList)
 
 	// @RyanTorant
 	// Store all the primitives that need to be voxelized
-	if(UseApproximateHybridRaytracingRT(Views[0].FeatureLevel))
+	if(UseApproximateHybridRaytracingRT(FeatureLevel) && Views[0].Family->FamilySizeX > 256 && Views[0].Family->FamilySizeY > 256) // bypass aux. views
 	{
 		for(auto primitive : Scene->Primitives)
 		{

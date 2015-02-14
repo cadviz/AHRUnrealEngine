@@ -292,6 +292,10 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 {
 	SCOPED_DRAW_EVENT(RHICmdList,AHRVoxelizeScene);
 
+	static bool ran = false;
+	if(ran) return;
+	ran = true;
+
 	if(View.PrimitivesToVoxelize.Num() == 0)
 		return;
 	
@@ -663,7 +667,7 @@ public:
 		if(LinearSampler.IsBound())
 			RHICmdList.SetShaderSampler(ShaderRHI,LinearSampler.GetBaseIndex(),TStaticSamplerState<SF_Trilinear,AM_Wrap,AM_Wrap,AM_Wrap>::GetRHI());
 		if(cmpSampler.IsBound())
-			RHICmdList.SetShaderSampler(ShaderRHI,cmpSampler.GetBaseIndex(),TStaticSamplerState<SF_Trilinear,AM_Wrap,AM_Wrap,AM_Wrap,0,0,0,SCF_Less>::GetRHI());
+			RHICmdList.SetShaderSampler(ShaderRHI,cmpSampler.GetBaseIndex(),TStaticSamplerState<SF_Trilinear,AM_Clamp,AM_Clamp,AM_Clamp,0,0,0,SCF_Less>::GetRHI());
 		if(SamplingKernel.IsBound())
 			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,SamplingKernel.GetBaseIndex(),samplingKernelSRV);
 		if(samPoint.IsBound())
@@ -830,12 +834,12 @@ void FApproximateHybridRaytracer::TraceScene(FRHICommandListImmediate& RHICmdLis
 	// Set the viewport, raster state , depth stencil and render target
 	SetRenderTarget(RHICmdList, RaytracingTarget, FTextureRHIRef());
 	FIntRect SrcRect = View.ViewRect;
-	FIntRect DestRect = SrcRect/2;
-	RHICmdList.SetViewport(SrcRect.Min.X, SrcRect.Min.Y, 0.0f,DestRect.Max.X, DestRect.Max.Y, 1.0f);
+	FIntRect DestRect(FIntPoint(0,0),FIntPoint(RaytracingTarget->GetSizeX(),RaytracingTarget->GetSizeY()));
+	RHICmdList.SetViewport(SrcRect.Min.X, SrcRect.Min.Y, 0.0f,RaytracingTarget->GetSizeX(), RaytracingTarget->GetSizeY(), 1.0f);
 	//RHICmdList.SetViewport(0, 0, 0.0f,ResX/2, ResY/2, 1.0f);
 	RHICmdList.SetRasterizerState(TStaticRasterizerState<FM_Solid, CM_None>::GetRHI());
 	RHICmdList.SetDepthStencilState(TStaticDepthStencilState<false, CF_Always>::GetRHI());
-
+	
 	// Clear the target before drawing
 	RHICmdList.Clear(true, FLinearColor::Black, false, 1.0f, false, 0, FIntRect());
 
@@ -1039,8 +1043,10 @@ void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,
 	RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA>::GetRHI());
 	RHICmdList.SetRasterizerState(TStaticRasterizerState<FM_Solid, CM_None>::GetRHI());
 	RHICmdList.SetDepthStencilState(TStaticDepthStencilState<false, CF_Always>::GetRHI());
-	RHICmdList.SetViewport(View.ViewRect.Min.X, View.ViewRect.Min.Y, 0.0f, View.ViewRect.Max.X/2, View.ViewRect.Max.Y/2, 1.0f);
+	RHICmdList.SetViewport(View.ViewRect.Min.X, View.ViewRect.Min.Y, 0.0f,RaytracingTarget->GetSizeX(), RaytracingTarget->GetSizeY(), 1.0f);
 
+	FIntRect SrcRect = View.ViewRect;
+	FIntRect DestRect(FIntPoint(0,0),FIntPoint(RaytracingTarget->GetSizeX(),RaytracingTarget->GetSizeY()));
 
 	// Get the shaders
 	TShaderMapRef<AHRPassVS> VertexShader(View.ShaderMap);
@@ -1059,15 +1065,15 @@ void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,
 
 	// Draw!
 	DrawRectangle( 
-				RHICmdList,
-				0, 0,
-				View.ViewRect.Width()/2, View.ViewRect.Height()/2,
-				View.ViewRect.Min.X, View.ViewRect.Min.Y, 
-				View.ViewRect.Width(), View.ViewRect.Height(),
-				View.ViewRect.Size()/2,
-				GSceneRenderTargets.GetBufferSizeXY(),
-				*VertexShader,
-				EDRF_UseTriangleOptimization);
+		RHICmdList,
+		0, 0,
+		DestRect.Width(), DestRect.Height(),
+		SrcRect.Min.X, SrcRect.Min.Y, 
+		SrcRect.Width(), SrcRect.Height(),
+		DestRect.Size(),
+		GSceneRenderTargets.GetBufferSizeXY(),
+		*VertexShader,
+		EDRF_UseTriangleOptimization);
 
 	///////// Pass 1
 	SetRenderTarget(RHICmdList, UpsampledTarget1, FTextureRHIRef());
@@ -1081,16 +1087,16 @@ void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,
 
 	// Draw!
 	DrawRectangle( 
-				RHICmdList,
-				0, 0,
-				View.ViewRect.Width()/2, View.ViewRect.Height()/2,
-				View.ViewRect.Min.X, View.ViewRect.Min.Y, 
-				View.ViewRect.Width(), View.ViewRect.Height(),
-				View.ViewRect.Size()/2,
-				GSceneRenderTargets.GetBufferSizeXY(),
-				*VertexShader,
-				EDRF_UseTriangleOptimization);
-//#define TWO_PASS_BLUR
+		RHICmdList,
+		0, 0,
+		DestRect.Width(), DestRect.Height(),
+		SrcRect.Min.X, SrcRect.Min.Y, 
+		SrcRect.Width(), SrcRect.Height(),
+		DestRect.Size(),
+		GSceneRenderTargets.GetBufferSizeXY(),
+		*VertexShader,
+		EDRF_UseTriangleOptimization);
+#define TWO_PASS_BLUR
 #ifdef TWO_PASS_BLUR
 	///////// Pass 2
 	SetRenderTarget(RHICmdList, UpsampledTarget0, FTextureRHIRef());
@@ -1104,15 +1110,15 @@ void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,
 
 	// Draw!
 	DrawRectangle( 
-				RHICmdList,
-				0, 0,
-				View.ViewRect.Width()/2, View.ViewRect.Height()/2,
-				View.ViewRect.Min.X, View.ViewRect.Min.Y, 
-				View.ViewRect.Width(), View.ViewRect.Height(),
-				View.ViewRect.Size()/2,
-				GSceneRenderTargets.GetBufferSizeXY(),
-				*VertexShader,
-				EDRF_UseTriangleOptimization);
+		RHICmdList,
+		0, 0,
+		DestRect.Width(), DestRect.Height(),
+		SrcRect.Min.X, SrcRect.Min.Y, 
+		SrcRect.Width(), SrcRect.Height(),
+		DestRect.Size(),
+		GSceneRenderTargets.GetBufferSizeXY(),
+		*VertexShader,
+		EDRF_UseTriangleOptimization);
 
 	///////// Pass 3
 	SetRenderTarget(RHICmdList, UpsampledTarget1, FTextureRHIRef());
@@ -1126,15 +1132,15 @@ void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,
 
 	// Draw!
 	DrawRectangle( 
-				RHICmdList,
-				0, 0,
-				View.ViewRect.Width()/2, View.ViewRect.Height()/2,
-				View.ViewRect.Min.X, View.ViewRect.Min.Y, 
-				View.ViewRect.Width(), View.ViewRect.Height(),
-				View.ViewRect.Size()/2,
-				GSceneRenderTargets.GetBufferSizeXY(),
-				*VertexShader,
-				EDRF_UseTriangleOptimization);
+		RHICmdList,
+		0, 0,
+		DestRect.Width(), DestRect.Height(),
+		SrcRect.Min.X, SrcRect.Min.Y, 
+		SrcRect.Width(), SrcRect.Height(),
+		DestRect.Size(),
+		GSceneRenderTargets.GetBufferSizeXY(),
+		*VertexShader,
+		EDRF_UseTriangleOptimization);
 #endif
 }
 
@@ -1252,7 +1258,7 @@ void FApproximateHybridRaytracer::Composite(FRHICommandListImmediate& RHICmdList
 	// Bound shader parameters
 	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PixelShader->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PixelShader);
 	VertexShader->SetParameters(RHICmdList,View);
-	PixelShader->SetParameters(RHICmdList, View, UpsampledTargetSRV1); // just binds the upsampled texture using SetTextureParameter()
+	PixelShader->SetParameters(RHICmdList, View, UpsampledTargetSRV0); // just binds the upsampled texture using SetTextureParameter()
 
 	// Draw!
 	DrawRectangle( 

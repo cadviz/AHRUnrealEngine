@@ -35,8 +35,9 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 
 	FScreenSpaceData ScreenSpaceData = GetScreenSpaceData(InUV);
 
-	uint2 DTid = floor(InUV * View.ViewSizeAndSceneTexelSize.xy);
-	float4x4 sph = Decode4SPH(tGI[DTid.xy/2]);
+	uint2 res;
+	tGI.GetDimensions(res.x,res.y);
+	float4x4 sph = Decode4SPH(tGI[InUV*res]);
 
 	float3 lnormal = normalize(ObjNormal.SampleLevel(samLinear,InUV,0))*2-1;
 	float3 tangent = normalize(rkernel - lnormal * dot(rkernel, lnormal));
@@ -62,7 +63,8 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 	interp /= coeffs.x + coeffs.y + coeffs.z + coeffs.w;
 
 	//float3 fcolor = interp;
-	float3 fcolor = interp*AHRCompositeCB.GIMultiplier*max(float3(0.085f,0.085f,0.085f),ScreenSpaceData.GBuffer.DiffuseColor);
-	
+	float3 fcolor = interp*AHRCompositeCB.GIMultiplier*max(float3(0.085f,0.085f,0.085f),ScreenSpaceData.GBuffer.DiffuseColor);// + interp.w*0.1*max(float3(0.085f,0.085f,0.085f),ScreenSpaceData.GBuffer.DiffuseColor);
+	//fcolor = interp.w;
+
 	return float4(fcolor,1);
 }

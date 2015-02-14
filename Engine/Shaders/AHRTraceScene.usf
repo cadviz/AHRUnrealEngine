@@ -519,7 +519,7 @@ uint4 PS_SPHI(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARG
 			step.z = 1;
 
 			// Apply dispersion
-			step.xy *= 0.35;
+			step.xy *= 0.41;
 
 			// Convert to vector space
 			float3 rt = normalize(rkernel - rn * dot(rkernel, rn));
@@ -574,7 +574,14 @@ uint4 PS_SPHI(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARG
 						//float biasAngleMult = sqrt(1 - albedo.w*albedo.w)/(albedo.w + 0.01) + 1; // the w component stores the dot of the sun dir and normal
 						float biasAngleMult = 1;
 						sAlbedo.w = 1;
-						float shadowFactor = ShadowZ0.SampleCmpLevelZero(cmpSampler, lpos.xy, lpos.z);
+
+						// Compute offset based on tex size
+						// Hardcoded 512 -> 0.065f, compute it from that
+						// Assume the texture is a square
+						float2 tshRes;
+						ShadowZ0.GetDimensions(tshRes.x,tshRes.y);
+						float offset = 0.0f;//0.035f;//tshRes.x*0.001269f;
+						float shadowFactor = ShadowZ0.SampleCmpLevelZero(cmpSampler, lpos.xy, lpos.z + offset);
 				
 						sphs[n].rgb += shadowFactor*sAlbedo.rgb*sAlbedo.w;
 					}
@@ -589,7 +596,7 @@ uint4 PS_SPHI(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARG
 						prevebidx = ebidx;
 					}
 					uint eidx = (ebvox & (B8(11111111) << eoffset*8u)) >> eoffset*8u;
-					float4 ecolor = EmissivePalette[uint2(eidx,0)];
+					float4 ecolor = float4(decode_R3G3B2(eidx),1);//EmissivePalette[uint2(eidx,0)];
 					sphs[n].rgb += ecolor*ecolor.a;
 
 					sphs[n].w += (i <= 16); // max ao samples
@@ -606,13 +613,7 @@ uint4 PS_SPHI(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARG
 	sphs[2].w = 1.0f - saturate(sphs[2].w);
 	sphs[3].w = 1.0f - saturate(sphs[3].w);
 
-
-
-	/*sphs[0] = float4(1,0,0,1);
-	sphs[1] = float4(1,1,0,1);
-	sphs[2] = float4(0,1,0,1);
-	sphs[3] = float4(0,0,1,1);*/
-
-
+	//sphs[0] = sphs[1] = sphs[2] = sphs[3] = float4(normal*0.5+0.5,0);
+	 
 	return Encode4SPH(sphs[0],sphs[1],sphs[2],sphs[3]);
 }

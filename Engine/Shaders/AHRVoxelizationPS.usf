@@ -40,9 +40,18 @@ void Main(FAHRVoxelizationGSOut input)
 		eoffset *= 8u;
 		uint emask = ~(B8(11111111) << eoffset);
 
+		FMaterialPixelParameters MaterialParameters = GetMaterialPixelParameters(input.FactoryInterpolants, input.Position);
+		CalcMaterialParameters(MaterialParameters,true,input.Position
+#if USE_WORLD_POSITION_EXCLUDING_SHADER_OFFSETS
+		, input.Position // we are not storing the pos without the wo
+#endif
+	);
+
+		uint idx = encode_R3G3B2(GetMaterialEmissive(MaterialParameters));
+
 		// This should be implemented with a CAS
 		EmissiveVolume.InterlockedAnd(ebidx*4, emask); // mask 
-		EmissiveVolume.InterlockedOr(ebidx*4, AHRVoxelizationCB.EmissiveIndex << eoffset);
+		EmissiveVolume.InterlockedOr(ebidx*4, idx << eoffset);
 		//uint vox = EmissiveVolume.Load(ebidx*4);
 		//vox = (vox & emask) | (AHRVoxelizationCB.EmissiveIndex << eoffset);
 		//EmissiveVolume.Store(ebidx*4,vox);

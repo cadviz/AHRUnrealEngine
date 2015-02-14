@@ -4533,6 +4533,8 @@ void FSkeletalMeshSceneProxy::DrawDynamicElementsSection(FPrimitiveDrawInterface
 
 	FMeshBatch Mesh;
 	FMeshBatchElement& BatchElement = Mesh.Elements[0];
+	//BatchElement.NumInstances = 500;
+
 	Mesh.DynamicVertexData = NULL;
 	Mesh.UseDynamicData = false;
 	Mesh.LCI = NULL;

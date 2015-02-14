@@ -90,7 +90,7 @@ int32 TAHRVoxelizerElementPDI<DrawingPolicyFactoryType>::DrawMesh( const FMeshBa
 	int32 NumPassesRendered = 0;
 
 	check( Mesh.GetNumPrimitives( ) > 0 );
-	//INC_DWORD_STAT_BY( STAT_DynamicPathMeshDrawCalls, Mesh.Elements.Num( ) );
+	INC_DWORD_STAT_BY( STAT_DynamicPathMeshDrawCalls, Mesh.Elements.Num( ) );
 	const bool DrawDirty = DrawingPolicyFactoryType::DrawDynamicMesh(
 		*View,
 		DrawingContext,

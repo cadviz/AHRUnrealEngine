@@ -130,7 +130,7 @@ FIntPoint FSceneRenderTargets::ComputeDesiredSize(const FSceneViewFamily& ViewFa
 	// @RyanTorant
 	// Only resize to fit supported on AHR. Other modes mess up the targets
 	// TODO: Fix this!
-	if(UseApproximateHybridRaytracingRT(ViewFamily.GetFeatureLevel()))
+	if(UseApproximateHybridRaytracingRT(ViewFamily.GetFeatureLevel()) && ViewFamily.FamilySizeX > 256 && ViewFamily.FamilySizeY > 256)
 		return FIntPoint(ViewFamily.FamilySizeX, ViewFamily.FamilySizeY);
 
 	bool bIsSceneCapture = false;
@@ -387,13 +387,13 @@ void FSceneRenderTargets::AllocAHRTargets()
 	if(AHRRaytracingTarget) return; // Already initialized
 
 	// Create the targets
-	FPooledRenderTargetDesc DescTracing(FPooledRenderTargetDesc::Create2DDesc(BufferSize/2, PF_R32G32B32A32_UINT, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
+	FPooledRenderTargetDesc DescTracing(FPooledRenderTargetDesc::Create2DDesc(BufferSize/4, PF_R32G32B32A32_UINT, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
 	GRenderTargetPool.FindFreeElement(DescTracing, AHRRaytracingTarget, TEXT("RaytracingTarget"));
 
-	FPooledRenderTargetDesc DescUp0(FPooledRenderTargetDesc::Create2DDesc(BufferSize/2, PF_R32G32B32A32_UINT, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
+	FPooledRenderTargetDesc DescUp0(FPooledRenderTargetDesc::Create2DDesc(BufferSize/4, PF_R32G32B32A32_UINT, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
 	GRenderTargetPool.FindFreeElement(DescUp0, AHRUpsampledTarget0, TEXT("AHRUpsampledTarget0"));
 
-	FPooledRenderTargetDesc DescUp1(FPooledRenderTargetDesc::Create2DDesc(BufferSize/2, PF_R32G32B32A32_UINT, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
+	FPooledRenderTargetDesc DescUp1(FPooledRenderTargetDesc::Create2DDesc(BufferSize/4, PF_R32G32B32A32_UINT, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
 	GRenderTargetPool.FindFreeElement(DescUp1, AHRUpsampledTarget1, TEXT("AHRUpsampledTarget1"));
 
 	// Bind them to the AHR engine
@@ -1437,7 +1437,7 @@ void FSceneRenderTargets::AllocateDeferredShadingPathRenderTargets()
 			}
 		}
 
-		if(UseApproximateHybridRaytracingRT(CurrentFeatureLevel))
+		if(UseApproximateHybridRaytracingRT(CurrentFeatureLevel) && BufferSize.X > 256 && BufferSize.Y > 256)
 			AllocAHRTargets();
 	}
 }

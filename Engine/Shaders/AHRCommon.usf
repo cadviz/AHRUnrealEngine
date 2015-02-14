@@ -690,3 +690,28 @@ float4x4 Decode4SPH(uint4 encoded)
 
 	return final;
 }
+
+float3 decode_R3G3B2(uint encoded)
+{
+	float3 p;
+	p.x = float(encoded  & B32(00000000, 00000000, 00000000, 00000111)) / 7.0f;
+	p.y = float((encoded & B32(00000000, 00000000, 00000000, 00111000)) >> 3) / 7.0f;
+	p.z = float((encoded & B32(00000000, 00000000, 00000000, 11000000)) >> 6) / 3.0f;
+	return p;
+}
+
+uint encode_R3G3B2(float3 color)
+{
+	uint3 p;
+	
+	color = saturate(color);
+	p.x = floor(color.x*7);
+	p.y = floor(color.y*7);
+	p.z = floor(color.z*3);
+
+	uint pix = p.x;
+	pix |= p.y << 3;
+	pix |= p.z << 6;
+
+	return pix;
+}

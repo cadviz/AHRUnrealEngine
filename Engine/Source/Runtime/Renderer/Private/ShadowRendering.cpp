@@ -3021,7 +3021,7 @@ bool FDeferredShadingSceneRenderer::RenderReflectiveShadowMaps(FRHICommandListIm
 
 		// @RyanTorant
 		// If we are using AHR, we can assume LPVs are disabled
-		if(UseApproximateHybridRaytracingRT(Views[0].FeatureLevel))
+		if(UseApproximateHybridRaytracingRT(FeatureLevel) && Views[0].Family->FamilySizeX > 256 && Views[0].Family->FamilySizeY > 256) // bypass aux. views
 		{
 			// Only the first shadow gets rendered and pushed to the ahr engine.
 			// This is because i'm still unsure how to handle multiple shadows on the tracing side

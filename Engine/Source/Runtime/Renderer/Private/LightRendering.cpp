@@ -553,7 +553,7 @@ void FDeferredShadingSceneRenderer::RenderLights(FRHICommandListImmediate& RHICm
 		}
 				
 		// @RyanTorant
-		if(UseApproximateHybridRaytracingRT(Views[0].FeatureLevel))
+		if(UseApproximateHybridRaytracingRT(FeatureLevel) && Views[0].Family->FamilySizeX > 256 && Views[0].Family->FamilySizeY > 256) // bypass aux. views
 		{
 			
 			// No need to set the render target before, as both functions set their own rt
