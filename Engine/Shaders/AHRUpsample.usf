@@ -9,7 +9,7 @@ SamplerState samLinear;
 float size;
 float zMax;
 
-static const float g_epsilon = 0.0001;
+static const float g_epsilon = 0.00001;
 
 float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 {
@@ -94,7 +94,7 @@ uint4 BlurH(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET
 	float4x4 sph = 0;
 	float wacc = 1;
 
-	float z = CalcSceneDepth(InUV)*0.001f;
+	float z = CalcSceneDepth(InUV);
 	uint2 res;
 	tGI.GetDimensions(res.x,res.y);
 	uint2 DTid = round(InUV*res);
@@ -103,7 +103,7 @@ uint4 BlurH(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET
 	[unroll]
 	for (int i = 0; i < FilterSize; i++) 
     {
-		float pz = CalcSceneDepth(InUV + PixelOffsets[i].xy*scale)*0.001f;
+		float pz = CalcSceneDepth(InUV + PixelOffsets[i].xy*scale);
 		float w = 1.0f / (g_epsilon + pow(abs(z - pz),2.5));
 
 		uint4 s = tGI[DTid.xy + PixelOffsets[i].xy];
@@ -130,7 +130,7 @@ uint4 BlurV(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET
 	float4x4 sph = 0;
 	float wacc = 1;
 
-	float z = CalcSceneDepth(InUV)*0.001f;
+	float z = CalcSceneDepth(InUV);
 	uint2 res;
 	tGI.GetDimensions(res.x,res.y);
 	uint2 DTid = round(InUV*res);
@@ -139,7 +139,7 @@ uint4 BlurV(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET
 	[unroll]
 	for (int i = 0; i < FilterSize; i++) 
     {
-		float pz = CalcSceneDepth(InUV + PixelOffsets[i].yx*scale)*0.001f;
+		float pz = CalcSceneDepth(InUV + PixelOffsets[i].yx*scale);
 		float w = 1.0f / (g_epsilon + pow(abs(z - pz),2.5));
 
 		uint4 s = tGI[DTid.xy + PixelOffsets[i].yx];

@@ -267,14 +267,14 @@ float4 RayPlaneIntersection(float3 RayOrigin, float3 RayDirection, float3 PlaneN
 // Supposebly from the NVidia Direct3D10 SDK
 // Slightly modified for my purposes
 #define RANDOM_IA 16807
-#define RANDOM_IM 2147483647
+#define RANDOM_IM 4294967295u
 #define RANDOM_AM (1.0f/float(RANDOM_IM))
 #define RANDOM_IQ 127773u
-#define RANDOM_IR 2836
-#define RANDOM_MASK 123459876
+#define RANDOM_IR 2836u
+#define RANDOM_MASK 123459876u
 
 struct NumberGenerator {
-	int seed; // Used to generate values.
+	uint seed; // Used to generate values.
 
 	// Returns the current random float.
 	float GetCurrentFloat() {
@@ -291,11 +291,10 @@ struct NumberGenerator {
 	// Generates the next number in the sequence.
 	void Cycle() {
 		seed ^= RANDOM_MASK;
-		int k = seed / RANDOM_IQ;
+		uint k = seed / RANDOM_IQ;
 		seed = RANDOM_IA * (seed - k * RANDOM_IQ) - RANDOM_IR * k;
 
-		if (seed < 0)
-			seed += RANDOM_IM;
+		seed += (seed < 0) * RANDOM_IM;
 
 		seed ^= RANDOM_MASK;
 	}
@@ -314,9 +313,9 @@ struct NumberGenerator {
 	}
 	
 	// Returns a random int within the input range.
-	int GetRandomInt(const int low, const int high) {
-		int v = GetCurrentFloat();
-		return low * (1 - v) + high * v;
+	uint GetRandomInt(const uint high) {
+		int v = GetCurrentInt();
+		return v % (high+1);
 	}
 
 	// Sets the seed

@@ -292,12 +292,12 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 {
 	SCOPED_DRAW_EVENT(RHICmdList,AHRVoxelizeScene);
 
-	static bool ran = false;
+	/*static bool ran = false;
 	if(ran) return;
 	ran = true;
 
 	if(View.PrimitivesToVoxelize.Num() == 0)
-		return;
+		return;*/
 	
 	bool RebuildGrids = View.FinalPostProcessSettings.AHRRebuildGrids;
 	
@@ -1232,8 +1232,8 @@ void FApproximateHybridRaytracer::Composite(FRHICommandListImmediate& RHICmdList
 	// Only one view at a time for now (1/11/2014)
 
 	// Set additive blending
-	RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_One, BO_Add, BF_One, BF_One>::GetRHI());
-	//RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_Zero, BO_Add, BF_One, BF_Zero>::GetRHI());
+	//RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_One, BO_Add, BF_One, BF_One>::GetRHI());
+	RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_Zero, BO_Add, BF_One, BF_Zero>::GetRHI());
 
 	// add gi and multiply scene color by ao
 	// final = gi + ao*direct
@@ -1258,7 +1258,8 @@ void FApproximateHybridRaytracer::Composite(FRHICommandListImmediate& RHICmdList
 	// Bound shader parameters
 	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PixelShader->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PixelShader);
 	VertexShader->SetParameters(RHICmdList,View);
-	PixelShader->SetParameters(RHICmdList, View, UpsampledTargetSRV0); // just binds the upsampled texture using SetTextureParameter()
+	PixelShader->SetParameters(RHICmdList, View, UpsampledTargetSRV0);
+	//PixelShader->SetParameters(RHICmdList, View, RaytracingTargetSRV);
 
 	// Draw!
 	DrawRectangle( 

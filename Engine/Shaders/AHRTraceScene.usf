@@ -613,7 +613,7 @@ uint4 PS_SPHI(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARG
 	sphs[2].w = 1.0f - saturate(sphs[2].w);
 	sphs[3].w = 1.0f - saturate(sphs[3].w);
 
-	//sphs[0] = sphs[1] = sphs[2] = sphs[3] = float4(normal*0.5+0.5,0);
+	//sphs[0] = sphs[1] = sphs[2] = sphs[3] = float4(normal*0.5+0.5,1);
 	 
 	return Encode4SPH(sphs[0],sphs[1],sphs[2],sphs[3]);
 }

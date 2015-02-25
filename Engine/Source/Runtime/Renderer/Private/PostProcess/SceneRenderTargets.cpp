@@ -127,12 +127,6 @@ FIntPoint FSceneRenderTargets::ComputeDesiredSize(const FSceneViewFamily& ViewFa
 	enum ESizingMethods { RequestedSize, ScreenRes, Grow, VisibleSizingMethodsCount, Clamped };
 	ESizingMethods SceneTargetsSizingMethod = Grow;
 
-	// @RyanTorant
-	// Only resize to fit supported on AHR. Other modes mess up the targets
-	// TODO: Fix this!
-	if(UseApproximateHybridRaytracingRT(ViewFamily.GetFeatureLevel()) && ViewFamily.FamilySizeX > 256 && ViewFamily.FamilySizeY > 256)
-		return FIntPoint(ViewFamily.FamilySizeX, ViewFamily.FamilySizeY);
-
 	bool bIsSceneCapture = false;
 	bool bIsReflectionCapture = false;
 
@@ -192,6 +186,12 @@ FIntPoint FSceneRenderTargets::ComputeDesiredSize(const FSceneViewFamily& ViewFa
 		SceneTargetsSizingMethod = Grow;
 	}
 	
+	// @RyanTorant
+	// Only resize to fit supported on AHR. Other modes mess up the targets
+	// TODO: Fix this!
+	if(UseApproximateHybridRaytracingRT(ViewFamily.GetFeatureLevel()) && ViewFamily.FamilySizeX > 256 && ViewFamily.FamilySizeY > 256)
+		SceneTargetsSizingMethod = RequestedSize;
+
 	switch (SceneTargetsSizingMethod)
 	{
 		case RequestedSize:
@@ -325,7 +325,7 @@ void FSceneRenderTargets::BeginRenderingGBuffer(FRHICommandList& RHICmdList, ERe
 	{
 		// @RyanTorant
 		// Added one more target for the unmapped object normals
-		FRHIRenderTargetView RenderTargets[6];
+		FRHIRenderTargetView RenderTargets[7];
 		RenderTargets[0] = FRHIRenderTargetView(GetSceneColorSurface(), 0, -1, ColorLoadAction, ERenderTargetStoreAction::EStore);
 		RenderTargets[1] = FRHIRenderTargetView(GSceneRenderTargets.GBufferA->GetRenderTargetItem().TargetableTexture, 0, -1, ColorLoadAction, ERenderTargetStoreAction::EStore);
 		RenderTargets[2] = FRHIRenderTargetView(GSceneRenderTargets.GBufferB->GetRenderTargetItem().TargetableTexture, 0, -1, ColorLoadAction, ERenderTargetStoreAction::EStore);
