@@ -32,8 +32,6 @@ class UMaterialInterface;
 class UTexture;
 struct FExpressionInput;
 struct FShaderCompilerEnvironment;
-// @RyanTorant
-struct __AHRPaletteEntry;
 
 #define ME_CAPTION_HEIGHT		18
 #define ME_STD_VPADDING			16
@@ -945,9 +943,6 @@ public:
 	virtual bool HasNormalConnected() const { return false; }
 	virtual bool RequiresSynchronousCompilation() const { return false; };
 	virtual bool IsDefaultMaterial() const { return false; };
-	// @RyanTorant
-	virtual FLinearColor GetAHREmissiveColor() const { return FLinearColor(0,0,0); }
-	virtual __AHRPaletteEntry* GetAHRPaletteState() const { return nullptr; }
 	/**
 	 * Should shaders compiled for this material be saved to disk?
 	 */

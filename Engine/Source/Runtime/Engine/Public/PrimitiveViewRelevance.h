@@ -93,7 +93,6 @@ struct FPrimitiveViewRelevance
 		bRenderInMainPass(true),
 		bEditorPrimitiveRelevance(false),
 		bEditorNoDepthTestPrimitiveRelevance(false),
-		bNeedsPreRenderView(false),
 		bHasSimpleLights(false),
 		bOpaqueRelevance(true),
 		bMaskedRelevance(false),

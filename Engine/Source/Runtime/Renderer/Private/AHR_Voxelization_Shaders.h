@@ -179,7 +179,6 @@ public:
 		cbdata.InvSceneBounds = FVector(1.0f) / gridCFG.Bounds;
 		cbdata.WorldToVoxelOffset = -gridCFG.Center*cbdata.InvSceneBounds; // -SceneCenter/SceneBounds
 		cbdata.TriangleSizeMultiplier = View->FinalPostProcessSettings.TriangleSizeMultiplier;
-		cbdata.EmissiveIndex = MaterialResource.GetAHRPaletteState()->idx;
 
 		SetUniformBufferParameterImmediate(RHICmdList, ShaderRHI,cb,cbdata);
 	}
