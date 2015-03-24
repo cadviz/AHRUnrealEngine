@@ -533,9 +533,6 @@ UMaterial::UMaterial(const FObjectInitializer& ObjectInitializer)
 	BlendablePriority = 0;
 
 	bUseEmissiveForDynamicAreaLighting = false;
-	AHREmissiveColor = FLinearColor(0,0,0);
-	AHRPaletteData.stored = false;
-	AHRPaletteData.idx = 0;
 	RefractionDepthBias = 0.0f;
 	MaterialDecalResponse = MDR_ColorNormalRoughness;
 

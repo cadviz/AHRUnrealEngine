@@ -656,13 +656,13 @@ void FDeferredShadingSceneRenderer::Render(FRHICommandListImmediate& RHICmdList)
 		}
 	}
 
+	// Find the visible primitives.
+	InitViews(RHICmdList);
+
 	// After this point we have the PrimitivesToVoxelize array filled, so we can start voxelization
 	// For now (29/10/2014) both static and dynamic objects get voxelized on the same pass.
 	if(UseApproximateHybridRaytracingRT(FeatureLevel) && Views[0].Family->FamilySizeX > 256 && Views[0].Family->FamilySizeY > 256) // bypass aux. views
 		AHREngine.VoxelizeScene(RHICmdList,Views[0]);
-
-	// Find the visible primitives.
-	InitViews(RHICmdList);
 
 	if (GRHIThread)
 	{

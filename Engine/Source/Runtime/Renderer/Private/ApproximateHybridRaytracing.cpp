@@ -203,7 +203,7 @@ void FApproximateHybridRaytracer::ReleaseDynamicRHI()
 	}
 }
 
-void FApproximateHybridRaytracer::AppendLightRSM(LightRSMData& light)
+void FApproximateHybridRaytracer::AppendLight(AHRLightData& light)
 {
 	if(currentLightIDX < MAX_AHR_LIGHTS)
 	{

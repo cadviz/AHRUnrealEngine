@@ -1510,8 +1510,6 @@ public:
 	ENGINE_API virtual bool IsDefaultMaterial() const;
 	ENGINE_API virtual float GetRefractionDepthBiasValue() const;
 	ENGINE_API virtual bool UseTranslucencyVertexFog() const;
-	ENGINE_API virtual FLinearColor GetAHREmissiveColor() const;
-	ENGINE_API virtual __AHRPaletteEntry* GetAHRPaletteState() const;
 
 	/**
 	 * Should shaders compiled for this material be saved to disk?

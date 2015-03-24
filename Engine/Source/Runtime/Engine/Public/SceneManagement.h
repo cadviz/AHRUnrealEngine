@@ -1378,6 +1378,8 @@ private:
 
 	friend class FSceneRenderer;
 	friend class FProjectedShadowInfo;
+	// @RyanTorant
+	friend class FDeferredShadingSceneRenderer;
 };
 
 

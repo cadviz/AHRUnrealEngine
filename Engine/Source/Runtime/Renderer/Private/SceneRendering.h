@@ -378,6 +378,7 @@ public:
 	// @RyanTorant
 	/** The primitives sent to the voxelization stage */
 	TArray<const FPrimitiveSceneInfo*,SceneRenderingAllocator> PrimitivesToVoxelize;
+	TArray<FMeshBatchAndRelevance,SceneRenderingAllocator> PrimitivesElementsToVoxelize;
 
 	/** Set of translucent prims for this view */
 	FTranslucentPrimSet TranslucentPrimSet;

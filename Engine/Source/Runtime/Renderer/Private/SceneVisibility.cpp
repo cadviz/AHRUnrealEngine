@@ -2147,6 +2147,29 @@ void FSceneRenderer::PostVisibilityFrameSetup()
 
 uint32 GetShadowQuality();
 
+// @RyanTorant
+void FDeferredShadingSceneRenderer::GetElementsToVoxelize(FRHICommandListImmediate& RHICmdList)
+{
+	SCOPED_DRAW_EVENT(RHICmdList,GetElementsToVoxelize);
+
+	TArray<const FSceneView*> ReusedViewsArray;
+	ReusedViewsArray.AddZeroed(1);
+	ReusedViewsArray[0] = &Views[0];
+
+	// Simple elements not supported
+	FSimpleElementCollector DynamicSubjectSimpleElements;
+
+	MeshCollector.ClearViewMeshArrays();
+	MeshCollector.AddViewMeshArrays(&Views[0], &Views[0].PrimitivesElementsToVoxelize, &DynamicSubjectSimpleElements, ViewFamily.GetFeatureLevel());
+
+	// Loop trough all the primitves to voxelize and gather the elements for each
+	for(auto p : Views[0].PrimitivesToVoxelize)
+	{
+		MeshCollector.SetPrimitive(p->Proxy, p->DefaultDynamicHitProxyId);
+		p->Proxy->GetDynamicMeshElements(ReusedViewsArray, ViewFamily, 0x1, MeshCollector);
+	}
+}
+
 /**
  * Initialize scene's views.
  * Check visibility, sort translucent items, etc.
@@ -2205,6 +2228,11 @@ void FDeferredShadingSceneRenderer::InitViews(FRHICommandListImmediate& RHICmdLi
 	// For now (29/10/2014) both static and dynamic objects get voxelized on the same pass. Also, no emissive (plain binary grid)
 	if(UseApproximateHybridRaytracingRT(Views[0].FeatureLevel))
 		AHREngine.VoxelizeScene(RHICmdList,Views[0]);*/
+
+	// @RyanTorant
+	// Get the dynamic elements from the primitives
+	if(UseApproximateHybridRaytracingRT(Views[0].FeatureLevel))
+		GetElementsToVoxelize(RHICmdList);
 
 	// initialize per-view uniform buffer.
 	for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)

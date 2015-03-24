@@ -165,6 +165,10 @@ private:
 	/** Determines which primitives are visible for each view. */
 	void InitViews(FRHICommandListImmediate& RHICmdList);
 
+	// @RyanTorant
+	/** Gets the elements from each primitive that needs to be voxelized **/
+	void GetElementsToVoxelize(FRHICommandListImmediate& RHICmdList);
+
 	/**
 	 * Renders the scene's prepass and occlusion queries.
 	 * @return true if anything was rendered

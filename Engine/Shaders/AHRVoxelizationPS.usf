@@ -41,11 +41,7 @@ void Main(FAHRVoxelizationGSOut input)
 		uint emask = ~(B8(11111111) << eoffset);
 
 		FMaterialPixelParameters MaterialParameters = GetMaterialPixelParameters(input.FactoryInterpolants, input.Position);
-		CalcMaterialParameters(MaterialParameters,true,input.Position
-#if USE_WORLD_POSITION_EXCLUDING_SHADER_OFFSETS
-		, input.Position // we are not storing the pos without the wo
-#endif
-	);
+		CalcMaterialParameters(MaterialParameters,input.Position,true,input.Position);
 
 		uint idx = encode_R3G3B2(GetMaterialEmissive(MaterialParameters));
 

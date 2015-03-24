@@ -839,8 +839,6 @@ float FMaterialResource::GetTranslucentShadowStartOffset() const { return Materi
 float FMaterialResource::GetRefractionDepthBiasValue() const { return Material->RefractionDepthBias; }
 bool FMaterialResource::UseTranslucencyVertexFog() const {return Material->bUseTranslucencyVertexFog;}
 FString FMaterialResource::GetFriendlyName() const { return *GetNameSafe(Material); }
-FLinearColor FMaterialResource::GetAHREmissiveColor() const { return Material->GetAHREmissiveColor(); }
-__AHRPaletteEntry* FMaterialResource::GetAHRPaletteState() const { return Material->GetAHRPaletteState(); }
 
 uint32 FMaterialResource::GetDecalBlendMode() const
 {

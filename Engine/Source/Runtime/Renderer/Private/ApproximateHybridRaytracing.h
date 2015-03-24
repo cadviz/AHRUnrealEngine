@@ -9,16 +9,17 @@ extern TAutoConsoleVariable<int32> CVarApproximateHybridRaytracing;
 extern TAutoConsoleVariable<int32> CVarAHRMaxSliceSize;
 extern TAutoConsoleVariable<int32> CVarAHRTraceReflections;
 
-struct LightRSMData
+struct AHRLightData
 {
-	LightRSMData()
+	AHRLightData()
 	{
 		IsValid = false;
-		Albedo = Normals = Depth = nullptr;
+		//Albedo = Normals = Depth = nullptr;
+		Depth = nullptr;
 	}
 	bool IsValid;
-	FTexture2DRHIRef Albedo;
-	FTexture2DRHIRef Normals;
+	/*FTexture2DRHIRef Albedo;
+	FTexture2DRHIRef Normals;*/
 	FTexture2DRHIRef Depth;
 	FMatrix ViewProj;
 	FVector Offset;
@@ -66,8 +67,8 @@ public:
 	FUnorderedAccessViewRHIRef GetSceneVolumeUAV(){ return (*currentVolume)->UAV; }
 	FUnorderedAccessViewRHIRef GetEmissiveVolumeUAV(){ return (*currentEmissiveVolume)->UAV; }
 
-	void AppendLightRSM(LightRSMData& light);
-	LightRSMData* GetLightsList(){ return lights; }
+	void AppendLight(AHRLightData& light);
+	AHRLightData* GetLightsList(){ return lights; }
 
 	// FRenderResource code : Mainly, InitDynamicRHI()/ReleaseDynamicRHI(). Also, IsInitialized()
 	void InitDynamicRHI() override final;
@@ -109,7 +110,7 @@ private:
 	FShaderResourceViewRHIRef EmissivePaletteSRV;
 	FTexture2DRHIRef SamplingKernel;
 	FShaderResourceViewRHIRef SamplingKernelSRV;
-	LightRSMData lights[MAX_AHR_LIGHTS];
+	AHRLightData lights[MAX_AHR_LIGHTS];
 	uint32 currentLightIDX;
 
 	AHRGridSettings gridSettings;

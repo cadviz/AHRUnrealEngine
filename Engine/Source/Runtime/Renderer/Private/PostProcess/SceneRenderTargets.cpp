@@ -14,7 +14,8 @@
 #include "ApproximateHybridRaytracing.h"
 
 // @RyanTorant
-// for LightPropagationVolume feature or AHR
+// made it a cvar
+// for LightPropagationVolume feature
 static TAutoConsoleVariable<int32> CVarReflectiveShadowMapResolution(
 	TEXT("r.ReflectiveShadowMapResolution"),
 	512,
@@ -377,13 +378,13 @@ void FSceneRenderTargets::AllocAHRTargets()
 	if(AHRRaytracingTarget) return; // Already initialized
 
 	// Create the targets
-	FPooledRenderTargetDesc DescTracing(FPooledRenderTargetDesc::Create2DDesc(BufferSize/4, PF_R32G32B32A32_UINT, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
+	FPooledRenderTargetDesc DescTracing(FPooledRenderTargetDesc::Create2DDesc(BufferSize/2, PF_R32G32B32A32_UINT, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
 	GRenderTargetPool.FindFreeElement(DescTracing, AHRRaytracingTarget, TEXT("RaytracingTarget"));
 
-	FPooledRenderTargetDesc DescUp0(FPooledRenderTargetDesc::Create2DDesc(BufferSize/4, PF_R32G32B32A32_UINT, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
+	FPooledRenderTargetDesc DescUp0(FPooledRenderTargetDesc::Create2DDesc(BufferSize/2, PF_R32G32B32A32_UINT, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
 	GRenderTargetPool.FindFreeElement(DescUp0, AHRUpsampledTarget0, TEXT("AHRUpsampledTarget0"));
 
-	FPooledRenderTargetDesc DescUp1(FPooledRenderTargetDesc::Create2DDesc(BufferSize/4, PF_R32G32B32A32_UINT, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
+	FPooledRenderTargetDesc DescUp1(FPooledRenderTargetDesc::Create2DDesc(BufferSize/2, PF_R32G32B32A32_UINT, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
 	GRenderTargetPool.FindFreeElement(DescUp1, AHRUpsampledTarget1, TEXT("AHRUpsampledTarget1"));
 
 	// Bind them to the AHR engine

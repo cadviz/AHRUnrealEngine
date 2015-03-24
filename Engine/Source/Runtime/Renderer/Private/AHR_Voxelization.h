@@ -2,6 +2,7 @@
 #pragma once
 #include "AHR_Voxelization_Shaders.h"
 
+#if 0
 /** A primitive draw interface which adds the drawn elements to the view's batched elements. */
 template<typename DrawingPolicyFactoryType>
 class TAHRVoxelizerElementPDI : public FPrimitiveDrawInterface
@@ -84,7 +85,7 @@ private:
 	/** Tracks whether any elements have been rendered by this drawer. */
 	uint32 bDirty : 1;
 };
-
+#endif
 
 /**
 * A drawing policy factory for voxelizing
@@ -96,15 +97,13 @@ public:
 	enum { bAllowSimpleElements = false };
 	struct ContextType
 	{
-		ContextType(FRHICommandListImmediate& _RHICmdList)
+		ContextType()
 		{
-			RHICmdList = &_RHICmdList;
 		}
-
-		FRHICommandListImmediate* RHICmdList;
 	};
 
 	static bool DrawDynamicMesh(
+		FRHICommandList& RHICmdList, 
 		const FViewInfo& View,
 		ContextType DrawingContext,
 		const FMeshBatch& Mesh,
@@ -191,17 +190,17 @@ public:
 		GeometryShader->SetMesh(RHICmdList, VertexFactory,View,PrimitiveSceneProxy,BatchElement);
 		PixelShader->SetMesh(RHICmdList, VertexFactory,View,PrimitiveSceneProxy,BatchElement);
 
-		context->RHICmdList->SetDepthStencilState(TStaticDepthStencilState<false, CF_Always>::GetRHI());
-		context->RHICmdList->SetRasterizerState(TStaticRasterizerState<FM_Solid,CM_None,false,false>::GetRHI());
+		RHICmdList.SetDepthStencilState(TStaticDepthStencilState<false, CF_Always>::GetRHI());
+		RHICmdList.SetRasterizerState(TStaticRasterizerState<FM_Solid,CM_None,false,false>::GetRHI());
 		auto gridCFG = AHREngine.GetGridSettings();
 		auto imax = [](uint32 a, uint32 b){ uint32 tmp = a > b; return a*tmp + (1 - tmp)*b; };
 		uint32 gres = imax(gridCFG.SliceSize.X,imax(gridCFG.SliceSize.Y,gridCFG.SliceSize.Z));
-		context->RHICmdList->SetViewport(0,0,0,gres*2,gres*2,1);
-		Mesh.VertexFactory->Set(*context->RHICmdList);
+		RHICmdList.SetViewport(0,0,0,gres*2,gres*2,1);
+		Mesh.VertexFactory->Set(RHICmdList);
 	
 		// Bind the voxels UAV and bind a null depth-stencil buffer
 		FUnorderedAccessViewRHIParamRef uavs[] = { AHREngine.GetSceneVolumeUAV(),AHREngine.GetEmissiveVolumeUAV() };
-		context->RHICmdList->SetRenderTargets(0,nullptr,nullptr,2,uavs);
+		RHICmdList.SetRenderTargets(0,nullptr,nullptr,2,uavs);
 
 		//FMeshDrawingPolicy::SetMeshRenderState(RHICmdList, View,PrimitiveSceneProxy,Mesh,BatchElementIndex,bBackFace,FMeshDrawingPolicy::ElementDataType(),PolicyContext);
 	}

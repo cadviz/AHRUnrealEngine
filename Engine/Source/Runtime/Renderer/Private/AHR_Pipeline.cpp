@@ -276,7 +276,6 @@ IMPLEMENT_SHADER_TYPE(,AHRDynamicStaticEmissiveVolumeCombine,TEXT("AHRDynamicSta
 FCriticalSection cs;
 AHRGridSettings prevGridSettings;
 vector<FName> prevStaticObjects;
-FLinearColor prevPalette[256];
 //once_flag stdOnceFlag;
 template<class Function>
 void Once(Function&& f)
@@ -291,7 +290,7 @@ void Once(Function&& f)
 void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmdList,FViewInfo& View)
 {
 	SCOPED_DRAW_EVENT(RHICmdList,AHRVoxelizeScene);
-
+#if 0
 	/*static bool ran = false;
 	if(ran) return;
 	ran = true;
@@ -311,26 +310,7 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 	TArray<const FPrimitiveSceneInfo*,SceneRenderingAllocator> dynamicsObjects;
 	bool voxelizeStatic = false;
 
-	FLinearColor palette[256];
-	for(auto& c : palette) c = FLinearColor(0,0,0);
-
-	{
-		FScopeLock ScopeLock(&cs);
-		Once([=](){ for(auto& c : prevPalette) c = FLinearColor(0,0,0); });
-	}
-
 	uint32 currentMatIDX = 0;
-
-	// Reset the state of the materials
-	for(auto obj : View.PrimitivesToVoxelize)
-	{
-		for(int n = 0;n < obj->StaticMeshes.Num();n++)
-		{
-			auto mat = obj->StaticMeshes[n].MaterialRenderProxy->GetMaterial(View.GetFeatureLevel());
-			auto state = mat->GetAHRPaletteState();
-			state->stored = false;
-		}
-	}
 
 
 	//cs.lock();
@@ -343,28 +323,6 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 		bool staticListChanged = false;
 		for(auto obj : View.PrimitivesToVoxelize)
 		{
-			for(int n = 0;n < obj->StaticMeshes.Num();n++)
-			{
-				auto mat = obj->StaticMeshes[n].MaterialRenderProxy->GetMaterial(View.GetFeatureLevel());
-				auto state = mat->GetAHRPaletteState();
-
-				// If the material is not stored, increase the index and store
-				if(!state->stored && mat->ShouldInjectEmissiveIntoDynamicGI())
-				{
-					// Output a warning if we are out of bounds
-					if(currentMatIDX >= 256)
-					{
-						UE_LOG(LogRenderer, Warning, TEXT("Tried to add more emissive materials to the AHR engine that the maximum supported, will be ignored."));
-						break;
-					}
-
-					currentMatIDX++;
-					palette[currentMatIDX] = mat->GetAHREmissiveColor();
-					state->stored = true;
-					state->idx = currentMatIDX;
-				}
-			}
-
 			if(obj->Proxy->NeedsEveryFrameVoxelization())
 			{
 				dynamicsObjects.Add(obj);
@@ -399,6 +357,7 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 		}
 
 		// Check if the palette changed
+		/*
 		bool paletteChanged = false;
 		for(int i = 0; i < 256; i++) paletteChanged |= (prevPalette[i] != palette[i]);
 		if(paletteChanged)
@@ -433,7 +392,7 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 			RHIUnlockTexture2D( EmissivePaletteTexture, 0, false );
 
 			EmissivePaletteSRV = RHICreateShaderResourceView(EmissivePaletteTexture,0,1,PF_B8G8R8A8);
-		}
+		}*/
 	}
 
 	//pthread_mutex_unlock(&Mutex);
@@ -475,7 +434,8 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 	{
 		FScopeCycleCounter Context( PrimitiveSceneInfo->Proxy->GetStatId( ) );
 		Drawer.SetPrimitive( PrimitiveSceneInfo->Proxy );
-			
+		
+		FAHRVoxelizerDrawingPolicyFactory::DrawDynamicMesh(RHICmdList, View, Context, *(PrimitiveSceneInfo->Proxy-> false, true, p.PrimitiveSceneProxy, MeshBatch.BatchHitProxyId);
 		// Calls SceneProxy DrawDynamicElements function
 		PrimitiveSceneInfo->Proxy->DrawDynamicElements(&Drawer,&View,EDrawDynamicFlags::Voxelize);
 	}
@@ -501,6 +461,18 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 	DispatchComputeShader(RHICmdList, *combineCSEmissive, x, x ,x);
 
 	combineCSEmissive->UnbindBuffers(RHICmdList);
+#endif
+	uint32 cls[4] = { 0,0,0,0 };
+
+	// Voxelize to the dynamic grid
+	RHICmdList.ClearUAV(DynamicSceneVolume->UAV, cls);
+	RHICmdList.ClearUAV(DynamicEmissiveVolume->UAV, cls);
+	SetDynamicVolumeAsActive();
+
+	for(auto e : View.PrimitivesElementsToVoxelize)
+	{
+		FAHRVoxelizerDrawingPolicyFactory::DrawDynamicMesh(RHICmdList, View, FAHRVoxelizerDrawingPolicyFactory::ContextType(), *e.Mesh, false, true, e.PrimitiveSceneProxy, e.Mesh->BatchHitProxyId);
+	}
 }
 
 ///
@@ -677,48 +649,6 @@ public:
 
 		if(ObjNormal.IsBound())
 			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,ObjNormal.GetBaseIndex(),AHREngine.ObjectNormalSRV);
-
-		if(ShadowAlbedo0.IsBound() && lList[0].IsValid)
-			SetTextureParameter(RHICmdList, ShaderRHI, ShadowAlbedo0, LinearSampler, SamplerStateLinear,  lList[0].Albedo );
-		else
-			SetTextureParameter(RHICmdList, ShaderRHI, ShadowAlbedo0, LinearSampler, SamplerStateLinear, dummyTexture);
-		if(ShadowAlbedo1.IsBound() && lList[1].IsValid)
-			SetTextureParameter(RHICmdList, ShaderRHI, ShadowAlbedo1, LinearSampler, SamplerStateLinear,  lList[1].Albedo );
-		else
-			SetTextureParameter(RHICmdList, ShaderRHI, ShadowAlbedo1, LinearSampler, SamplerStateLinear, dummyTexture);
-		if(ShadowAlbedo2.IsBound() && lList[2].IsValid)
-			SetTextureParameter(RHICmdList, ShaderRHI, ShadowAlbedo2, LinearSampler, SamplerStateLinear,  lList[2].Albedo );
-		else
-			SetTextureParameter(RHICmdList, ShaderRHI, ShadowAlbedo2, LinearSampler, SamplerStateLinear, dummyTexture);
-		if(ShadowAlbedo3.IsBound() && lList[3].IsValid)
-			SetTextureParameter(RHICmdList, ShaderRHI, ShadowAlbedo3, LinearSampler, SamplerStateLinear,  lList[3].Albedo );
-		else
-			SetTextureParameter(RHICmdList, ShaderRHI, ShadowAlbedo3, LinearSampler, SamplerStateLinear, dummyTexture);
-		if(ShadowAlbedo4.IsBound() && lList[4].IsValid)
-			SetTextureParameter(RHICmdList, ShaderRHI, ShadowAlbedo4, LinearSampler, SamplerStateLinear,  lList[4].Albedo );
-		else
-			SetTextureParameter(RHICmdList, ShaderRHI, ShadowAlbedo4, LinearSampler, SamplerStateLinear, dummyTexture);
-
-		if(ShadowNormals0.IsBound() && lList[0].IsValid)
-			SetTextureParameter(RHICmdList, ShaderRHI, ShadowNormals0, LinearSampler, SamplerStateLinear,  lList[0].Normals );
-		else
-			SetTextureParameter(RHICmdList, ShaderRHI, ShadowNormals0, LinearSampler, SamplerStateLinear, dummyTexture);
-		if(ShadowNormals1.IsBound() && lList[1].IsValid)
-			SetTextureParameter(RHICmdList, ShaderRHI, ShadowNormals1, LinearSampler, SamplerStateLinear,  lList[1].Normals );
-		else
-			SetTextureParameter(RHICmdList, ShaderRHI, ShadowNormals1, LinearSampler, SamplerStateLinear, dummyTexture);
-		if(ShadowNormals2.IsBound() && lList[2].IsValid)
-			SetTextureParameter(RHICmdList, ShaderRHI, ShadowNormals2, LinearSampler, SamplerStateLinear,  lList[2].Normals );
-		else
-			SetTextureParameter(RHICmdList, ShaderRHI, ShadowNormals2, LinearSampler, SamplerStateLinear, dummyTexture);
-		if(ShadowNormals3.IsBound() && lList[3].IsValid)
-			SetTextureParameter(RHICmdList, ShaderRHI, ShadowNormals3, LinearSampler, SamplerStateLinear,  lList[3].Normals );
-		else
-			SetTextureParameter(RHICmdList, ShaderRHI, ShadowNormals3, LinearSampler, SamplerStateLinear, dummyTexture);
-		if(ShadowNormals4.IsBound() && lList[4].IsValid)
-			SetTextureParameter(RHICmdList, ShaderRHI, ShadowNormals4, LinearSampler, SamplerStateLinear,  lList[4].Normals );
-		else
-			SetTextureParameter(RHICmdList, ShaderRHI, ShadowNormals4, LinearSampler, SamplerStateLinear, dummyTexture);
 
 		if(ShadowZ0.IsBound() && lList[0].IsValid)
 			SetTextureParameter(RHICmdList, ShaderRHI, ShadowZ0, LinearSampler, SamplerStateLinear,  lList[0].Depth );

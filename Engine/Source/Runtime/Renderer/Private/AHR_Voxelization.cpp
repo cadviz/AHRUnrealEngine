@@ -13,6 +13,7 @@ IMPLEMENT_MATERIAL_SHADER_TYPE(,FAHRVoxelizationPixelShader,TEXT("AHRVoxelizatio
 
 IMPLEMENT_UNIFORM_BUFFER_STRUCT(AHRVoxelizationCB,TEXT("AHRVoxelizationCB"));
 
+#if 0
 template<typename DrawingPolicyFactoryType>
 void TAHRVoxelizerElementPDI<DrawingPolicyFactoryType>::SetPrimitive( const FPrimitiveSceneProxy* NewPrimitiveSceneProxy )
 {
@@ -105,36 +106,19 @@ int32 TAHRVoxelizerElementPDI<DrawingPolicyFactoryType>::DrawMesh( const FMeshBa
 	NumPassesRendered += DrawDirty;
 	return NumPassesRendered;
 }
+#endif
 
 bool FAHRVoxelizerDrawingPolicyFactory::DrawDynamicMesh(
-	const FViewInfo& View,
-	ContextType DrawingContext,
-	const FMeshBatch& Mesh,
-	bool bBackFace,
-	bool bPreFog,
-	const FPrimitiveSceneProxy* PrimitiveSceneProxy,
-	FHitProxyId HitProxyId
-	)
+		FRHICommandList& RHICmdList, 
+		const FViewInfo& View,
+		ContextType DrawingContext,
+		const FMeshBatch& Mesh,
+		bool bBackFace,
+		bool bPreFog,
+		const FPrimitiveSceneProxy* PrimitiveSceneProxy,
+		FHitProxyId HitProxyId
+		)
 {
-	/*FAHRVoxelizerDrawingPolicy DrawingPolicy( false,&DrawingContext );
-	DrawingPolicy.DrawShared( &View, Mesh);
-
-	int32 BatchElementIndex = 0;
-	uint64 Mask = ( Mesh.Elements.Num( ) == 1 ) ? 1 : ( 1 << Mesh.Elements.Num( ) ) - 1;
-
-	do
-	{
-		if( Mask & 1 )
-		{
-			DrawingPolicy.SetMeshRenderState( View, PrimitiveSceneProxy, Mesh, BatchElementIndex, bBackFace );
-			DrawingPolicy.DrawMesh( Mesh, BatchElementIndex );
-		}
-
-		Mask >>= 1;
-		BatchElementIndex++;
-
-	} while( Mask );
-	*/
 	auto featureLevel = View.GetFeatureLevel();
 	const FMaterial* Material = Mesh.MaterialRenderProxy->GetMaterial(featureLevel);
 
@@ -143,12 +127,12 @@ bool FAHRVoxelizerDrawingPolicyFactory::DrawDynamicMesh(
 											  featureLevel,
 											  &DrawingContext );
 
-	DrawingContext.RHICmdList->BuildAndSetLocalBoundShaderState(DrawingPolicy.GetBoundShaderStateInput(View.GetFeatureLevel()));
-	DrawingPolicy.SetSharedState(*DrawingContext.RHICmdList, &View, FAHRVoxelizerDrawingPolicy::ContextDataType());
+	RHICmdList.BuildAndSetLocalBoundShaderState(DrawingPolicy.GetBoundShaderStateInput(View.GetFeatureLevel()));
+	DrawingPolicy.SetSharedState(RHICmdList, &View, FAHRVoxelizerDrawingPolicy::ContextDataType());
 
 	for( int32 BatchElementIndex = 0, Num = Mesh.Elements.Num(); BatchElementIndex < Num; BatchElementIndex++ )
 	{
-		DrawingPolicy.SetMeshRenderState( *DrawingContext.RHICmdList, 
+		DrawingPolicy.SetMeshRenderState( RHICmdList, 
 										  View,
 										  PrimitiveSceneProxy,
 										  Mesh,
@@ -157,14 +141,13 @@ bool FAHRVoxelizerDrawingPolicyFactory::DrawDynamicMesh(
 										  FAHRVoxelizerDrawingPolicy::ElementDataType(),
 										  FMeshDrawingPolicy::ContextDataType() );
 
-		DrawingPolicy.DrawMesh(*DrawingContext.RHICmdList, Mesh, BatchElementIndex);
+		DrawingPolicy.DrawMesh(RHICmdList, Mesh, BatchElementIndex);
 	}
 
 	// Unbind
-	DrawingContext.RHICmdList->SetRenderTargets(0,nullptr,FTextureRHIRef(),0,nullptr);
+	RHICmdList.SetRenderTargets(0,nullptr,FTextureRHIRef(),0,nullptr);
 	return true;
 }
-
 
 /*
 // Draw Mesh
