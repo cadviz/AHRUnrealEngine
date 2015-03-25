@@ -67,7 +67,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 	
 	//float3 fcolor = interp*AHRCompositeCB.GIMultiplier*max(float3(0.085f,0.085f,0.085f),ScreenSpaceData.GBuffer.DiffuseColor);// + interp.w*0.1*max(float3(0.085f,0.085f,0.085f),ScreenSpaceData.GBuffer.DiffuseColor);
 	
-	fcolor = interp.w;
+	//fcolor = interp.w;
 
 	return float4(fcolor,1);
 }

@@ -471,6 +471,10 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 
 	for(auto e : View.PrimitivesElementsToVoxelize)
 	{
+		/*bool isInstanced = false;
+		for(auto meshElement : e.Mesh->Elements) isInstanced |= meshElement.NumInstances > 1;
+		if(isInstanced) break;*/
+
 		FAHRVoxelizerDrawingPolicyFactory::DrawDynamicMesh(RHICmdList, View, FAHRVoxelizerDrawingPolicyFactory::ContextType(), *e.Mesh, false, true, e.PrimitiveSceneProxy, e.Mesh->BatchHitProxyId);
 	}
 }
@@ -576,7 +580,8 @@ public:
 						const FShaderResourceViewRHIRef sceneVolumeSRV, 
 						const FShaderResourceViewRHIRef paletteSRV, 
 						const FShaderResourceViewRHIRef emissiveVolumeSRV,
-						const FShaderResourceViewRHIRef samplingKernelSRV
+						const FShaderResourceViewRHIRef samplingKernelSRV,
+						const FVector2D& ScreenRes
 					   )
 	{
 		FRHIResourceCreateInfo CreateInfo;
@@ -593,8 +598,7 @@ public:
 		cbdata.SliceSize.X = ahrGrid.SliceSize.X;
 		cbdata.SliceSize.Y = ahrGrid.SliceSize.Y;
 		cbdata.SliceSize.Z = ahrGrid.SliceSize.Z;
-		cbdata.ScreenRes.X = View.Family->FamilySizeX/2;
-		cbdata.ScreenRes.Y = View.Family->FamilySizeY/2;
+		cbdata.ScreenRes = ScreenRes;
 		cbdata.invVoxel = FVector(1.0f / float(cbdata.SliceSize.X),
 								  1.0f / float(cbdata.SliceSize.Y),
 								  1.0f / float(cbdata.SliceSize.Z));
@@ -763,9 +767,12 @@ void FApproximateHybridRaytracer::TraceScene(FRHICommandListImmediate& RHICmdLis
 
 	// Set the viewport, raster state , depth stencil and render target
 	SetRenderTarget(RHICmdList, RaytracingTarget, FTextureRHIRef());
+	FVector2D texSize(RaytracingTarget->GetSizeX(),RaytracingTarget->GetSizeY());
+
 	FIntRect SrcRect = View.ViewRect;
-	FIntRect DestRect(FIntPoint(0,0),FIntPoint(RaytracingTarget->GetSizeX(),RaytracingTarget->GetSizeY()));
-	RHICmdList.SetViewport(SrcRect.Min.X, SrcRect.Min.Y, 0.0f,RaytracingTarget->GetSizeX(), RaytracingTarget->GetSizeY(), 1.0f);
+	FIntRect DestRect(FIntPoint(0,0),FIntPoint(texSize.X,texSize.Y));
+
+	RHICmdList.SetViewport(SrcRect.Min.X, SrcRect.Min.Y, 0.0f,texSize.X, texSize.Y, 1.0f);
 	//RHICmdList.SetViewport(0, 0, 0.0f,ResX/2, ResY/2, 1.0f);
 	RHICmdList.SetRasterizerState(TStaticRasterizerState<FM_Solid, CM_None>::GetRHI());
 	RHICmdList.SetDepthStencilState(TStaticDepthStencilState<false, CF_Always>::GetRHI());
@@ -785,7 +792,8 @@ void FApproximateHybridRaytracer::TraceScene(FRHICommandListImmediate& RHICmdLis
 								DynamicSceneVolume->SRV,
 								EmissivePaletteSRV,
 								DynamicEmissiveVolume->SRV,
-								SamplingKernelSRV);
+								SamplingKernelSRV,
+								texSize);
 
 	// Draw a quad mapping scene color to the view's render target
 	DrawRectangle( 
@@ -1188,8 +1196,8 @@ void FApproximateHybridRaytracer::Composite(FRHICommandListImmediate& RHICmdList
 	// Bound shader parameters
 	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PixelShader->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PixelShader);
 	VertexShader->SetParameters(RHICmdList,View);
-	PixelShader->SetParameters(RHICmdList, View, UpsampledTargetSRV0);
-	//PixelShader->SetParameters(RHICmdList, View, RaytracingTargetSRV);
+	//PixelShader->SetParameters(RHICmdList, View, UpsampledTargetSRV0);
+	PixelShader->SetParameters(RHICmdList, View, RaytracingTargetSRV);
 
 	// Draw!
 	DrawRectangle( 

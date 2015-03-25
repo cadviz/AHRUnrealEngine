@@ -22,4 +22,6 @@ void Main(
 	{
 		Output.Position.xyz += GetMaterialWorldPositionOffset(VertexParameters);
 	}
+
+	Output.Position.xyz -= View.PreViewTranslation;
 }
