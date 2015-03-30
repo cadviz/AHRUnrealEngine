@@ -14,15 +14,10 @@ struct AHRLightData
 	AHRLightData()
 	{
 		IsValid = false;
-		//Albedo = Normals = Depth = nullptr;
-		Depth = nullptr;
+		ViewProj = FMatrix::Identity;
 	}
 	bool IsValid;
-	/*FTexture2DRHIRef Albedo;
-	FTexture2DRHIRef Normals;*/
-	FTexture2DRHIRef Depth;
 	FMatrix ViewProj;
-	FVector Offset;
 };
 struct AHRGridSettings
 {
@@ -69,12 +64,13 @@ public:
 
 	void AppendLight(AHRLightData& light);
 	AHRLightData* GetLightsList(){ return lights; }
+	FTexture2DRHIRef* GetCurrentShadowTexture(){ return lightDepths; }
 
 	// FRenderResource code : Mainly, InitDynamicRHI()/ReleaseDynamicRHI(). Also, IsInitialized()
 	void InitDynamicRHI() override final;
 	void ReleaseDynamicRHI() override final;
 
-	// Public because ..., I'm Batman!
+	// Public because ... I'm Batman!
 	FTexture2DRHIRef RaytracingTarget;
 	FTexture2DRHIRef UpsampledTarget0;
 	FTexture2DRHIRef UpsampledTarget1;
@@ -110,7 +106,9 @@ private:
 	FShaderResourceViewRHIRef EmissivePaletteSRV;
 	FTexture2DRHIRef SamplingKernel;
 	FShaderResourceViewRHIRef SamplingKernelSRV;
+
 	AHRLightData lights[MAX_AHR_LIGHTS];
+	FTexture2DRHIRef lightDepths[MAX_AHR_LIGHTS];
 	uint32 currentLightIDX;
 
 	AHRGridSettings gridSettings;

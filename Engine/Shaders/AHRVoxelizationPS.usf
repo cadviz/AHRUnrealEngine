@@ -43,13 +43,14 @@ void Main(FAHRVoxelizationGSOut input)
 		FMaterialPixelParameters MaterialParameters = GetMaterialPixelParameters(input.FactoryInterpolants, input.Position);
 		CalcMaterialParameters(MaterialParameters,input.Position,true,input.Position);
 
-		uint idx = encode_R3G3B2(GetMaterialEmissive(MaterialParameters));
+		uint idx = encode_R3G3B2(GetMaterialBaseColor(MaterialParameters) + GetMaterialEmissive(MaterialParameters));
 
 		// This should be implemented with a CAS
 		EmissiveVolume.InterlockedAnd(ebidx*4, emask); // mask 
 		EmissiveVolume.InterlockedOr(ebidx*4, idx << eoffset);
-		//uint vox = EmissiveVolume.Load(ebidx*4);
-		//vox = (vox & emask) | (AHRVoxelizationCB.EmissiveIndex << eoffset);
-		//EmissiveVolume.Store(ebidx*4,vox);
+
+		/*uint vox = EmissiveVolume.Load(ebidx*4);
+		vox = (vox & emask) | (AHRVoxelizationCB.EmissiveIndex << eoffset);
+		EmissiveVolume.Store(ebidx*4,vox);*/
 	}
 }

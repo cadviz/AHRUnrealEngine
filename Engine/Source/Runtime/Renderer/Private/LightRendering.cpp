@@ -509,7 +509,7 @@ void FDeferredShadingSceneRenderer::RenderLights(FRHICommandListImmediate& RHICm
 					RenderReflectiveShadowMaps(RHICmdList, &LightSceneInfo );
 				}
 			}
-			
+
 			// Render light function to the attenuation buffer.
 			if (bDirectLighting)
 			{

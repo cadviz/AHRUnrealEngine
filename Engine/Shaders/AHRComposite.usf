@@ -51,10 +51,10 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 
 	//float3 ivec = normalize(-reflect(-normalize(ScreenVector), ScreenSpaceData.GBuffer.WorldNormal));
 	float3 ivec = ScreenSpaceData.GBuffer.WorldNormal;
-	float4 coeffs = float4(pow(saturate(dot(ivec,v0)),3)+0.001f,
-						   pow(saturate(dot(ivec,v1)),3)+0.001f,
-						   pow(saturate(dot(ivec,v2)),3)+0.001f,
-						   pow(saturate(dot(ivec,v3)),3)+0.001f );
+	float4 coeffs = float4(pow(saturate(dot(ivec,v0)),1.6),
+						   pow(saturate(dot(ivec,v1)),1.6),
+						   pow(saturate(dot(ivec,v2)),1.6),
+						   pow(saturate(dot(ivec,v3)),1.6) );
 
 	float4 interp = sph[0] * coeffs.x +
 					sph[1] * coeffs.y +
@@ -63,11 +63,10 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 	//interp /= coeffs.x + coeffs.y + coeffs.z + coeffs.w;
 	interp *= 0.25f;
 
-	float3 fcolor = interp;
+	float3 fcolor = (sph[0]+sph[1]+sph[2]+sph[3]).rgb*0.25f;
 	
 	//float3 fcolor = interp*AHRCompositeCB.GIMultiplier*max(float3(0.085f,0.085f,0.085f),ScreenSpaceData.GBuffer.DiffuseColor);// + interp.w*0.1*max(float3(0.085f,0.085f,0.085f),ScreenSpaceData.GBuffer.DiffuseColor);
 	
-	//fcolor = interp.w;
 
 	return float4(fcolor,1);
 }

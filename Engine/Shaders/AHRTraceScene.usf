@@ -2,26 +2,7 @@
 #include "Common.usf"
 #include "DeferredShadingCommon.usf"
 #include "AHRCommon.usf"
-
-// RSM textures
-// Hardcoded to a maximum of five for now
-Texture2D ShadowAlbedo0;
-Texture2D ShadowAlbedo1;
-Texture2D ShadowAlbedo2;
-Texture2D ShadowAlbedo3;
-Texture2D ShadowAlbedo4;
-
-Texture2D ShadowNormals0;
-Texture2D ShadowNormals1;
-Texture2D ShadowNormals2;
-Texture2D ShadowNormals3;
-Texture2D ShadowNormals4;
-
-Texture2D ShadowZ0;
-Texture2D ShadowZ1;
-Texture2D ShadowZ2;
-Texture2D ShadowZ3;
-Texture2D ShadowZ4;
+#include "Random.usf"
 
 // The projection matrices are inside a constant buffer
 
@@ -43,7 +24,6 @@ float3 to_vlocal(float3 worldPos)
 ByteAddressBuffer SceneVolume;
 ByteAddressBuffer EmissiveVolume;
 //Texture3D<uint> EmissiveVolume;
-Texture2D EmissivePalette;
 Texture2D<uint> SamplingKernel;
 Texture2D ObjNormal;
 
@@ -58,7 +38,7 @@ static const uint seedkernel[16] =
 	705480491, 423810863, 187018483, 239779822,
 	1740361530, 226519499, 1570237062, 389231761
 };*/
-
+#if 0
 float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 {
 	float SceneDepth = CalcSceneDepth(InUV);
@@ -476,7 +456,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 	
 	return traced;
 }
-
+#endif
 uint4 PS_SPHI(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 {
 	float SceneDepth = CalcSceneDepth(InUV);
@@ -485,15 +465,24 @@ uint4 PS_SPHI(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARG
 	uint2 DTid = round(InUV * AHRTraceCB.ScreenRes);
 
 	// Construct normal space
+	//float3 rkerneltmp = normalize(float3(abs(cos(wang_hash(DTid.x*10000+DTid.y))),abs(cos(wang_hash(DTid.x*20000+DTid.y))),abs(cos(wang_hash(DTid.x*30000+DTid.y)))));
+	
+
 	float3 normal = normalize(ObjNormal.SampleLevel(samLinear,InUV,0).xyz*2 - 1);
-	float3 tangent = normalize(rkernel - normal * dot(rkernel, normal));
-	float3 bitangent = cross(normal, tangent);
+
+	float3 rkerneltmp = normalize(cross(rkernel,normal));
+
+	//float3 tangent = normalize(rkerneltmp - normal * dot(rkerneltmp, normal));
+	//float3 bitangent = cross(normal, tangent);
+	float3 tangent,bitangent;
+	FindBestAxisVectors(normal,tangent,bitangent);
 
 	uint kh,kw;
 	SamplingKernel.GetDimensions(kh,kw);
 	// Using fast mod here.  x mod y = x & (y-1)
 	// Size MUST be a power of 2
-	uint seed =  SamplingKernel[DTid.xy & (uint2(kh,kw) - 1)];
+	//uint seed =  wang_hash(DTid.x*10000+DTid.y);
+	uint seed  = SamplingKernel[DTid.xy & (uint2(kh,kw) - 1)];
 	NumberGenerator rng;
 	rng.SetSeed( seed );
 
@@ -501,19 +490,31 @@ uint4 PS_SPHI(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARG
 	uint prevbidx = -1;
 	uint ebvox = -1;
 	uint prevebidx = -1;
+	float angle = abs(cos(wang_hash(DTid.x*10000+DTid.y)))*2.0f*3.1416f;//rng.GetRandomFloat(0,2.0f*3.1416f);
+	float2 csAngle = float2(cos(angle),sin(angle));
 
 	float4x4 sphs;
 	for(int n = 0;n < 4; n++)
 	{
 		float3 rn = rayKernel[n].xzy;
+		//rn.x = csAngle.x*rn.x + csAngle.y*rn.y;
+		//rn.y = csAngle.x*rn.y - csAngle.y*rn.x;
+		//rn = normalize(rn + float3(rng.GetRandomFloat(0, 1)*2-1,rng.GetRandomFloat(0, 1)*2-1,rng.GetRandomFloat(0, 1)*2-1)*0.9f);
 		rn = normalize(rn.x * bitangent + (rn.y * tangent + (rn.z * normal)));
+
+
+
+
+		//rn = normalize(-reflect(-normalize(ScreenVector), normal));
+
+
 
 		for (uint r = 0; r < AHRTraceCB.DiffuseRayCount; r++)
 		{
 			float3 step = 0;
-
+/*
 			// Convert to vector space
-
+			
 			step.x = rng.GetRandomFloat(0, 1)*2-1;
 			step.y = rng.GetRandomFloat(0, 1)*2-1;
 			step.z = 1;
@@ -524,8 +525,11 @@ uint4 PS_SPHI(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARG
 			// Convert to vector space
 			float3 rt = normalize(rkernel - rn * dot(rkernel, rn));
 			float3 rbt = cross(rn, rt);
-			step = normalize(step.x * rt + (step.y * rbt + (step.z * rn)));
+			step = normalize(step.x * rt + (step.y * rbt + (step.z * rn)));*/
 
+
+
+			step = rn;
 			float angleCos = saturate(dot(step,normal));
 			float dispAngleMult = sqrt(1 - angleCos*angleCos)/(angleCos + 0.01) + 1;
 
@@ -558,6 +562,7 @@ uint4 PS_SPHI(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARG
 
 				if(bvox & (1 << offset))
 				{
+#if 0
 					// Light sampling "loop"
 					{
 						float4 lpos = fmul(spos,AHRShadowMatrices.Matrix0);
@@ -585,9 +590,9 @@ uint4 PS_SPHI(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARG
 				
 						sphs[n].rgb += shadowFactor*sAlbedo.rgb*sAlbedo.w;
 					}
-
+#endif
 					// Add emissive
-					uint ebidx = vidx / 4u; // same here. / 4u instead of >> 2. hate you fxc
+					uint ebidx = vidx / 4; // FUCK YOU FXC, THIS SHOULD BE << 2u INSTEAD OF THE DIV! WHY THE FUCK DO YOU TRY TO UNROLL THE LOOP???
 					uint eoffset = vidx - 4u * ebidx;
 
 					if (ebidx != prevebidx)
@@ -596,12 +601,13 @@ uint4 PS_SPHI(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARG
 						prevebidx = ebidx;
 					}
 					uint eidx = (ebvox & (B8(11111111) << eoffset*8u)) >> eoffset*8u;
-					float4 ecolor = float4(decode_R3G3B2(eidx),1);//EmissivePalette[uint2(eidx,0)];
-					sphs[n].rgb += ecolor*ecolor.a;
+					sphs[n].rgb += decode_R3G3B2(eidx);
 
 					sphs[n].w += (i <= 16); // max ao samples
 					break;
 				}
+
+				//spos += step*rng.GetRandomFloat(0.25, 4);
 				spos += step;
 			}
 		}
@@ -614,6 +620,7 @@ uint4 PS_SPHI(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARG
 	sphs[3].w = 1.0f - saturate(sphs[3].w);
 
 	//sphs[0] = sphs[1] = sphs[2] = sphs[3] = float4(normal*0.5+0.5,1);
-	 
+	// sphs[0] = ShadowZ0.SampleLevel(samLinear, InUV, 0);
+
 	return Encode4SPH(sphs[0],sphs[1],sphs[2],sphs[3]);
 }

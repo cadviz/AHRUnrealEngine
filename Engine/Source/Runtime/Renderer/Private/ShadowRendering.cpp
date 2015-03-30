@@ -2920,7 +2920,9 @@ bool FDeferredShadingSceneRenderer::RenderReflectiveShadowMaps(FRHICommandListIm
 {
 	SCOPE_CYCLE_COUNTER(STAT_ReflectiveShadowMapDrawTime);
 
-	if (FeatureLevel < ERHIFeatureLevel::SM5)
+	// @RyanTorant
+	// RSM are only for LPV ( i think )
+	if (FeatureLevel < ERHIFeatureLevel::SM5 || !UseLightPropagationVolumeRT(FeatureLevel))
 	{
 		return false;
 	}
@@ -3048,6 +3050,7 @@ bool FDeferredShadingSceneRenderer::RenderReflectiveShadowMaps(FRHICommandListIm
 			// The engine will give a msg box if you are over the maximum number of lights ( hardcoded at MAX_AHR_LIGHTS (5) for now, 22/12/2014 )
 
 			LightRSMData data;
+			//GSceneRenderTargets.GetShadowDepthZTexture
 			data.Albedo = GSceneRenderTargets.GetReflectiveShadowMapDiffuseTexture();
 			data.Normals = GSceneRenderTargets.GetReflectiveShadowMapNormalTexture();
 			data.Depth = GSceneRenderTargets.GetReflectiveShadowMapDepthTexture();
@@ -3335,6 +3338,25 @@ bool FDeferredShadingSceneRenderer::RenderProjectedShadows(FRHICommandListImmedi
 			}
 
 			GSceneRenderTargets.FinishRenderingShadowDepth(RHICmdList);
+
+			// @RyanTorant
+			bool injectIntoAHR = UseApproximateHybridRaytracingRT(FeatureLevel) && 
+								 Views[0].Family->FamilySizeX > 256 && Views[0].Family->FamilySizeY > 256 && 
+								 ViewFamily.EngineShowFlags.GlobalIllumination && 
+								 LightSceneInfo->Proxy->NeedsLPVInjection();
+			if(injectIntoAHR)
+			{
+				// Copy the texture to the AHR engine
+				//RHICmdList.CopyToResolveTarget(GSceneRenderTargets.GetShadowDepthZTexture(), AHREngine->GetCurrentShadowTexture(), true, FResolveRect());
+				
+				
+				
+				
+				
+				
+				// DEBUG DUMMY!!!!!
+				AHREngine.SetGridSettings(AHREngine.GetGridSettings());
+			}
 		}
 
 		// Render the shadow projections.

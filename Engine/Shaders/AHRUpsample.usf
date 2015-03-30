@@ -104,7 +104,7 @@ uint4 BlurH(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET
 	for (int i = 0; i < FilterSize; i++) 
     {
 		float pz = CalcSceneDepth(InUV + PixelOffsets[i].xy*scale);
-		float w = 1.0f / (g_epsilon + pow(abs(z - pz),2.5));
+		float w =1.0f;// 1.0f / (g_epsilon + pow(abs(z - pz),2.5));
 
 		uint4 s = tGI[DTid.xy + PixelOffsets[i].xy];
 		float4x4 ds = Decode4SPH(s);
@@ -140,7 +140,7 @@ uint4 BlurV(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET
 	for (int i = 0; i < FilterSize; i++) 
     {
 		float pz = CalcSceneDepth(InUV + PixelOffsets[i].yx*scale);
-		float w = 1.0f / (g_epsilon + pow(abs(z - pz),2.5));
+		float w =1.0f;// 1.0f / (g_epsilon + pow(abs(z - pz),2.5));
 
 		uint4 s = tGI[DTid.xy + PixelOffsets[i].yx];
 		float4x4 ds = Decode4SPH(s);

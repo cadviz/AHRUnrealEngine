@@ -651,8 +651,15 @@ void FDeferredShadingSceneRenderer::Render(FRHICommandListImmediate& RHICmdList)
 		for(auto primitive : Scene->Primitives)
 		{
 			FPrimitiveViewRelevance ViewRelevance = primitive->Proxy->GetViewRelevance(&Views[0]);
-			if(ViewRelevance.bNeedsVoxelization && ViewRelevance.bRenderInMainPass && !ViewRelevance.bEditorPrimitiveRelevance)
-				Views[0].PrimitivesToVoxelize.Add(primitive);
+
+			// Check that the object is inside the grid
+			FBox vgridBox;
+			vgridBox.BuildAABB(Views[0].FinalPostProcessSettings.AHR_internal_SceneOrigins,Views[0].FinalPostProcessSettings.AHR_internal_SceneBounds);
+
+			if( ViewRelevance.bNeedsVoxelization && 
+				ViewRelevance.bRenderInMainPass && 
+				!ViewRelevance.bEditorPrimitiveRelevance && 
+				FBoxSphereBounds::BoxesIntersect(primitive->Proxy->GetBounds(),FBoxSphereBounds(vgridBox))) Views[0].PrimitivesToVoxelize.Add(primitive);
 		}
 	}
 

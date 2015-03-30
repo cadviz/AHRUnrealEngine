@@ -112,6 +112,19 @@ public:
 		{
 			bShaderTypeMatches = true;
 		}
+		// @RyanTorant
+		else if (FCString::Stristr(ShaderType->GetName(), TEXT("FAHRVoxelizationVertexShader")))
+		{
+			bShaderTypeMatches = true;
+		}
+		else if (FCString::Stristr(ShaderType->GetName(), TEXT("FAHRVoxelizationGeometryShader")))
+		{
+			bShaderTypeMatches = true;
+		}
+		else if (FCString::Stristr(ShaderType->GetName(), TEXT("FAHRVoxelizationPixelShader")))
+		{
+			bShaderTypeMatches = true;
+		}
 
 		return bShaderTypeMatches;
 	}
