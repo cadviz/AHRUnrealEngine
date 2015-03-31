@@ -917,27 +917,29 @@ UBlendableInterface::UBlendableInterface(const FObjectInitializer& ObjectInitial
 {
 }
 
-void DoPostProcessVolume(IInterface_PostProcessVolume* Volume, FVector ViewLocation, FSceneView* SceneView)
+void DoPostProcessVolume(IInterface_PostProcessVolume* Volume, FVector ViewLocation, FSceneView* SceneView,float& minAHRSettingsVolumeDistance)
 {
 	const FPostProcessVolumeProperties VolumeProperties = Volume->GetProperties();
 
 	// @RyanTorant
 	// Check if the volume is a AHR settings volume
 	// The scene bounds and grid res settings for AHR are taken from there
-	// If to volumes overlap, and the camera is in the intersection, which volume to use is undefined. This implementation will take the settings from the last one on the list
+	// If the camera is at the same distance from two volumes, the order is undefined
 	if(VolumeProperties.bDefinesAHRGridSettings && !VolumeProperties.bIsUnbound)
 	{
 		float DistanceToPoint = 0.0f;
 		Volume->EncompassesPoint(ViewLocation, 0.0f, &DistanceToPoint);
 
-		if (DistanceToPoint >= 0.0f)
+		if (DistanceToPoint >= 0.0f && DistanceToPoint < minAHRSettingsVolumeDistance)
 		{
 			SceneView->FinalPostProcessSettings.AHR_internal_SceneBounds =  VolumeProperties.AHRGridSettings.Bounds;
 			SceneView->FinalPostProcessSettings.AHR_internal_SceneOrigins = VolumeProperties.AHRGridSettings.Center;
 			SceneView->FinalPostProcessSettings.AHRVoxelSize = VolumeProperties.Settings->AHRVoxelSize;
 			SceneView->FinalPostProcessSettings.AHR_internal_initialized = true;
-		}
 
+			minAHRSettingsVolumeDistance = DistanceToPoint;
+		}
+		
 		return; // Ignore ahr bounds volumes
 	}
 
@@ -1046,9 +1048,10 @@ void FSceneView::StartFinalPostprocessSettings(FVector InViewLocation)
 	// Some views have no world (e.g. material preview)
 	if (World)
 	{
+		float minAHRSettingsVolumeDistance = FLT_MAX*0.9f;
 		for (auto VolumeIt = World->PostProcessVolumes.CreateIterator(); VolumeIt; ++VolumeIt)
 		{
-			DoPostProcessVolume(*VolumeIt, InViewLocation, this);
+			DoPostProcessVolume(*VolumeIt, InViewLocation, this,minAHRSettingsVolumeDistance);
 		}
 	}
 }
