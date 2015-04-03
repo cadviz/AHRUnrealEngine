@@ -4,14 +4,14 @@
 	<ItemGroup>
 		<None Include="..\..\Source\Programs\UnrealHeaderTool\UnrealHeaderTool.Target.cs" />
 		<Filter Include="Config">
-			<UniqueIdentifier>{FB304D07-62F5-4650-9FA3-2CEDC84A1052}</UniqueIdentifier>
+			<UniqueIdentifier>{DC4A12C1-E99B-4C09-A7FE-573233C060D2}</UniqueIdentifier>
 		</Filter>
 		<None Include="..\..\Programs\UnrealHeaderTool\Config\DefaultEngine.ini">
 			<Filter>Config</Filter>
 		</None >
 		<None Include="..\..\Source\Programs\UnrealHeaderTool\UnrealHeaderTool.Build.cs" />
 		<Filter Include="Private">
-			<UniqueIdentifier>{97A706AD-8FFE-415C-8D4B-328B527FCFA9}</UniqueIdentifier>
+			<UniqueIdentifier>{E8717357-D312-456C-A33E-C584F223A2D6}</UniqueIdentifier>
 		</Filter>
 		<ClCompile Include="..\..\Source\Programs\UnrealHeaderTool\Private\BaseParser.cpp">
 			<Filter>Private</Filter>
@@ -71,7 +71,7 @@
 			<Filter>Private</Filter>
 		</ClCompile >
 		<Filter Include="Public">
-			<UniqueIdentifier>{91B00AF2-3A70-4DB4-9978-14900F59BDD4}</UniqueIdentifier>
+			<UniqueIdentifier>{EC738C7C-C082-4B02-A631-E99C2489074C}</UniqueIdentifier>
 		</Filter>
 		<ClInclude Include="..\..\Source\Programs\UnrealHeaderTool\Public\IScriptGeneratorPluginInterface.h">
 			<Filter>Public</Filter>
@@ -80,7 +80,7 @@
 			<Filter>Public</Filter>
 		</ClInclude >
 		<Filter Include="Resources">
-			<UniqueIdentifier>{5F299A55-EDE2-4B99-863D-A405D9DCC181}</UniqueIdentifier>
+			<UniqueIdentifier>{6973A095-A41C-4A93-B0A0-AE4602E144F6}</UniqueIdentifier>
 		</Filter>
 		<ResourceCompile Include="..\..\Source\Programs\UnrealHeaderTool\Resources\PCLaunch.rc">
 			<Filter>Resources</Filter>
@@ -89,7 +89,7 @@
 			<Filter>Resources</Filter>
 		</Manifest >
 		<Filter Include="Resources\UHTDebugging">
-			<UniqueIdentifier>{EB7E26F1-8CAE-449F-9EAA-D302669B8F24}</UniqueIdentifier>
+			<UniqueIdentifier>{40A771AE-BEFA-4C40-8513-6908ABF304EA}</UniqueIdentifier>
 		</Filter>
 		<ClInclude Include="..\..\Source\Programs\UnrealHeaderTool\Resources\UHTDebugging\EnumOnlyHeader.h">
 			<Filter>Resources\UHTDebugging</Filter>

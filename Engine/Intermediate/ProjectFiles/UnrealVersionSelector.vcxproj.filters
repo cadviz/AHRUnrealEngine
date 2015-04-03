@@ -5,7 +5,7 @@
 		<None Include="..\..\Source\Programs\UnrealVersionSelector\UnrealVersionSelector.Target.cs" />
 		<None Include="..\..\Source\Programs\UnrealVersionSelector\UnrealVersionSelector.Build.cs" />
 		<Filter Include="Private">
-			<UniqueIdentifier>{674E5DD3-1507-4436-ABC6-104AEB71A9DB}</UniqueIdentifier>
+			<UniqueIdentifier>{34BA7BB0-8D5F-471B-9330-B10729B236C0}</UniqueIdentifier>
 		</Filter>
 		<ClCompile Include="..\..\Source\Programs\UnrealVersionSelector\Private\PlatformInstallation.cpp">
 			<Filter>Private</Filter>
@@ -20,7 +20,7 @@
 			<Filter>Private</Filter>
 		</ClInclude >
 		<Filter Include="Private\GenericPlatform">
-			<UniqueIdentifier>{52DDD7E8-D192-479A-AE0B-4FA830722AF6}</UniqueIdentifier>
+			<UniqueIdentifier>{104FCCDF-7B38-44DC-B936-BACD01AA3D75}</UniqueIdentifier>
 		</Filter>
 		<ClCompile Include="..\..\Source\Programs\UnrealVersionSelector\Private\GenericPlatform\GenericPlatformInstallation.cpp">
 			<Filter>Private\GenericPlatform</Filter>
@@ -29,7 +29,7 @@
 			<Filter>Private\GenericPlatform</Filter>
 		</ClInclude >
 		<Filter Include="Private\Windows">
-			<UniqueIdentifier>{550281CE-C442-467C-9CE4-855B8BCD78EC}</UniqueIdentifier>
+			<UniqueIdentifier>{0F072A7C-A706-40FE-8E07-6CEAA6C3FA24}</UniqueIdentifier>
 		</Filter>
 		<ClCompile Include="..\..\Source\Programs\UnrealVersionSelector\Private\Windows\WindowsPlatformInstallation.cpp">
 			<Filter>Private\Windows</Filter>
@@ -38,7 +38,7 @@
 			<Filter>Private\Windows</Filter>
 		</ClInclude >
 		<Filter Include="Private\Windows\Resources">
-			<UniqueIdentifier>{D44744F5-01FE-4BF4-AB63-3B2EB5155BF5}</UniqueIdentifier>
+			<UniqueIdentifier>{29F7C88D-429A-4957-A0BD-715D603595D8}</UniqueIdentifier>
 		</Filter>
 		<None Include="..\..\Source\Programs\UnrealVersionSelector\Private\Windows\Resources\Icon.ico">
 			<Filter>Private\Windows\Resources</Filter>

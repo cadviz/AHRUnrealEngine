@@ -5,7 +5,7 @@
 		<None Include="..\..\Source\Programs\CrashReporter\CrashReportClient\CrashReportClient.Target.cs" />
 		<None Include="..\..\Source\Programs\CrashReporter\CrashReportClient\CrashReportClient.Build.cs" />
 		<Filter Include="Private">
-			<UniqueIdentifier>{DB094F8B-DB6D-4987-8A67-090A57B86C2D}</UniqueIdentifier>
+			<UniqueIdentifier>{854DB543-F52A-4C12-9A10-D84E2173C6D0}</UniqueIdentifier>
 		</Filter>
 		<ClCompile Include="..\..\Source\Programs\CrashReporter\CrashReportClient\Private\CrashDescription.cpp">
 			<Filter>Private</Filter>
@@ -77,7 +77,7 @@
 			<Filter>Private</Filter>
 		</ClInclude >
 		<Filter Include="Private\Linux">
-			<UniqueIdentifier>{C0505F3A-9462-4368-B2A3-D657DFF349C1}</UniqueIdentifier>
+			<UniqueIdentifier>{1F197DE2-D2F6-4C74-AA48-AA2208770632}</UniqueIdentifier>
 		</Filter>
 		<ClCompile Include="..\..\Source\Programs\CrashReporter\CrashReportClient\Private\Linux\CrashReportClientMainLinux.cpp">
 			<Filter>Private\Linux</Filter>
@@ -86,7 +86,7 @@
 			<Filter>Private\Linux</Filter>
 		</ClInclude >
 		<Filter Include="Private\Mac">
-			<UniqueIdentifier>{97DB004E-355B-4E1E-9E52-27622EFF96C8}</UniqueIdentifier>
+			<UniqueIdentifier>{8BE1E678-736D-44CA-A7EA-6AA631F49F3F}</UniqueIdentifier>
 		</Filter>
 		<ClCompile Include="..\..\Source\Programs\CrashReporter\CrashReportClient\Private\Mac\CrashReportClientMainMac.cpp">
 			<Filter>Private\Mac</Filter>
@@ -98,7 +98,7 @@
 			<Filter>Private\Mac</Filter>
 		</ClInclude >
 		<Filter Include="Private\Windows">
-			<UniqueIdentifier>{2976C320-BF13-42CC-A84E-42250BFCA968}</UniqueIdentifier>
+			<UniqueIdentifier>{65C7E971-77F7-428A-AC78-D824B8C5C2DF}</UniqueIdentifier>
 		</Filter>
 		<ClCompile Include="..\..\Source\Programs\CrashReporter\CrashReportClient\Private\Windows\CrashReportClientMainWindows.cpp">
 			<Filter>Private\Windows</Filter>
@@ -110,16 +110,16 @@
 			<Filter>Private\Windows</Filter>
 		</ClInclude >
 		<Filter Include="Public">
-			<UniqueIdentifier>{C9A93B15-49E1-4FC6-8E0E-5D5C9B123380}</UniqueIdentifier>
+			<UniqueIdentifier>{8870018F-7AE2-4D06-81F9-B0D106CE7FB5}</UniqueIdentifier>
 		</Filter>
 		<ClInclude Include="..\..\Source\Programs\CrashReporter\CrashReportClient\Public\CrashReportClientApp.h">
 			<Filter>Public</Filter>
 		</ClInclude >
 		<Filter Include="Resources">
-			<UniqueIdentifier>{508D5164-2B1C-42CF-8328-BA14AF15B8A4}</UniqueIdentifier>
+			<UniqueIdentifier>{26F4D1E1-8A99-40E4-82EF-57366BE57F1D}</UniqueIdentifier>
 		</Filter>
 		<Filter Include="Resources\Windows">
-			<UniqueIdentifier>{71871A8C-7974-4DCC-9EA3-AEABC2FA3F32}</UniqueIdentifier>
+			<UniqueIdentifier>{1B32B4D8-6FA6-4784-8054-E4A14D92C7B5}</UniqueIdentifier>
 		</Filter>
 		<Manifest Include="..\..\Source\Programs\CrashReporter\CrashReportClient\Resources\Windows\CrashReportClient-Win32.manifest">
 			<Filter>Resources\Windows</Filter>

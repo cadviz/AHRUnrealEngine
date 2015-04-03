@@ -5,37 +5,37 @@
 		<None Include="..\..\Source\Programs\SlateViewer\SlateViewer.Target.cs" />
 		<None Include="..\..\Source\Programs\SlateViewer\SlateViewer.Build.cs" />
 		<Filter Include="Private">
-			<UniqueIdentifier>{CE53E9F8-2516-4468-9335-002ED04A23EE}</UniqueIdentifier>
+			<UniqueIdentifier>{DFF14592-3E64-4E6C-A6E3-59888A7D4AC9}</UniqueIdentifier>
 		</Filter>
 		<ClCompile Include="..\..\Source\Programs\SlateViewer\Private\SlateViewerApp.cpp">
 			<Filter>Private</Filter>
 		</ClCompile >
 		<Filter Include="Private\IOS">
-			<UniqueIdentifier>{2FBF55C5-911A-4621-962C-03E8F326F0D3}</UniqueIdentifier>
+			<UniqueIdentifier>{88B67D22-F087-4EA0-92D3-EC3D8653FF53}</UniqueIdentifier>
 		</Filter>
 		<ClCompile Include="..\..\Source\Programs\SlateViewer\Private\IOS\IOSSlateViewerMain.cpp">
 			<Filter>Private\IOS</Filter>
 		</ClCompile >
 		<Filter Include="Private\Linux">
-			<UniqueIdentifier>{34C224D0-0187-4DF5-8594-15E9014CADA3}</UniqueIdentifier>
+			<UniqueIdentifier>{7CF4686B-D72E-474F-8ED8-2FA2CC4CA1DC}</UniqueIdentifier>
 		</Filter>
 		<ClCompile Include="..\..\Source\Programs\SlateViewer\Private\Linux\SlateViewerMainLinux.cpp">
 			<Filter>Private\Linux</Filter>
 		</ClCompile >
 		<Filter Include="Private\Mac">
-			<UniqueIdentifier>{3C54DAEF-9A09-4D83-BEB6-064902823241}</UniqueIdentifier>
+			<UniqueIdentifier>{5210AB6E-B265-4E8F-8911-190AB5DA592D}</UniqueIdentifier>
 		</Filter>
 		<ClCompile Include="..\..\Source\Programs\SlateViewer\Private\Mac\SlateViewerMainMac.cpp">
 			<Filter>Private\Mac</Filter>
 		</ClCompile >
 		<Filter Include="Private\Windows">
-			<UniqueIdentifier>{67F11EDF-B763-4948-877D-1B58BBBBD92C}</UniqueIdentifier>
+			<UniqueIdentifier>{8F396D84-B282-4DE6-B9E6-73CAB77A7FED}</UniqueIdentifier>
 		</Filter>
 		<ClCompile Include="..\..\Source\Programs\SlateViewer\Private\Windows\SlateViewerMainWindows.cpp">
 			<Filter>Private\Windows</Filter>
 		</ClCompile >
 		<Filter Include="Public">
-			<UniqueIdentifier>{3975A34A-20D3-46BB-8CA4-35DD65FFE6CA}</UniqueIdentifier>
+			<UniqueIdentifier>{538040D5-C9ED-4ECF-941A-A642507AF623}</UniqueIdentifier>
 		</Filter>
 		<ClInclude Include="..\..\Source\Programs\SlateViewer\Public\SlateViewer.h">
 			<Filter>Public</Filter>
@@ -44,10 +44,10 @@
 			<Filter>Public</Filter>
 		</ClInclude >
 		<Filter Include="Resources">
-			<UniqueIdentifier>{9AF5ED72-1DF4-4EA5-8EB2-BFF266DF8664}</UniqueIdentifier>
+			<UniqueIdentifier>{EABCBF06-31A3-409D-9D13-33A621610E0A}</UniqueIdentifier>
 		</Filter>
 		<Filter Include="Resources\Windows">
-			<UniqueIdentifier>{A32DC939-0E94-44E1-BB36-146DCB6E9333}</UniqueIdentifier>
+			<UniqueIdentifier>{39D9DC4E-3F4C-405A-A5A2-216AB569BC36}</UniqueIdentifier>
 		</Filter>
 		<Manifest Include="..\..\Source\Programs\SlateViewer\Resources\Windows\Debug-PCLaunch-Win32.manifest">
 			<Filter>Resources\Windows</Filter>
