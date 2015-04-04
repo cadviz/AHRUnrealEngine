@@ -43266,4 +43266,9 @@
       <Filter>Source\Developer\FriendsAndChat\Private\UI\Widgets</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Shaders\AHREmissiveConvolution.usf">
+      <Filter>Shaders</Filter>
+    </None>
+  </ItemGroup>
 </Project>

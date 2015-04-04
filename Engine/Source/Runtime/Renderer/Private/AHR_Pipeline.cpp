@@ -285,8 +285,86 @@ private:
 	FShaderParameter gridRes;
 };
 
+class AHREmissiveConvolution : public FGlobalShader
+{
+	DECLARE_SHADER_TYPE(AHREmissiveConvolution,Global);
+
+public:
+
+	static bool ShouldCache(EShaderPlatform Platform)
+	{
+		return RHISupportsComputeShaders(Platform);
+	}
+
+	static void ModifyCompilationEnvironment( EShaderPlatform Platform, FShaderCompilerEnvironment& OutEnvironment )
+	{
+		FGlobalShader::ModifyCompilationEnvironment( Platform, OutEnvironment );
+	}
+
+	/** Default constructor. */
+	AHREmissiveConvolution()
+	{
+	}
+
+	/** Initialization constructor. */
+	explicit AHREmissiveConvolution( const ShaderMetaType::CompiledShaderInitializerType& Initializer )
+		: FGlobalShader(Initializer)
+	{
+		SceneVolume.Bind( Initializer.ParameterMap, TEXT("SceneVolume") );
+		EmissiveVolume.Bind( Initializer.ParameterMap, TEXT("EmissiveVolume") );
+		gridRes.Bind( Initializer.ParameterMap, TEXT("gridRes") );
+	}
+
+	/** Serialization. */
+	virtual bool Serialize( FArchive& Ar ) override
+	{
+		bool bShaderHasOutdatedParameters = FGlobalShader::Serialize( Ar );
+		Ar << SceneVolume;
+		Ar << EmissiveVolume;
+		Ar << gridRes;
+		return bShaderHasOutdatedParameters;
+	}
+
+	/**
+	 * Set parameters for this shader.
+	 */
+	
+	void SetParameters(FRHICommandList& RHICmdList, FUnorderedAccessViewRHIParamRef EmissiveVolumeUAV,
+													FShaderResourceViewRHIParamRef SceneVolumeSRV,
+													FIntVector inGridRes
+													)
+	{
+		FComputeShaderRHIParamRef ComputeShaderRHI = GetComputeShader();
+
+		if ( EmissiveVolume.IsBound() )
+			RHICmdList.SetUAVParameter(ComputeShaderRHI, EmissiveVolume.GetBaseIndex(),EmissiveVolumeUAV );
+		if ( SceneVolume.IsBound() )
+			RHICmdList.SetShaderResourceViewParameter(ComputeShaderRHI,SceneVolume.GetBaseIndex(), SceneVolumeSRV);
+
+		SetShaderValue(RHICmdList, ComputeShaderRHI, gridRes, inGridRes );
+	}
+
+	/**
+	 * Unbinds any buffers that have been bound.
+	 */
+	void UnbindBuffers(FRHICommandList& RHICmdList)
+	{
+		FComputeShaderRHIParamRef ComputeShaderRHI = GetComputeShader();
+		if ( EmissiveVolume.IsBound() )
+			RHICmdList.SetUAVParameter(ComputeShaderRHI, EmissiveVolume.GetBaseIndex(), FUnorderedAccessViewRHIParamRef());
+		if ( SceneVolume.IsBound() )
+			RHICmdList.SetShaderResourceViewParameter(ComputeShaderRHI,SceneVolume.GetBaseIndex(), FShaderResourceViewRHIParamRef());
+	}
+
+private:
+	FShaderResourceParameter SceneVolume;
+	FShaderResourceParameter EmissiveVolume;
+	FShaderParameter gridRes;
+};
+
 IMPLEMENT_SHADER_TYPE(,AHRDynamicStaticVolumeCombine,TEXT("AHRDynamicStaticVolumeCombine"),TEXT("mainBinary"),SF_Compute);
 IMPLEMENT_SHADER_TYPE(,AHRDynamicStaticEmissiveVolumeCombine,TEXT("AHRDynamicStaticVolumeCombine"),TEXT("mainEmissive"),SF_Compute);
+IMPLEMENT_SHADER_TYPE(,AHREmissiveConvolution,TEXT("AHREmissiveConvolution"),TEXT("main"),SF_Compute);
 
 //std::mutex cs;
 //pthread_mutex_t Mutex;
@@ -453,7 +531,7 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 
 	// Voxelize to the dynamic grid
 	RHICmdList.ClearUAV(DynamicSceneVolume->UAV, cls);
-	RHICmdList.ClearUAV(DynamicEmissiveVolume->UAV, cls);
+	//RHICmdList.ClearUAV(DynamicEmissiveVolume->UAV, cls);
 	SetDynamicVolumeAsActive();
 
 	for(auto e : View.PrimitivesElementsToVoxelize)
@@ -464,6 +542,13 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 
 		FAHRVoxelizerDrawingPolicyFactory::DrawDynamicMesh(RHICmdList, View, FAHRVoxelizerDrawingPolicyFactory::ContextType(), *e.Mesh, false, true, e.PrimitiveSceneProxy, e.Mesh->BatchHitProxyId);
 	}
+
+	// Blur the emissive grid to get multiple bounces
+	TShaderMapRef<AHREmissiveConvolution> blurCS(GetGlobalShaderMap(View.GetFeatureLevel()));
+	RHICmdList.SetComputeShader(blurCS->GetComputeShader());
+	blurCS->SetParameters(RHICmdList, DynamicEmissiveVolume->UAV,DynamicSceneVolume->SRV,FIntVector(gridSettings.SliceSize.X/2,gridSettings.SliceSize.Y/2,gridSettings.SliceSize.Z/2));
+	DispatchComputeShader(RHICmdList, *blurCS, gridSettings.SliceSize.X/16u, gridSettings.SliceSize.Y/16u, gridSettings.SliceSize.Z/16u);
+	blurCS->UnbindBuffers(RHICmdList);
 
 	// New frame, new starting idx
 	currentLightIDX = 0;
@@ -1041,8 +1126,8 @@ void FApproximateHybridRaytracer::Composite(FRHICommandListImmediate& RHICmdList
 	// Only one view at a time for now (1/11/2014)
 
 	// Set additive blending
-	RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_One, BO_Add, BF_One, BF_One>::GetRHI());
-	//RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_Zero, BO_Add, BF_One, BF_Zero>::GetRHI());
+	//RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_One, BO_Add, BF_One, BF_One>::GetRHI());
+	RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_Zero, BO_Add, BF_One, BF_Zero>::GetRHI());
 
 	// add gi and multiply scene color by ao
 	// final = gi + ao*direct
@@ -1067,8 +1152,8 @@ void FApproximateHybridRaytracer::Composite(FRHICommandListImmediate& RHICmdList
 	// Bound shader parameters
 	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PixelShader->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PixelShader);
 	VertexShader->SetParameters(RHICmdList,View);
-	PixelShader->SetParameters(RHICmdList, View, UpsampledTargetSRV0);
-	//PixelShader->SetParameters(RHICmdList, View, RaytracingTargetSRV);
+	//PixelShader->SetParameters(RHICmdList, View, UpsampledTargetSRV0);
+	PixelShader->SetParameters(RHICmdList, View, RaytracingTargetSRV);
 
 	// Draw!
 	DrawRectangle( 

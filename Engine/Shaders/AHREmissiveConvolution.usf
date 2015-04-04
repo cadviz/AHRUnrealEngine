@@ -1,0 +1,64 @@
+#include "AHRCommon.usf"
+
+RWByteAddressBuffer EmissiveVolume;
+ByteAddressBuffer SceneVolume;
+uint3 gridRes;
+
+uint toIdx(uint3 p)
+{
+	return p.y + p.x*gridRes.y + p.z*gridRes.y*gridRes.x;
+}
+
+float3 getEmissive(uint3 DTid,uint3 pos)
+{
+	return decode_R9G9B9_EXP5(EmissiveVolume.Load(toIdx(DTid + pos)*4u));
+}
+
+[numthreads(8, 8, 4)]
+void main(uint3 DTid : SV_DispatchThreadID)
+{
+	uint idx = toIdx(DTid);
+
+	float3 color = 0;
+
+	color += getEmissive(DTid,uint3(-1,1,-1));
+	color += getEmissive(DTid,uint3(0,1,-1));
+	color += getEmissive(DTid,uint3(1,1,-1));
+
+	color += getEmissive(DTid,uint3(-1,0,-1));
+	color += getEmissive(DTid,uint3(0,0,-1));
+	color += getEmissive(DTid,uint3(1,0,-1));
+
+	color += getEmissive(DTid,uint3(-1,-1,-1));
+	color += getEmissive(DTid,uint3(0,-1,-1));
+	color += getEmissive(DTid,uint3(1,-1,-1));
+
+	
+	color += getEmissive(DTid,uint3(-1,1,0));
+	color += getEmissive(DTid,uint3(0,1,0));
+	color += getEmissive(DTid,uint3(1,1,0));
+
+	color += getEmissive(DTid,uint3(-1,0,0));
+	color += getEmissive(DTid,uint3(0,0,0));
+	color += getEmissive(DTid,uint3(1,0,0));
+
+	color += getEmissive(DTid,uint3(-1,-1,0));
+	color += getEmissive(DTid,uint3(0,-1,0));
+	color += getEmissive(DTid,uint3(1,-1,0));
+
+
+	color += getEmissive(DTid,uint3(-1,1,1));
+	color += getEmissive(DTid,uint3(0,1,1));
+	color += getEmissive(DTid,uint3(1,1,1));
+
+	color += getEmissive(DTid,uint3(-1,0,1));
+	color += getEmissive(DTid,uint3(0,0,1));
+	color += getEmissive(DTid,uint3(1,0,1));
+
+	color += getEmissive(DTid,uint3(-1,-1,1));
+	color += getEmissive(DTid,uint3(0,-1,1));
+	color += getEmissive(DTid,uint3(1,-1,1));
+
+	color /= 27.0f;
+	EmissiveVolume.Store(idx*4u,encode_R9G9B9_EXP5(color));
+}
