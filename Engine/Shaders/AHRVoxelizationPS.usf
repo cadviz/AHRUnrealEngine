@@ -21,9 +21,9 @@ void Main(FAHRVoxelizationGSOut input)
 {
 	// Only voxelize if we are inside the bounds
 	float3 local = to_vlocal(input.wPos);
-	if( local.x > 1 || local.x < -1 ||
-		local.y > 1 || local.y < -1 ||
-		local.z > 1 || local.z < -1)
+	if( local.x > 0.99f || local.x < -0.99f ||
+		local.y > 0.99f || local.y < -0.99f ||
+		local.z > 0.99f || local.z < -0.99f)
 	{
 		discard;
 	}
@@ -55,7 +55,9 @@ void Main(FAHRVoxelizationGSOut input)
 		// Add emissive
 		color += GetMaterialEmissive(MaterialParameters);
 
-		vidx = vpos.y/2u + vpos.x*AHRVoxelizationCB.SliceSize.y/4u + vpos.z*AHRVoxelizationCB.SliceSize.y*AHRVoxelizationCB.SliceSize.x/8u;
+		//vpos = floor((local*0.5 + 0.5)*(AHRVoxelizationCB.SliceSize/2u));
+		vpos /= 2u;
+		vidx = vpos.y + vpos.x*(AHRVoxelizationCB.SliceSize.y/2u) + vpos.z*(AHRVoxelizationCB.SliceSize.y/2u)*(AHRVoxelizationCB.SliceSize.x/2u);
 		EmissiveVolume.InterlockedMax(vidx*4u,encode_R9G9B9_EXP5(color));
 
 		/*

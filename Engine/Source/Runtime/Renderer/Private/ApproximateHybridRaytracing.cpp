@@ -55,25 +55,25 @@ void FApproximateHybridRaytracer::UpdateSettings()
 			DynamicSceneVolume->Release();
 			// ... and recreate it
 			// Try to keep the dynamic scene volume on fast vram, as it is small, and it's the one that will get bounded to the shader at the end
-			DynamicSceneVolume->Initialize(gridSettings.SliceSize.X*gridSettings.SliceSize.Y*gridSettings.SliceSize.Z/32*4,BUF_FastVRAM);
+			DynamicSceneVolume->Initialize((gridSettings.SliceSize.X*gridSettings.SliceSize.Y*gridSettings.SliceSize.Z/32)*4,BUF_FastVRAM);
 		}
 		if(StaticSceneVolume)
 		{
 			// Destroy the volume
 			StaticSceneVolume->Release();
 			// ... and recreate it
-			StaticSceneVolume->Initialize(gridSettings.SliceSize.X*gridSettings.SliceSize.Y*gridSettings.SliceSize.Z/32*4);
+			StaticSceneVolume->Initialize((gridSettings.SliceSize.X*gridSettings.SliceSize.Y*gridSettings.SliceSize.Z/32)*4);
 		}
 		
 		if(DynamicEmissiveVolume)
 		{
 			DynamicEmissiveVolume->Release();
-			DynamicEmissiveVolume->Initialize(gridSettings.SliceSize.X/2*gridSettings.SliceSize.Y/2*gridSettings.SliceSize.Z/2*4);
+			DynamicEmissiveVolume->Initialize((gridSettings.SliceSize.X/2)*(gridSettings.SliceSize.Y/2)*(gridSettings.SliceSize.Z/2)*4);
 		}
 		if(StaticEmissiveVolume)
 		{
 			StaticEmissiveVolume->Release();
-			StaticEmissiveVolume->Initialize(gridSettings.SliceSize.X/2*gridSettings.SliceSize.Y/2*gridSettings.SliceSize.Z/2*4);
+			DynamicEmissiveVolume->Initialize((gridSettings.SliceSize.X/2)*(gridSettings.SliceSize.Y/2)*(gridSettings.SliceSize.Z/2)*4);
 		}
 		/*
 		// Destroy the emissive grid and recreate
@@ -127,16 +127,16 @@ void FApproximateHybridRaytracer::InitDynamicRHI()
 	gridSettings.Center = FVector(0,0,0);
 
 	StaticSceneVolume = new FRWBufferByteAddress;
-	StaticSceneVolume->Initialize(gridSettings.SliceSize.X*gridSettings.SliceSize.Y*gridSettings.SliceSize.Z/32*4);
+	StaticSceneVolume->Initialize((gridSettings.SliceSize.X*gridSettings.SliceSize.Y*gridSettings.SliceSize.Z/32)*4);
 
 	DynamicSceneVolume = new FRWBufferByteAddress;
-	DynamicSceneVolume->Initialize(gridSettings.SliceSize.X*gridSettings.SliceSize.Y*gridSettings.SliceSize.Z/32*4,BUF_FastVRAM);
+	DynamicSceneVolume->Initialize((gridSettings.SliceSize.X*gridSettings.SliceSize.Y*gridSettings.SliceSize.Z/32)*4,BUF_FastVRAM);
 
 	DynamicEmissiveVolume = new FRWBufferByteAddress;
-	DynamicEmissiveVolume->Initialize(gridSettings.SliceSize.X/2*gridSettings.SliceSize.Y/2*gridSettings.SliceSize.Z/2/4*4);
+	DynamicEmissiveVolume->Initialize((gridSettings.SliceSize.X/2)*(gridSettings.SliceSize.Y/2)*(gridSettings.SliceSize.Z/2)*4);
 
 	StaticEmissiveVolume = new FRWBufferByteAddress;
-	StaticEmissiveVolume->Initialize(gridSettings.SliceSize.X/2*gridSettings.SliceSize.Y/2*gridSettings.SliceSize.Z/2/4*4);
+	StaticEmissiveVolume->Initialize((gridSettings.SliceSize.X/2)*(gridSettings.SliceSize.Y/2)*(gridSettings.SliceSize.Z/2)*4);
 	/*
 	FRHIResourceCreateInfo CreateInfo;
 	StaticEmissiveVolume = RHICreateTexture3D(gridSettings.SliceSize.X,gridSettings.SliceSize.Y,gridSettings.SliceSize.Z,PF_R8_UINT,1,TexCreate_UAV | TexCreate_ShaderResource,CreateInfo);
