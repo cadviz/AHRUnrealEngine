@@ -14,7 +14,7 @@ float3 to_vlocal(float3 worldPos)
 	return worldPos*AHRVoxelizationCB.InvSceneBounds + AHRVoxelizationCB.WorldToVoxelOffset;
 }
 
-Texture2D ShadowDepth0;
+Texture2D<float> ShadowDepth0;
 SamplerState pointSampler;
 
 void Main(FAHRVoxelizationGSOut input)
@@ -42,15 +42,16 @@ void Main(FAHRVoxelizationGSOut input)
 
 		float3 color = GetMaterialBaseColor(MaterialParameters);
 
-		static const float ShadowEpsilon = 0.0001f;
+		static const float ShadowEpsilon = 0.01f;
 
 		// Add shadowing
 		float4 lpos = fmul(input.wPos,AHRVoxelizationCB.ShadowMatrix0);
 		lpos.xyz /= lpos.w;
 		lpos.x = lpos.x*0.5 + 0.5;
 		lpos.y = -lpos.y*0.5 + 0.5;
+		lpos.xy *= AHRVoxelizationCB.ShadowViewportScaling0;
 
-		color *= abs(ShadowDepth0.SampleLevel(pointSampler,lpos.xy,0) - lpos.z) <= ShadowEpsilon;
+		color *= ShadowDepth0.SampleLevel(pointSampler,lpos.xy,0) >= lpos.z;//abs(lpos.z - ShadowDepth0.SampleLevel(pointSampler,lpos.xy,0))/(lpos.z) <= ShadowEpsilon;
 
 		// Add emissive
 		color += GetMaterialEmissive(MaterialParameters);

@@ -63,9 +63,9 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 	//interp /= coeffs.x + coeffs.y + coeffs.z + coeffs.w;
 	interp *= 0.25f;
 
-	float3 fcolor = (sph[0]+sph[1]+sph[2]+sph[3]).rgb*0.25f;
+	//float3 fcolor = (sph[0]+sph[1]+sph[2]+sph[3]).rgb*0.25f;
 	
-	//float3 fcolor = interp*AHRCompositeCB.GIMultiplier*max(float3(0.085f,0.085f,0.085f),ScreenSpaceData.GBuffer.DiffuseColor);// + interp.w*0.1*max(float3(0.085f,0.085f,0.085f),ScreenSpaceData.GBuffer.DiffuseColor);
+	float3 fcolor = interp*AHRCompositeCB.GIMultiplier*max(float3(0.085f,0.085f,0.085f),ScreenSpaceData.GBuffer.DiffuseColor);// + interp.w*0.1*max(float3(0.085f,0.085f,0.085f),ScreenSpaceData.GBuffer.DiffuseColor);
 	
 
 	return float4(fcolor,1);

@@ -495,8 +495,8 @@ uint4 PS_SPHI(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARG
 	for(int n = 0;n < 4; n++)
 	{
 		float3 rn = rayKernel[n].xzy;
-		rn.x = csAngle.x*rn.x + csAngle.y*rn.y;
-		rn.y = csAngle.x*rn.y - csAngle.y*rn.x;
+		//rn.x = csAngle.x*rn.x + csAngle.y*rn.y;
+		//rn.y = csAngle.x*rn.y - csAngle.y*rn.x;
 		//rn = normalize(rn + float3(rng.GetRandomFloat(0, 1)*2-1,rng.GetRandomFloat(0, 1)*2-1,rng.GetRandomFloat(0, 1)*2-1)*0.9f);
 		rn = normalize(rn.x * bitangent + (rn.y * tangent + (rn.z * normal)));
 
