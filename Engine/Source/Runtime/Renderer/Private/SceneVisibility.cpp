@@ -2149,14 +2149,14 @@ uint32 GetShadowQuality();
 
 // @RyanTorant
 // Re defining the function here, as this module has no idea about the def of this function
-FMeshBatchAndRelevance::FMeshBatchAndRelevance(const FMeshBatch& InMesh, const FPrimitiveSceneProxy* InPrimitiveSceneProxy, ERHIFeatureLevel::Type FeatureLevel) :
+/*FMeshBatchAndRelevance::FMeshBatchAndRelevance(const FMeshBatch& InMesh, const FPrimitiveSceneProxy* InPrimitiveSceneProxy, ERHIFeatureLevel::Type FeatureLevel) :
 	Mesh(&InMesh),
 	PrimitiveSceneProxy(InPrimitiveSceneProxy)
 {
 	EBlendMode BlendMode = InMesh.MaterialRenderProxy->GetMaterial(FeatureLevel)->GetBlendMode();
 	bHasOpaqueOrMaskedMaterial = !IsTranslucentBlendMode(BlendMode);
 	bRenderInMainPass = PrimitiveSceneProxy->ShouldRenderInMainPass();
-}
+}*/
 
 void FDeferredShadingSceneRenderer::GetElementsToVoxelize(FRHICommandListImmediate& RHICmdList)
 {
@@ -2171,18 +2171,28 @@ void FDeferredShadingSceneRenderer::GetElementsToVoxelize(FRHICommandListImmedia
 	auto featureLevel = ViewFamily.GetFeatureLevel();
 
 	MeshCollector.ClearViewMeshArrays();
-	MeshCollector.AddViewMeshArrays(&Views[0], &Views[0].PrimitivesElementsToVoxelize, &DynamicSubjectSimpleElements, featureLevel);
+	MeshCollector.AddViewMeshArrays(&Views[0], &Views[0].__tmp_PrimitivesElementsToVoxelize, &DynamicSubjectSimpleElements, featureLevel);
+	Views[0].PrimitivesElementsToVoxelize.Empty();
 
-	// Loop trough all the primitves to voxelize and gather the elements for each
+	// Loop trough all the primitives to voxelize and gather the elements for each
 	for(auto p : Views[0].PrimitivesToVoxelize)
 	{
 		// Get both static and dynamic elements
 		MeshCollector.SetPrimitive(p->Proxy, p->DefaultDynamicHitProxyId);
 		p->Proxy->GetDynamicMeshElements(ReusedViewsArray, ViewFamily, 0x1, MeshCollector);
 
-		for(int i = 0;i < p->StaticMeshes.Num();i++)
-			Views[0].PrimitivesElementsToVoxelize.Add(FMeshBatchAndRelevance(p->StaticMeshes[i],p->Proxy,featureLevel));
+		for(auto& st : p->StaticMeshes)
+		{
+			Views[0].PrimitivesElementsToVoxelize.Add(FViewInfo::AHRElementToVoxelize(&st,p->Proxy));
+		}
 	}
+
+	// Now copy the meshes from the collector
+	for(auto p : Views[0].__tmp_PrimitivesElementsToVoxelize)
+		Views[0].PrimitivesElementsToVoxelize.Add(FViewInfo::AHRElementToVoxelize(p.Mesh,p.PrimitiveSceneProxy));
+
+	// And clear the collector, just in case
+	MeshCollector.ClearViewMeshArrays();
 }
 
 /**
@@ -2264,4 +2274,3 @@ void FDeferredShadingSceneRenderer::InitViews(FRHICommandListImmediate& RHICmdLi
 	if(UseApproximateHybridRaytracingRT(Views[0].FeatureLevel))
 		AHREngine.VoxelizeScene(RHICmdList,Views[0]);*/
 }
-

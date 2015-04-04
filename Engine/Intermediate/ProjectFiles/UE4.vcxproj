@@ -1904,6 +1904,7 @@
     <ClCompile Include="..\..\Source\Developer\FriendsAndChat\Private\UI\Widgets\SFriendsToolTip.cpp" />
     <ClInclude Include="..\..\Source\Developer\FriendsAndChat\Private\UI\Widgets\SFriendsToolTip.h" />
     <ClInclude Include="..\..\Source\Developer\FriendsAndChat\Private\UI\Widgets\SFriendsUserSettings.h" />
+    <ClCompile Include="..\..\Source\Developer\FriendsAndChat\Private\UI\Widgets\SFriendsUserSettings.cpp" />
     <ClCompile Include="..\..\Source\Developer\FriendsAndChat\Private\UI\Widgets\SFriendUserHeader.cpp" />
     <ClInclude Include="..\..\Source\Developer\FriendsAndChat\Private\UI\Widgets\SFriendUserHeader.h" />
     <ClCompile Include="..\..\Source\Developer\FriendsAndChat\Private\UI\Widgets\SInviteItem.cpp" />

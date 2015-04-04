@@ -14,6 +14,9 @@ float3 to_vlocal(float3 worldPos)
 	return worldPos*AHRVoxelizationCB.InvSceneBounds + AHRVoxelizationCB.WorldToVoxelOffset;
 }
 
+Texture2D ShadowDepth0;
+SamplerState pointSampler;
+
 void Main(FAHRVoxelizationGSOut input)
 {
 	// Only voxelize if we are inside the bounds
@@ -34,6 +37,28 @@ void Main(FAHRVoxelizationGSOut input)
 
 		SceneVolume.InterlockedOr(bidx*4, 1 << offset);
 
+		FMaterialPixelParameters MaterialParameters = GetMaterialPixelParameters(input.FactoryInterpolants, input.Position);
+		CalcMaterialParameters(MaterialParameters,input.Position,true,input.Position);
+
+		float3 color = GetMaterialBaseColor(MaterialParameters);
+
+		static const float ShadowEpsilon = 0.0001f;
+
+		// Add shadowing
+		float4 lpos = fmul(input.wPos,AHRVoxelizationCB.ShadowMatrix0);
+		lpos.xyz /= lpos.w;
+		lpos.x = lpos.x*0.5 + 0.5;
+		lpos.y = -lpos.y*0.5 + 0.5;
+
+		color *= abs(ShadowDepth0.SampleLevel(pointSampler,lpos.xy,0) - lpos.z) <= ShadowEpsilon;
+
+		// Add emissive
+		color += GetMaterialEmissive(MaterialParameters);
+
+		vidx = vpos.y/2u + vpos.x*AHRVoxelizationCB.SliceSize.y/4u + vpos.z*AHRVoxelizationCB.SliceSize.y*AHRVoxelizationCB.SliceSize.x/8u;
+		EmissiveVolume.InterlockedMax(vidx*4u,encode_R9G9B9_EXP5(color));
+
+		/*
 		// Store emissive
 		uint ebidx = vidx >> 2;
 		uint eoffset = vidx - 4u * ebidx;
@@ -47,7 +72,7 @@ void Main(FAHRVoxelizationGSOut input)
 
 		// This should be implemented with a CAS
 		EmissiveVolume.InterlockedAnd(ebidx*4, emask); // mask 
-		EmissiveVolume.InterlockedOr(ebidx*4, idx << eoffset);
+		EmissiveVolume.InterlockedOr(ebidx*4, idx << eoffset);*/
 
 		/*uint vox = EmissiveVolume.Load(ebidx*4);
 		vox = (vox & emask) | (AHRVoxelizationCB.EmissiveIndex << eoffset);

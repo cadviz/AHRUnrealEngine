@@ -488,8 +488,6 @@ uint4 PS_SPHI(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARG
 
 	uint bvox = -1;
 	uint prevbidx = -1;
-	uint ebvox = -1;
-	uint prevebidx = -1;
 	float angle = abs(cos(wang_hash(DTid.x*10000+DTid.y)))*2.0f*3.1416f;//rng.GetRandomFloat(0,2.0f*3.1416f);
 	float2 csAngle = float2(cos(angle),sin(angle));
 
@@ -497,8 +495,8 @@ uint4 PS_SPHI(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARG
 	for(int n = 0;n < 4; n++)
 	{
 		float3 rn = rayKernel[n].xzy;
-		//rn.x = csAngle.x*rn.x + csAngle.y*rn.y;
-		//rn.y = csAngle.x*rn.y - csAngle.y*rn.x;
+		rn.x = csAngle.x*rn.x + csAngle.y*rn.y;
+		rn.y = csAngle.x*rn.y - csAngle.y*rn.x;
 		//rn = normalize(rn + float3(rng.GetRandomFloat(0, 1)*2-1,rng.GetRandomFloat(0, 1)*2-1,rng.GetRandomFloat(0, 1)*2-1)*0.9f);
 		rn = normalize(rn.x * bitangent + (rn.y * tangent + (rn.z * normal)));
 
@@ -512,7 +510,7 @@ uint4 PS_SPHI(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARG
 		for (uint r = 0; r < AHRTraceCB.DiffuseRayCount; r++)
 		{
 			float3 step = 0;
-/*
+
 			// Convert to vector space
 			
 			step.x = rng.GetRandomFloat(0, 1)*2-1;
@@ -525,11 +523,11 @@ uint4 PS_SPHI(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARG
 			// Convert to vector space
 			float3 rt = normalize(rkernel - rn * dot(rkernel, rn));
 			float3 rbt = cross(rn, rt);
-			step = normalize(step.x * rt + (step.y * rbt + (step.z * rn)));*/
+			step = normalize(step.x * rt + (step.y * rbt + (step.z * rn)));
 
 
 
-			step = rn;
+			//step = rn;
 			float angleCos = saturate(dot(step,normal));
 			float dispAngleMult = sqrt(1 - angleCos*angleCos)/(angleCos + 0.01) + 1;
 
@@ -551,7 +549,7 @@ uint4 PS_SPHI(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARG
 
 				uint3 vpos = floor((local*0.5 + 0.5)*AHRTraceCB.SliceSize);
 				uint vidx = vpos.y + vpos.x*AHRTraceCB.SliceSize.y + vpos.z*AHRTraceCB.SliceSize.y*AHRTraceCB.SliceSize.x;
-				uint bidx = vidx >> 5;// shifting right n bits on a uint is the same as dividing by 2^n
+				uint bidx = vidx >> 5u;// shifting right n bits on a uint is the same as dividing by 2^n
 				uint offset = vidx - 32u * bidx;
 
 				if(bidx != prevbidx)
@@ -592,22 +590,21 @@ uint4 PS_SPHI(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARG
 					}
 #endif
 					// Add emissive
-					uint ebidx = vidx / 4; // FUCK YOU FXC, THIS SHOULD BE << 2u INSTEAD OF THE DIV! WHY THE FUCK DO YOU TRY TO UNROLL THE LOOP???
-					uint eoffset = vidx - 4u * ebidx;
+					//vpos = floor((local*0.5f + 0.5f)*AHRVoxelizationCB.SliceSize);
+					// ^ That is the correct code. BUT FXC DOESNT WANTS TO COMPILE IT CORRECTLY!!! FUCK YOU FXC!
+					vidx = vpos.y/2u + vpos.x*AHRTraceCB.SliceSize.y/4u + vpos.z*AHRTraceCB.SliceSize.y*AHRTraceCB.SliceSize.x/8u;
 
-					if (ebidx != prevebidx)
-					{
-						ebvox = EmissiveVolume.Load(ebidx*4u);
-						prevebidx = ebidx;
-					}
-					uint eidx = (ebvox & (B8(11111111) << eoffset*8u)) >> eoffset*8u;
-					sphs[n].rgb += decode_R3G3B2(eidx);
+					// Fake attenuation. Based on inverse squared falloff (pbr) but with a few tweaks
+					float att = 1.0f/(dot(local-to_vlocal(wPos),local-to_vlocal(wPos))*2+1);
+					sphs[n].rgb += decode_R9G9B9_EXP5(EmissiveVolume.Load(vidx*4u))*att; 
 
-					sphs[n].w += (i <= 16); // max ao samples
+					sphs[n].w += (i <= 16)*att; // max ao samples
 					break;
 				}
 
 				//spos += step*rng.GetRandomFloat(0.25, 4);
+				//float rnd = RANDOM_AM * wang_hash(i+seed);
+				//spos += step * lerp(0.25,4,rnd);
 				spos += step;
 			}
 		}

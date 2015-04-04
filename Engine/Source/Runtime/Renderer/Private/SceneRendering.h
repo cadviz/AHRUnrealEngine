@@ -378,7 +378,21 @@ public:
 	// @RyanTorant
 	/** The primitives sent to the voxelization stage */
 	TArray<const FPrimitiveSceneInfo*,SceneRenderingAllocator> PrimitivesToVoxelize;
-	TArray<FMeshBatchAndRelevance,SceneRenderingAllocator> PrimitivesElementsToVoxelize;
+	struct AHRElementToVoxelize
+	{
+		AHRElementToVoxelize()
+		{
+			Mesh = nullptr; PrimitiveSceneProxy = nullptr;
+		}
+		AHRElementToVoxelize(const FMeshBatch* mesh,const FPrimitiveSceneProxy* proxy)
+		{
+			Mesh = mesh; PrimitiveSceneProxy = proxy;
+		}
+		const FMeshBatch* Mesh;
+		const FPrimitiveSceneProxy* PrimitiveSceneProxy;
+	};
+	TArray<AHRElementToVoxelize,SceneRenderingAllocator> PrimitivesElementsToVoxelize;
+	TArray<FMeshBatchAndRelevance,SceneRenderingAllocator> __tmp_PrimitivesElementsToVoxelize;
 
 	/** Set of translucent prims for this view */
 	FTranslucentPrimSet TranslucentPrimSet;

@@ -12,7 +12,17 @@ BEGIN_UNIFORM_BUFFER_STRUCT(AHRVoxelizationCB,)
 	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector,invVoxel)
 	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(float,TriangleSizeMultiplier)
 
-	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(uint32,EmissiveIndex)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FMatrix,ShadowMatrix0)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FMatrix,ShadowMatrix1)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FMatrix,ShadowMatrix2)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FMatrix,ShadowMatrix3)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FMatrix,ShadowMatrix4)
+
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector2D,ShadowViewportScaling0)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector2D,ShadowViewportScaling1)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector2D,ShadowViewportScaling2)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector2D,ShadowViewportScaling3)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector2D,ShadowViewportScaling4)
 END_UNIFORM_BUFFER_STRUCT(AHRVoxelizationCB)
 
 
@@ -152,6 +162,8 @@ public:
 		FMeshMaterialShader(Initializer)
 	{
 		cb.Bind(Initializer.ParameterMap, TEXT("AHRVoxelizationCB"));
+		ShadowDepth0.Bind(Initializer.ParameterMap, TEXT("ShadowDepth0"));
+		pointSampler.Bind(Initializer.ParameterMap, TEXT("pointSampler"));
 	}
 	FAHRVoxelizationPixelShader() {}
 
@@ -180,7 +192,16 @@ public:
 		cbdata.WorldToVoxelOffset = -gridCFG.Center*cbdata.InvSceneBounds; // -SceneCenter/SceneBounds
 		cbdata.TriangleSizeMultiplier = View->FinalPostProcessSettings.TriangleSizeMultiplier;
 
+		cbdata.ShadowMatrix0 = AHREngine.GetLightsList()[0].ViewProj;
+		cbdata.ShadowViewportScaling0 = AHREngine.GetLightsList()[0].ViewportScaling;
+
 		SetUniformBufferParameterImmediate(RHICmdList, ShaderRHI,cb,cbdata);
+
+		auto sampler = TStaticSamplerState<SF_Point,AM_Border,AM_Border,AM_Border,0,0,0,SCF_Never>::GetRHI();
+		SetTextureParameter(RHICmdList, ShaderRHI, ShadowDepth0, pointSampler,sampler, AHREngine.GetShadowTexture(0));		
+		
+		if(pointSampler.IsBound())
+			RHICmdList.SetShaderSampler(ShaderRHI,pointSampler.GetBaseIndex(),sampler);
 	}
 
 	void SetMesh(FRHICommandList& RHICmdList, const FVertexFactory* VertexFactory,const FSceneView& View,const FPrimitiveSceneProxy* Proxy,const FMeshBatchElement& BatchElement)
@@ -192,9 +213,13 @@ public:
 	{
 		bool bShaderHasOutdatedParameters = FMeshMaterialShader::Serialize(Ar);
 		Ar << cb;
+		Ar << ShadowDepth0;
+		Ar << pointSampler;
 		return bShaderHasOutdatedParameters;
 	}
 
 private:
 	TShaderUniformBufferParameter<AHRVoxelizationCB> cb;
+	FShaderResourceParameter ShadowDepth0;
+	FShaderResourceParameter pointSampler;
 };

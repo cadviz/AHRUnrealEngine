@@ -714,3 +714,32 @@ uint encode_R3G3B2(float3 color)
 
 	return pix;
 }
+
+float3 decode_R9G9B9_EXP5(uint encoded)
+{
+	// This format uses 9 bits per channel and a shared 5 bits exponent
+	float exp = ((encoded & B32(11111000, 00000000, 00000000, 00000000)) >> 27) + 1;
+
+	float3 p;
+	p.x = float(encoded  & B32(00000000, 00000000, 00000001, 11111111)) / 511.0f;
+	p.y = float((encoded & B32(00000000, 00000011, 11111110, 00000000)) >> 9) / 511.0f;
+	p.z = float((encoded & B32(00000111, 11111100, 00000000, 00000000)) >> 18) / 511.0f;
+
+	return p*exp;
+}
+
+uint encode_R9G9B9_EXP5(float3 color)
+{
+	color = max(0,color); // negative is not supported
+	float exp = clamp(ceil(max(max(color.x,color.y),color.z)),1,32);
+
+	color /= exp;
+	color = saturate(color);
+
+	uint pix = uint(floor(color.x*511.0f));
+	pix |= uint(floor(color.y*511.0f)) << 9;
+	pix |= uint(floor(color.z*511.0f)) << 18;
+	pix |= uint(exp-1) << 27;
+
+	return pix;
+}

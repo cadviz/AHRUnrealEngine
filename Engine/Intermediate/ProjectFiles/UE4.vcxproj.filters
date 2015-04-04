@@ -43262,5 +43262,8 @@
     <ClCompile Include="..\..\Source\Editor\UnrealEd\Private\EdMode.cpp">
       <Filter>Source\Editor\UnrealEd\Private</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Source\Developer\FriendsAndChat\Private\UI\Widgets\SFriendsUserSettings.cpp">
+      <Filter>Source\Developer\FriendsAndChat\Private\UI\Widgets</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

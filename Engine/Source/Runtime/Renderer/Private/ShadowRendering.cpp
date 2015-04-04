@@ -3021,34 +3021,25 @@ bool FDeferredShadingSceneRenderer::RenderReflectiveShadowMaps(FRHICommandListIm
 			// Only the first shadow gets rendered and pushed to the ahr engine.
 			// This is because i'm still unsure how to handle multiple shadows on the tracing side
 			FProjectedShadowInfo* ProjectedShadowInfo = Shadows[0];
-
 			{
 				// Render the shadow depths.
 				SCOPED_DRAW_EVENT(RHICmdList, ReflectiveShadowMapsFromOpaque);
-
 				// render the RSM
 				FSceneViewState* ViewState = (FSceneViewState*) ProjectedShadowInfo->DependentView->State;
-
 				auto SetShadowRenderTargets = [](FRHICommandList& RHICmdList)
 				{
 					GSceneRenderTargets.BeginRenderingReflectiveShadowMapAHR(RHICmdList);
 				};
-
 				SetShadowRenderTargets(RHICmdList);  // run it now, maybe run it later for parallel command lists
-
 				if (ProjectedShadowInfo->bAllocated && !ProjectedShadowInfo->bTranslucentShadow)
 				{
 					ProjectedShadowInfo->ClearDepth(RHICmdList, this);
 					ProjectedShadowInfo->RenderDepth(RHICmdList, this, SetShadowRenderTargets);
 				}
-
 				GSceneRenderTargets.FinishRenderingReflectiveShadowMap(RHICmdList);
-
 			}
-
 			// Now that the rsm are rendered, copy the buffers to the light list of the AHR engine
 			// The engine will give a msg box if you are over the maximum number of lights ( hardcoded at MAX_AHR_LIGHTS (5) for now, 22/12/2014 )
-
 			LightRSMData data;
 			//GSceneRenderTargets.GetShadowDepthZTexture
 			data.Albedo = GSceneRenderTargets.GetReflectiveShadowMapDiffuseTexture();
@@ -3059,7 +3050,6 @@ bool FDeferredShadingSceneRenderer::RenderReflectiveShadowMaps(FRHICommandListIm
 			FVector4 minMax;
 			//data.ViewProj = ProjectedShadowInfo->GetWorldToShadowMatrix(minMax);
 			data.ViewProj = FTranslationMatrix(ProjectedShadowInfo->PreShadowTranslation) *ProjectedShadowInfo->SubjectAndReceiverMatrix;
-
 			data.Offset = ProjectedShadowInfo->PreShadowTranslation;
 			data.IsValid = true;
 			AHREngine.AppendLightRSM(data);
@@ -3069,47 +3059,35 @@ bool FDeferredShadingSceneRenderer::RenderReflectiveShadowMaps(FRHICommandListIm
 			{
 				// Render the shadow depths.
 				SCOPED_DRAW_EVENT(RHICmdList, ReflectiveShadowMapsFromOpaque);
-
 				// render the RSMs
 				for (int32 ShadowIndex = 0; ShadowIndex < Shadows.Num(); ShadowIndex++)
 				{
 					FProjectedShadowInfo* ProjectedShadowInfo = Shadows[ShadowIndex];
 					FSceneViewState* ViewState = (FSceneViewState*) ProjectedShadowInfo->DependentView->State;
-
 					FLightPropagationVolume* LightPropagationVolume = ViewState->GetLightPropagationVolume();
-
 					check(LightPropagationVolume);
 					auto SetShadowRenderTargets = [LightPropagationVolume](FRHICommandList& RHICmdList)
 					{
 						GSceneRenderTargets.BeginRenderingReflectiveShadowMap(RHICmdList, LightPropagationVolume);
 					};
-
 					SetShadowRenderTargets(RHICmdList);  // run it now, maybe run it later for parallel command lists
-
-
 					LightPropagationVolume->SetVplInjectionConstants(*ProjectedShadowInfo, LightSceneInfo->Proxy);
-
 					if (ProjectedShadowInfo->bAllocated && !ProjectedShadowInfo->bTranslucentShadow)
 					{
 						ProjectedShadowInfo->ClearDepth(RHICmdList, this);
 						ProjectedShadowInfo->RenderDepth(RHICmdList, this, SetShadowRenderTargets);
 					}
-
 					GSceneRenderTargets.FinishRenderingReflectiveShadowMap(RHICmdList);
 				}
 			}
-
 			// Inject the RSM into the LPVs
 			for (int32 ShadowIndex = 0; ShadowIndex < Shadows.Num(); ShadowIndex++)
 			{
 				FProjectedShadowInfo* ProjectedShadowInfo = Shadows[ShadowIndex];
-
 				if (ProjectedShadowInfo->bAllocated && ProjectedShadowInfo->DependentView)
 				{
 					FSceneViewState* ViewState = (FSceneViewState*) ProjectedShadowInfo->DependentView->State;
-
 					FLightPropagationVolume* LightPropagationVolume = ViewState->GetLightPropagationVolume();
-
 					if (ViewState && LightPropagationVolume)
 					{
 						if (ProjectedShadowInfo->bWholeSceneShadow)
@@ -3347,15 +3325,15 @@ bool FDeferredShadingSceneRenderer::RenderProjectedShadows(FRHICommandListImmedi
 			if(injectIntoAHR)
 			{
 				// Copy the texture to the AHR engine
-				//RHICmdList.CopyToResolveTarget(GSceneRenderTargets.GetShadowDepthZTexture(), AHREngine->GetCurrentShadowTexture(), true, FResolveRect());
-				
-				
-				
-				
-				
-				
-				// DEBUG DUMMY!!!!!
-				AHREngine.SetGridSettings(AHREngine.GetGridSettings());
+				// Shadows are one frame behind
+				AHRLightData ldata;
+				// DEBUG!
+				ldata.ViewProj = FTranslationMatrix(Shadows[0]->PreShadowTranslation) *Shadows[0]->SubjectAndReceiverMatrix;
+				ldata.IsValid = true;
+				ldata.ViewportScaling = FVector2D(float(Shadows[0]->ResolutionX)/float(GSceneRenderTargets.GetShadowDepthTextureResolution().X),float(Shadows[0]->ResolutionY)/float(GSceneRenderTargets.GetShadowDepthTextureResolution().Y));
+
+				RHICmdList.CopyToResolveTarget(GSceneRenderTargets.GetShadowDepthZTexture(), AHREngine.GetCurrentShadowTexture(), true, FResolveRect());
+				AHREngine.AppendLight(ldata);
 			}
 		}
 

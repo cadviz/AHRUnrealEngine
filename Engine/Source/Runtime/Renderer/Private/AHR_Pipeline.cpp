@@ -48,11 +48,11 @@ private:
 };
 IMPLEMENT_SHADER_TYPE(,AHRPassVS,TEXT("AHRComposite"),TEXT("VS"),SF_Vertex);
 
+FCriticalSection cs;
+
+
 void  FApproximateHybridRaytracer::StartFrame(FViewInfo& View)
 {	
-	// New frame, new starting idx
-	currentLightIDX = 0;
-	
 	// Check if the bounds are valid
 	if(View.FinalPostProcessSettings.AHR_internal_initialized)
 	{
@@ -83,6 +83,23 @@ void  FApproximateHybridRaytracer::StartFrame(FViewInfo& View)
 			gridSettings.SliceSize.Y = ceil(gridSettings.Bounds.Y / gridSettings.VoxelSize);
 			gridSettings.SliceSize.Z = ceil(gridSettings.Bounds.Z / gridSettings.VoxelSize);
 		}
+	}
+
+	// If the size of the shadow texture changed we need to rebuild the buffer
+	{
+		FScopeLock ScopeLock(&cs);
+		auto shadowRes = GSceneRenderTargets.GetShadowDepthTextureResolution();
+
+		if(shadowRes.X != prevShadowRes.X && shadowRes.Y != prevShadowRes.Y)
+		{
+			for(int i = 0;i < MAX_AHR_LIGHTS;i++)
+			{
+				FRHIResourceCreateInfo createInfo;
+				lightDepths[i] = RHICreateTexture2D(shadowRes.X,shadowRes.Y,PF_ShadowDepth,1,1,TexCreate_ShaderResource,createInfo);
+			}
+		}
+
+		prevShadowRes = shadowRes;
 	}
 }
 
@@ -273,7 +290,6 @@ IMPLEMENT_SHADER_TYPE(,AHRDynamicStaticEmissiveVolumeCombine,TEXT("AHRDynamicSta
 
 //std::mutex cs;
 //pthread_mutex_t Mutex;
-FCriticalSection cs;
 AHRGridSettings prevGridSettings;
 vector<FName> prevStaticObjects;
 //once_flag stdOnceFlag;
@@ -294,7 +310,6 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 	/*static bool ran = false;
 	if(ran) return;
 	ran = true;
-
 	if(View.PrimitivesToVoxelize.Num() == 0)
 		return;*/
 	
@@ -305,20 +320,15 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 		RebuildGrids = true;
 		AHRGlobalSignal_RebuildGrids.store(0);
 	}*/
-
 	TArray<const FPrimitiveSceneInfo*,SceneRenderingAllocator> staticObjects;
 	TArray<const FPrimitiveSceneInfo*,SceneRenderingAllocator> dynamicsObjects;
 	bool voxelizeStatic = false;
-
 	uint32 currentMatIDX = 0;
-
-
 	//cs.lock();
 	//pthread_mutex_lock(&Mutex);
 	{
 		// Make this thread-safe
 		FScopeLock ScopeLock(&cs);
-
 		// Could this be optimized? It feels wrong...
 		bool staticListChanged = false;
 		for(auto obj : View.PrimitivesToVoxelize)
@@ -333,7 +343,6 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 				bool found = false;
 				for(auto sObjName : prevStaticObjects)
 					found |= sObjName == obj->Proxy->GetOwnerName();
-
 				staticListChanged |= !found;
 				staticObjects.Add(obj);
 			}
@@ -345,17 +354,14 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 						 prevStaticObjects.size() != staticObjects.Num() ||
 					     staticListChanged ||
 						 RebuildGrids;
-
 		if(voxelizeStatic)
 		{
 			// we are going to voxelize, so store state
 			prevStaticObjects.clear();
 			for(auto obj : staticObjects)
 				prevStaticObjects.push_back(obj->Proxy->GetOwnerName());
-
 			prevGridSettings = gridSettings;
 		}
-
 		// Check if the palette changed
 		/*
 		bool paletteChanged = false;
@@ -363,43 +369,33 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 		if(paletteChanged)
 		{
 			// TODO: a dynamic texture could be more efficient, specially if the material emissive color is driven trough blueprints/c++ code and changes often
-
 			// Recreate the texture
 			for(int i = 0; i < 256; i++) prevPalette[i] = palette[i];
-
 			// Destroy the texture
 			EmissivePaletteTexture.SafeRelease();
 			EmissivePaletteSRV.SafeRelease();
-
 			FRHIResourceCreateInfo CreateInfo;
 			EmissivePaletteTexture = RHICreateTexture2D(256,1,PF_B8G8R8A8,1,1,TexCreate_ShaderResource,CreateInfo);
-
 			// Copy palette
 			uint8 palleteTexBuff[256*4];
 			for(int i = 0; i < 256; i++)
 			{
 				auto col = palette[i].Quantize();
-
 				palleteTexBuff[i*4]     =  col.B;
 				palleteTexBuff[i*4 + 1] =  col.G;
 				palleteTexBuff[i*4 + 2] =  col.R;
 				palleteTexBuff[i*4 + 3] =  col.A; // Alpha is used as a multiplier
 			}
-
 			uint32 Stride = 0;
 			uint8* textureData = (uint8*)RHILockTexture2D( EmissivePaletteTexture, 0, RLM_WriteOnly, Stride, false );
 			FMemory::Memcpy(textureData, palleteTexBuff, 256*4);
 			RHIUnlockTexture2D( EmissivePaletteTexture, 0, false );
-
 			EmissivePaletteSRV = RHICreateShaderResourceView(EmissivePaletteTexture,0,1,PF_B8G8R8A8);
 		}*/
 	}
-
 	//pthread_mutex_unlock(&Mutex);
 	//cs.unlock();
-
 	uint32 cls[4] = { 0,0,0,0 };
-
 	// Voxelize only static
 	if( staticObjects.Num( ) > 0  && voxelizeStatic)
 	{
@@ -407,10 +403,8 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 		RHICmdList.ClearUAV(StaticSceneVolume->UAV, cls);
 		RHICmdList.ClearUAV(StaticEmissiveVolume->UAV, cls);
 		SetStaticVolumeAsActive();
-
 		TAHRVoxelizerElementPDI<FAHRVoxelizerDrawingPolicyFactory> Drawer(
 			&View, FAHRVoxelizerDrawingPolicyFactory::ContextType(RHICmdList) );
-
 		for( auto PrimitiveSceneInfo : staticObjects )
 		{
 			FScopeCycleCounter Context( PrimitiveSceneInfo->Proxy->GetStatId( ) );
@@ -420,16 +414,13 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 			PrimitiveSceneInfo->Proxy->DrawDynamicElements(&Drawer,&View,EDrawDynamicFlags::Voxelize);
 		}
 	}
-
 	
 	// Voxelize dynamic to the dynamic grid
 	RHICmdList.ClearUAV(DynamicSceneVolume->UAV, cls);
 	RHICmdList.ClearUAV(DynamicEmissiveVolume->UAV, cls);
 	SetDynamicVolumeAsActive();
-
 	TAHRVoxelizerElementPDI<FAHRVoxelizerDrawingPolicyFactory> Drawer(
 			&View, FAHRVoxelizerDrawingPolicyFactory::ContextType(RHICmdList) );
-
 	for( auto PrimitiveSceneInfo : dynamicsObjects )
 	{
 		FScopeCycleCounter Context( PrimitiveSceneInfo->Proxy->GetStatId( ) );
@@ -444,22 +435,18 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 	// The dynamic grid is the one that gets binded as an SRV
 	TShaderMapRef<AHRDynamicStaticVolumeCombine> combineCS(GetGlobalShaderMap(View.GetFeatureLevel()));
 	RHICmdList.SetComputeShader(combineCS->GetComputeShader());
-
 	uint32 l = gridSettings.SliceSize.X*gridSettings.SliceSize.Y*gridSettings.SliceSize.Z/32;
 	uint32 x = ceil(cbrt(l / 256.0f)); // cbrt = cubic root
 	combineCS->SetParameters(RHICmdList, DynamicSceneVolume->UAV,DynamicEmissiveVolume->UAV,StaticSceneVolume->SRV,StaticEmissiveVolume->SRV,FIntVector(x*8,x*8,x*4));
 	DispatchComputeShader(RHICmdList, *combineCS, x, x, x);
-
 	combineCS->UnbindBuffers(RHICmdList);
 	
 	TShaderMapRef<AHRDynamicStaticEmissiveVolumeCombine> combineCSEmissive(GetGlobalShaderMap(View.GetFeatureLevel()));
 	RHICmdList.SetComputeShader(combineCSEmissive->GetComputeShader());
-
 	l = gridSettings.SliceSize.X*gridSettings.SliceSize.Y*gridSettings.SliceSize.Z/4;
 	x = ceil(cbrt(l / 256.0f)); // cbrt = cubic root
 	combineCSEmissive->SetParameters(RHICmdList, DynamicSceneVolume->UAV,DynamicEmissiveVolume->UAV,StaticSceneVolume->SRV,StaticEmissiveVolume->SRV,FIntVector(x*8,x*8,x*4));
 	DispatchComputeShader(RHICmdList, *combineCSEmissive, x, x ,x);
-
 	combineCSEmissive->UnbindBuffers(RHICmdList);
 #endif
 	uint32 cls[4] = { 0,0,0,0 };
@@ -477,6 +464,9 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 
 		FAHRVoxelizerDrawingPolicyFactory::DrawDynamicMesh(RHICmdList, View, FAHRVoxelizerDrawingPolicyFactory::ContextType(), *e.Mesh, false, true, e.PrimitiveSceneProxy, e.Mesh->BatchHitProxyId);
 	}
+
+	// New frame, new starting idx
+	currentLightIDX = 0;
 }
 
 ///
@@ -502,21 +492,6 @@ BEGIN_UNIFORM_BUFFER_STRUCT(AHRTraceSceneCB,)
 END_UNIFORM_BUFFER_STRUCT(AHRTraceSceneCB)
 IMPLEMENT_UNIFORM_BUFFER_STRUCT(AHRTraceSceneCB,TEXT("AHRTraceCB"));
 
-BEGIN_UNIFORM_BUFFER_STRUCT(AHRShadowMatrices,)
-	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FMatrix,Matrix0)
-	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FMatrix,Matrix1)
-	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FMatrix,Matrix2)
-	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FMatrix,Matrix3)
-	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FMatrix,Matrix4)
-
-	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector,Offset0)
-	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector,Offset1)
-	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector,Offset2)
-	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector,Offset3)
-	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector,Offset4)
-END_UNIFORM_BUFFER_STRUCT(AHRShadowMatrices)
-IMPLEMENT_UNIFORM_BUFFER_STRUCT(AHRShadowMatrices,TEXT("AHRShadowMatrices"));
-
 class AHRTraceScenePS : public FGlobalShader
 {
 	DECLARE_SHADER_TYPE(AHRTraceScenePS,Global)
@@ -541,7 +516,6 @@ public:
 		SceneVolume.Bind(Initializer.ParameterMap, TEXT("SceneVolume"));
 		LinearSampler.Bind(Initializer.ParameterMap, TEXT("samLinear"));
 		cb.Bind(Initializer.ParameterMap, TEXT("AHRTraceCB"));
-		matrixCB.Bind(Initializer.ParameterMap, TEXT("AHRShadowMatrices"));
 
 		cmpSampler.Bind(Initializer.ParameterMap, TEXT("cmpSampler"));
 
@@ -559,7 +533,6 @@ public:
 
 	void SetParameters(	FRHICommandList& RHICmdList, const FSceneView& View, 
 						const FShaderResourceViewRHIRef sceneVolumeSRV, 
-						const FShaderResourceViewRHIRef paletteSRV, 
 						const FShaderResourceViewRHIRef emissiveVolumeSRV,
 						const FShaderResourceViewRHIRef samplingKernelSRV,
 						const FVector2D& ScreenRes
@@ -598,17 +571,6 @@ public:
 
 		SetUniformBufferParameterImmediate(RHICmdList, ShaderRHI,cb,cbdata);
 
-		AHRShadowMatrices matrix_cbdata;
-
-		auto lList = AHREngine.GetLightsList();
-		matrix_cbdata.Matrix0 = lList[0].ViewProj;
-		matrix_cbdata.Matrix1 = lList[1].ViewProj;
-		matrix_cbdata.Matrix2 = lList[2].ViewProj;
-		matrix_cbdata.Matrix3 = lList[3].ViewProj;
-		matrix_cbdata.Matrix4 = lList[4].ViewProj;
-
-		SetUniformBufferParameterImmediate(RHICmdList, ShaderRHI,matrixCB,matrix_cbdata);
-
 		if(SceneVolume.IsBound())
 			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,SceneVolume.GetBaseIndex(),sceneVolumeSRV);
 		if(EmissiveVolume.IsBound())
@@ -636,7 +598,6 @@ public:
 		Ar << LinearSampler;
 		Ar << cmpSampler;
 		Ar << cb;
-		Ar << matrixCB;
 		Ar << EmissiveVolume;
 		Ar << SamplingKernel;
 		Ar << samPoint;
@@ -658,7 +619,6 @@ private:
 	FShaderResourceParameter LinearSampler;
 	FShaderResourceParameter cmpSampler;
 	TShaderUniformBufferParameter<AHRTraceSceneCB> cb;
-	TShaderUniformBufferParameter<AHRShadowMatrices> matrixCB;
 
 	FShaderResourceParameter EmissiveVolume;
 
@@ -702,7 +662,6 @@ void FApproximateHybridRaytracer::TraceScene(FRHICommandListImmediate& RHICmdLis
 	// The dynamic grid should have both the static and dynamic data by now
 	PixelShader->SetParameters(RHICmdList, View, 
 								DynamicSceneVolume->SRV,
-								EmissivePaletteSRV,
 								DynamicEmissiveVolume->SRV,
 								SamplingKernelSRV,
 								texSize);

@@ -15,9 +15,11 @@ struct AHRLightData
 	{
 		IsValid = false;
 		ViewProj = FMatrix::Identity;
+		ViewportScaling = FVector2D(1,1);
 	}
 	bool IsValid;
 	FMatrix ViewProj;
+	FVector2D ViewportScaling;
 };
 struct AHRGridSettings
 {
@@ -43,6 +45,8 @@ public:
 		StaticSceneVolume = DynamicSceneVolume = nullptr;
 		ResX = ResY = -1;
 		currentLightIDX = 0;
+		prevShadowRes.X = -1;
+		prevShadowRes.Y = -1;
 	}
 
 	// Main pipeline functions
@@ -62,9 +66,10 @@ public:
 	FUnorderedAccessViewRHIRef GetSceneVolumeUAV(){ return (*currentVolume)->UAV; }
 	FUnorderedAccessViewRHIRef GetEmissiveVolumeUAV(){ return (*currentEmissiveVolume)->UAV; }
 
-	void AppendLight(AHRLightData& light);
+	void AppendLight(const AHRLightData& light);
 	AHRLightData* GetLightsList(){ return lights; }
-	FTexture2DRHIRef* GetCurrentShadowTexture(){ return lightDepths; }
+	FTexture2DRHIRef GetCurrentShadowTexture(){ return lightDepths[currentLightIDX]; }
+	FTexture2DRHIRef GetShadowTexture(uint32 idx){ return lightDepths[idx]; }
 
 	// FRenderResource code : Mainly, InitDynamicRHI()/ReleaseDynamicRHI(). Also, IsInitialized()
 	void InitDynamicRHI() override final;
@@ -91,7 +96,6 @@ private:
 	// Not using a texture3D as:
 	// a) ClearUAV causes a BSOD on tex3D with format R8_UINT on AMD hardware. I reported the bug at the 15/1/2015
 	// b) I should be faster to use a raw buffer, as the emissive clear should be faster. Unprofiled
-
 	FTexture3DRHIRef StaticEmissiveVolume;
 	FTexture3DRHIRef DynamicEmissiveVolume;
 	FShaderResourceViewRHIRef StaticEmissiveVolumeSRV;
@@ -102,8 +106,6 @@ private:
 	FRWBufferByteAddress* StaticEmissiveVolume;
 	FRWBufferByteAddress* DynamicEmissiveVolume;
 
-	FTexture2DRHIRef EmissivePaletteTexture;
-	FShaderResourceViewRHIRef EmissivePaletteSRV;
 	FTexture2DRHIRef SamplingKernel;
 	FShaderResourceViewRHIRef SamplingKernelSRV;
 
@@ -112,6 +114,7 @@ private:
 	uint32 currentLightIDX;
 
 	AHRGridSettings gridSettings;
+	FIntPoint prevShadowRes;
 };
 
 extern TGlobalResource<FApproximateHybridRaytracer> AHREngine;
