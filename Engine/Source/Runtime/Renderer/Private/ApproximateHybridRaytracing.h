@@ -43,7 +43,6 @@ public:
 	{
 		currentVolume = nullptr;
 		StaticSceneVolume = DynamicSceneVolume = nullptr;
-		ResX = ResY = -1;
 		currentLightIDX = 0;
 		prevShadowRes.X = -1;
 		prevShadowRes.Y = -1;
@@ -75,26 +74,14 @@ public:
 	void InitDynamicRHI() override final;
 	void ReleaseDynamicRHI() override final;
 
-	// Public because ... I'm Batman!
-	FTexture2DRHIRef RaytracingTarget;
-	FTexture2DRHIRef UpsampledTarget0;
-	FTexture2DRHIRef UpsampledTarget1;
-	FTexture2DRHIRef DownsampledNormal;
-	FShaderResourceViewRHIRef RaytracingTargetSRV;
-	FShaderResourceViewRHIRef UpsampledTargetSRV0;
-	FShaderResourceViewRHIRef UpsampledTargetSRV1;
 	FShaderResourceViewRHIRef ObjectNormalSRV;
-
-	FRWBufferByteAddress* StaticSceneVolume;
-	FRWBufferByteAddress* DynamicSceneVolume;
-	uint32 ResX,ResY;
 private:
 	FRWBufferByteAddress** currentVolume; // ptr-to-ptr to remember people that this is JUST AN UTILITY! IT IS NOT THE ACTUAL VOLUME!
 	FRWBufferByteAddress** currentEmissiveVolume;
 
 	/* 
 	// Not using a texture3D as:
-	// a) ClearUAV causes a BSOD on tex3D with format R8_UINT on AMD hardware. I reported the bug at the 15/1/2015
+	// a) ClearUAV causes a BSOD on tex3D with format R8_UINT on AMD hardware. I reported the bug on 15/1/2015
 	// b) I should be faster to use a raw buffer, as the emissive clear should be faster. Unprofiled
 	FTexture3DRHIRef StaticEmissiveVolume;
 	FTexture3DRHIRef DynamicEmissiveVolume;
@@ -102,12 +89,13 @@ private:
 	FShaderResourceViewRHIRef DynamicEmissiveVolumeSRV;
 	FUnorderedAccessViewRHIRef StaticEmissiveVolumeUAV;
 	FUnorderedAccessViewRHIRef DynamicEmissiveVolumeUAV;*/
+	FRWBufferByteAddress* StaticSceneVolume;
+	FRWBufferByteAddress* DynamicSceneVolume;
 
 	FRWBufferByteAddress* StaticEmissiveVolume;
 	FRWBufferByteAddress* DynamicEmissiveVolume;
 
-	FTexture2DRHIRef SamplingKernel;
-	FShaderResourceViewRHIRef SamplingKernelSRV;
+	FTexture2DRHIRef SamplingKernel[6];
 
 	AHRLightData lights[MAX_AHR_LIGHTS];
 	FTexture2DRHIRef lightDepths[MAX_AHR_LIGHTS];

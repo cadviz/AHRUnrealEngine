@@ -148,10 +148,9 @@ void FApproximateHybridRaytracer::InitDynamicRHI()
 	DynamicEmissiveVolumeUAV = RHICreateUnorderedAccessView(DynamicEmissiveVolume);*/
 
 	// Create the sampling kernel
-	// SIZE MUST BE A POWER OF 2
 	FRHIResourceCreateInfo CreateInfo;
-	SamplingKernel = RHICreateTexture2D(8,8,PF_R32_UINT,1,1,TexCreate_ShaderResource,CreateInfo);
-	
+	for(auto& k : SamplingKernel) k = RHICreateTexture2D(4,4,PF_A32B32G32R32F,1,1,TexCreate_ShaderResource,CreateInfo);
+
 	// same kernel, rotated  
 	/*uint32 kernel[64] = {
 							906459532, 72893876, 492795701, 532344103,    1740361530, 226519499, 1570237062, 389231761,
@@ -167,7 +166,7 @@ void FApproximateHybridRaytracer::InitDynamicRHI()
 
 	// Hardcoded ray directions
 	FVector kernel[16][6] = { { FVector( 0.000, 0.000, 1.000), FVector(-0.310, 0.826, 0.470), FVector(-0.882,-0.394, 0.470), FVector( 0.761,-0.313, 0.568), FVector(-0.030,-0.742, 0.670), FVector( 0.476, 0.760, 0.443) },
-							  { FVector( 0.335,-0.194, 0.922), FVector(-0.005, 0.401, 0.916), FVector(-0.587, 0.349, 0.731), FVector( 0.855, 0.331, 0.399), FVector(-0.556,-0.480, 0.671), FVector( 0.315,-0.859, 0.405) },
+							  { FVector( 0.335,-0.194, 0.922), FVector(-0.587, 0.349, 0.731), FVector(-0.005, 0.401, 0.916), FVector(-0.556,-0.480, 0.671), FVector( 0.315,-0.859, 0.405), FVector( 0.855, 0.331, 0.399) },
 							  { FVector(-0.149,-0.036, 0.988), FVector( 0.472,-0.632, 0.614), FVector(-0.821, 0.435, 0.370), FVector( 0.129, 0.893, 0.431), FVector( 0.904,-0.195, 0.381), FVector(-0.297,-0.913, 0.280) },
 							  { FVector(-0.203,-0.148, 0.968), FVector( 0.240, 0.321, 0.916), FVector(-0.948, 0.162, 0.276), FVector(-0.094, 0.936, 0.340), FVector( 0.890, 0.153, 0.431), FVector( 0.023,-0.920, 0.390) },
 							  { FVector( 0.166, 0.120, 0.979), FVector( 0.309, 0.762, 0.569), FVector( 0.840,-0.117, 0.531), FVector(-0.186,-0.706, 0.683), FVector(-0.886,-0.234, 0.399), FVector(-0.575, 0.687, 0.443) },
@@ -192,12 +191,25 @@ void FApproximateHybridRaytracer::InitDynamicRHI()
 							122543457, 556344767, 133132185, 515826467,   73892245, 475372377, 51656548, 45737847,
 							457238567, 121245334, 122574753, 427677346,   64277353, 235353445, 54165863, 24524245
 						};*/
-	uint32 Stride = 0;
-	uint32* textureData = (uint32*)RHILockTexture2D( SamplingKernel, 0, RLM_WriteOnly, Stride, false );
-	FMemory::Memcpy(textureData, kernel, 64*4);
-	RHIUnlockTexture2D( SamplingKernel, 0, false );
+	
+	for(int n = 0;n < 6;n++)
+	{
+		uint32 Stride = 0;
 
-	SamplingKernelSRV = RHICreateShaderResourceView(SamplingKernel,0);
+		float* textureData = (float*)RHILockTexture2D( SamplingKernel[n], 0, RLM_WriteOnly, Stride, false );
+
+		for(int i = 0;i < 16*4;i++)
+		{
+			textureData[i  ] = kernel[i][n].X;
+			textureData[i+1] = kernel[i][n].Y;
+			textureData[i+2] = kernel[i][n].Z;
+			textureData[i+3] = 0;
+
+			i += 4;
+		}
+
+		RHIUnlockTexture2D( SamplingKernel[n], 0, false );
+	}
 }
 
 

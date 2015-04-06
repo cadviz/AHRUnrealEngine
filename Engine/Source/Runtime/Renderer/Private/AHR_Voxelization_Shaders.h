@@ -7,7 +7,7 @@ BEGIN_UNIFORM_BUFFER_STRUCT(AHRVoxelizationCB,)
 	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector2D,ScreenRes)
 
 	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FIntVector,SliceSize)
-	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector,InvSceneBounds)
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector,HalfInvSceneBounds)
 	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector,WorldToVoxelOffset) // -SceneCenter/SceneBounds
 	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector,invVoxel)
 	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(float,TriangleSizeMultiplier)
@@ -125,8 +125,8 @@ public:
 								  1.0f / float(gridCFG.SliceSize.Y),
 								  1.0f / float(gridCFG.SliceSize.Z));
 
-		cbdata.InvSceneBounds = FVector(1.0f) / gridCFG.Bounds;
-		cbdata.WorldToVoxelOffset = -gridCFG.Center*cbdata.InvSceneBounds; // -SceneCenter/SceneBounds
+		cbdata.HalfInvSceneBounds = FVector(0.5f) / gridCFG.Bounds;
+		cbdata.WorldToVoxelOffset = -gridCFG.Center*cbdata.HalfInvSceneBounds + 0.5f; // -SceneCenter/SceneBounds
 		cbdata.TriangleSizeMultiplier = View.FinalPostProcessSettings.TriangleSizeMultiplier;
 
 		SetUniformBufferParameterImmediate(RHICmdList, ShaderRHI,cb,cbdata);
@@ -188,8 +188,8 @@ public:
 								  1.0f / float(gridCFG.SliceSize.Y),
 								  1.0f / float(gridCFG.SliceSize.Z));
 
-		cbdata.InvSceneBounds = FVector(1.0f) / gridCFG.Bounds;
-		cbdata.WorldToVoxelOffset = -gridCFG.Center*cbdata.InvSceneBounds; // -SceneCenter/SceneBounds
+		cbdata.HalfInvSceneBounds = FVector(0.5f) / gridCFG.Bounds;
+		cbdata.WorldToVoxelOffset = -gridCFG.Center*cbdata.HalfInvSceneBounds + 0.5f; // -SceneCenter/SceneBounds
 		cbdata.TriangleSizeMultiplier = View->FinalPostProcessSettings.TriangleSizeMultiplier;
 
 		cbdata.ShadowMatrix0 = AHREngine.GetLightsList()[0].ViewProj;

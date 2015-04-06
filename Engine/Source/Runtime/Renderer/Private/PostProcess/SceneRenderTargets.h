@@ -449,11 +449,11 @@ public:
 
 	// @RyanTorant
 	// Targets for the AHR pass
-	// Format is R16G16B16A16_FLOAT, or PF_FloatRGBA on Epic's dictionary...
-	TRefCountPtr<IPooledRenderTarget> AHRRaytracingTarget; // half resolution 
-	TRefCountPtr<IPooledRenderTarget> AHRUpsampledTarget0; // half resolution 
-	TRefCountPtr<IPooledRenderTarget> AHRUpsampledTarget1; // half resolution
-	TRefCountPtr<IPooledRenderTarget> AHRDownsampledNormal; // half resolution
+	// Format is R16G16B16A16_FLOAT, or PF_FloatRGBA in Epic's dictionary...
+	TRefCountPtr<IPooledRenderTarget> AHRRaytracingTarget[6];
+	TRefCountPtr<IPooledRenderTarget> AHRUpsampledTarget0;
+	TRefCountPtr<IPooledRenderTarget> AHRUpsampledTarget1; 
+	TRefCountPtr<IPooledRenderTarget> AHRDownsampledNormal;
 
 	// GBuffer: Geometry Buffer rendered in base pass for deferred shading, only available between AllocGBufferTargets() and FreeGBufferTargets()
 	TRefCountPtr<IPooledRenderTarget> GBufferA;

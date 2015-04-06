@@ -43270,5 +43270,8 @@
     <None Include="..\..\Shaders\AHREmissiveConvolution.usf">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="..\..\Shaders\AHRTraceSPH.usf">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

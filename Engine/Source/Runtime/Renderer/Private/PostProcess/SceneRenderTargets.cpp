@@ -375,31 +375,19 @@ inline uint16 GetNumSceneColorMSAASamples(ERHIFeatureLevel::Type InFeatureLevel)
 
 void FSceneRenderTargets::AllocAHRTargets()
 {
-	if(AHRRaytracingTarget) return; // Already initialized
+	if(AHRRaytracingTarget[0]) return; // Already initialized
 
 	// Create the targets
-	FPooledRenderTargetDesc DescTracing(FPooledRenderTargetDesc::Create2DDesc(BufferSize/2, PF_R32G32B32A32_UINT, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
-	GRenderTargetPool.FindFreeElement(DescTracing, AHRRaytracingTarget, TEXT("RaytracingTarget"));
+	FPooledRenderTargetDesc Desc(FPooledRenderTargetDesc::Create2DDesc(BufferSize/2, PF_FloatRGBA, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
+	GRenderTargetPool.FindFreeElement(Desc, AHRRaytracingTarget[0], TEXT("RaytracingTarget0"));
+	GRenderTargetPool.FindFreeElement(Desc, AHRRaytracingTarget[1], TEXT("RaytracingTarget1"));
+	GRenderTargetPool.FindFreeElement(Desc, AHRRaytracingTarget[2], TEXT("RaytracingTarget2"));
+	GRenderTargetPool.FindFreeElement(Desc, AHRRaytracingTarget[3], TEXT("RaytracingTarget3"));
+	GRenderTargetPool.FindFreeElement(Desc, AHRRaytracingTarget[4], TEXT("RaytracingTarget4"));
+	GRenderTargetPool.FindFreeElement(Desc, AHRRaytracingTarget[5], TEXT("RaytracingTarget5"));
 
-	FPooledRenderTargetDesc DescUp0(FPooledRenderTargetDesc::Create2DDesc(BufferSize/2, PF_R32G32B32A32_UINT, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
-	GRenderTargetPool.FindFreeElement(DescUp0, AHRUpsampledTarget0, TEXT("AHRUpsampledTarget0"));
-
-	FPooledRenderTargetDesc DescUp1(FPooledRenderTargetDesc::Create2DDesc(BufferSize/2, PF_R32G32B32A32_UINT, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
-	GRenderTargetPool.FindFreeElement(DescUp1, AHRUpsampledTarget1, TEXT("AHRUpsampledTarget1"));
-
-	// Bind them to the AHR engine
-	AHREngine.RaytracingTarget = AHRRaytracingTarget->GetRenderTargetItem().TargetableTexture->GetTexture2D();
-	AHREngine.RaytracingTargetSRV = RHICreateShaderResourceView(AHRRaytracingTarget->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D(),0);
-
-	AHREngine.UpsampledTarget0 = AHRUpsampledTarget0->GetRenderTargetItem().TargetableTexture->GetTexture2D();
-	AHREngine.UpsampledTargetSRV0 = RHICreateShaderResourceView(AHRUpsampledTarget0->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D(),0);
-
-	AHREngine.UpsampledTarget1 = AHRUpsampledTarget1->GetRenderTargetItem().TargetableTexture->GetTexture2D();
-	AHREngine.UpsampledTargetSRV1 = RHICreateShaderResourceView(AHRUpsampledTarget1->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D(),0);
-
-	// Set the screen resolution in the AHR engine
-	AHREngine.ResX = BufferSize.X;
-	AHREngine.ResY = BufferSize.Y;
+	GRenderTargetPool.FindFreeElement(Desc, AHRUpsampledTarget0, TEXT("AHRUpsampledTarget0"));
+	GRenderTargetPool.FindFreeElement(Desc, AHRUpsampledTarget1, TEXT("AHRUpsampledTarget1"));
 }
 
 void FSceneRenderTargets::AllocSceneColor()
@@ -1419,8 +1407,7 @@ void FSceneRenderTargets::AllocateDeferredShadingPathRenderTargets()
 	if (CurrentFeatureLevel >= ERHIFeatureLevel::SM5)
 	{
 		// Create the reflective shadow map textures for LightPropagationVolume feature
-		// @RyanTorant
-		if(bCurrentLightPropagationVolume || UseApproximateHybridRaytracingRT(CurrentFeatureLevel))
+		if(bCurrentLightPropagationVolume)
 		{
 			{
 				FPooledRenderTargetDesc Desc(FPooledRenderTargetDesc::Create2DDesc(GetReflectiveShadowMapTextureResolution(), PF_R8G8B8A8, TexCreate_None, TexCreate_RenderTargetable, false));
@@ -1560,7 +1547,7 @@ void FSceneRenderTargets::ReleaseAllTargets()
 	EditorPrimitivesColor.SafeRelease();
 	EditorPrimitivesDepth.SafeRelease();
 
-	AHRRaytracingTarget.SafeRelease();
+	for(auto& t : AHRRaytracingTarget) t.SafeRelease();
 	AHRUpsampledTarget0.SafeRelease();
 	AHRUpsampledTarget1.SafeRelease();
 }

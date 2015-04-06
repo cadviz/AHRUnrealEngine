@@ -21,6 +21,8 @@ void main(uint3 DTid : SV_DispatchThreadID)
 
 	float3 color = 0;
 
+	// DEBUG!!!!
+	// This should be separated on 3 passes
 	color += getEmissive(DTid,uint3(-1,1,-1));
 	color += getEmissive(DTid,uint3(0,1,-1));
 	color += getEmissive(DTid,uint3(1,1,-1));

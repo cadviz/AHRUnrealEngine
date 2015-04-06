@@ -15,12 +15,20 @@ void VS(
 	OutScreenVector = mul(float4(OutPosition.xy, 1, 0), View.ScreenToTranslatedWorld).xyz;
 }
 
-Texture2D<uint4> tGI;
+
 Texture2D<float4> ObjNormal;
 SamplerState samLinear;
 
+Texture2D<float4> Trace0;
+Texture2D<float4> Trace1;
+Texture2D<float4> Trace2;
+Texture2D<float4> Trace3;
+Texture2D<float4> Trace4;
+Texture2D<float4> Trace5;
+
 float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 {
+#if 0
 	/*float SceneDepth = CalcSceneDepth(InUV);
 	float3 WorldPosition = ScreenVector * SceneDepth + View.ViewOrigin.xyz;*/
 
@@ -67,6 +75,16 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 	
 	//float3 fcolor = interp*AHRCompositeCB.GIMultiplier*max(float3(0.085f,0.085f,0.085f),ScreenSpaceData.GBuffer.DiffuseColor);// + interp.w*0.1*max(float3(0.085f,0.085f,0.085f),ScreenSpaceData.GBuffer.DiffuseColor);
 	
+#endif
+	FScreenSpaceData ScreenSpaceData = GetScreenSpaceData(InUV);
+
+	float3 fcolor = Trace0.SampleLevel(samLinear,InUV,0) +
+					Trace1.SampleLevel(samLinear,InUV,0) +
+					Trace2.SampleLevel(samLinear,InUV,0) +
+					Trace3.SampleLevel(samLinear,InUV,0) +
+					Trace4.SampleLevel(samLinear,InUV,0) +
+					Trace5.SampleLevel(samLinear,InUV,0) ;//Trace0.SampleLevel(samLinear,InUV,0).xyz;
+	fcolor /= 6.0f;
 
 	return float4(fcolor,1);
 }
