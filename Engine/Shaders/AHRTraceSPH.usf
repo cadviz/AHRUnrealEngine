@@ -28,12 +28,20 @@ float4 main(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET
 	float3 vlocalWPos = -to_vlocal(wPos);
 
 	// Get direction
-	float3 step = SamplingKernel.SampleLevel(samPoint,InUV*AHRTraceCB.SamplingKernelUVScaling,0).xyz;
-
+	float3 step = normalize(float3( rand(InUV*(AHRTraceCB.RayIndex+1))*2-1,
+									rand(InUV*10*(AHRTraceCB.RayIndex+1)+2)*2-1,
+									rand(InUV*20*(AHRTraceCB.RayIndex+1)+5)));//SamplingKernel.SampleLevel(samPoint,InUV*AHRTraceCB.SamplingKernelUVScaling,0).xyz;
+	
 	// Generate tangent frame
 	float3 normal = normalize(ObjNormal.SampleLevel(samLinear,InUV,0).xyz*2 - 1);
 	float3 tangent,bitangent;
 	FindBestAxisVectors(normal,tangent,bitangent);
+	float3 tmpVec = float3( rand(InUV*(AHRTraceCB.RayIndex+48))*2-1,
+									rand(InUV*15*(AHRTraceCB.RayIndex+1)+5)*2-1,
+									rand(InUV*25*(AHRTraceCB.RayIndex+1)+15)*2-1);
+
+	tangent = normalize(cross(tmpVec,normal));
+	bitangent = normalize(cross(tangent,normal));
 
 	// Cache variables
 	uint bvox = -1;

@@ -577,6 +577,8 @@ BEGIN_UNIFORM_BUFFER_STRUCT(AHRTraceSceneCB,)
 	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(uint32,DiffuseSamplesCount)
 
 	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(FVector,LostRayColor)
+
+	DECLARE_UNIFORM_BUFFER_STRUCT_MEMBER(float,RayIndex)
 END_UNIFORM_BUFFER_STRUCT(AHRTraceSceneCB)
 IMPLEMENT_UNIFORM_BUFFER_STRUCT(AHRTraceSceneCB,TEXT("AHRTraceCB"));
 
@@ -619,9 +621,7 @@ public:
 
 	void SetParameters(	FRHICommandList& RHICmdList, const FSceneView& View, 
 						const FShaderResourceViewRHIRef& sceneVolumeSRV, 
-						const FShaderResourceViewRHIRef& emissiveVolumeSRV,
-						const FVector2D& ScreenRes
-					   )
+						const FShaderResourceViewRHIRef& emissiveVolumeSRV )
 	{
 		FRHIResourceCreateInfo CreateInfo;
 		static auto dummyTexture = RHICreateTexture2D(1,1,PF_ShadowDepth,1,1,TexCreate_ShaderResource,CreateInfo);
@@ -629,6 +629,27 @@ public:
 		const FPixelShaderRHIParamRef ShaderRHI = GetPixelShader();
 		FGlobalShader::SetParameters(RHICmdList, ShaderRHI,View);
 		DeferredParameters.Set(RHICmdList, ShaderRHI, View);
+
+		if(SceneVolume.IsBound())
+			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,SceneVolume.GetBaseIndex(),sceneVolumeSRV);
+		if(EmissiveVolume.IsBound())
+			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,EmissiveVolume.GetBaseIndex(),emissiveVolumeSRV);
+		if(LinearSampler.IsBound())
+			RHICmdList.SetShaderSampler(ShaderRHI,LinearSampler.GetBaseIndex(),TStaticSamplerState<SF_Trilinear,AM_Wrap,AM_Wrap,AM_Wrap>::GetRHI());
+	
+		if(ObjNormal.IsBound())
+			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,ObjNormal.GetBaseIndex(),AHREngine.ObjectNormalSRV);
+	}
+
+	void SetSamplingKernel(FRHICommandList& RHICmdList,const FTexture2DRHIRef& samplingKernelTex,const float& RayIndex,const FVector2D& ScreenRes, const FSceneView& View)
+	{
+		const FPixelShaderRHIParamRef ShaderRHI = GetPixelShader();
+
+		auto spoint = TStaticSamplerState<SF_Point,AM_Wrap,AM_Wrap,AM_Wrap>::GetRHI();
+		SetTextureParameter(RHICmdList, ShaderRHI, SamplingKernel, samPoint,spoint, samplingKernelTex);	
+
+		if(samPoint.IsBound())
+			RHICmdList.SetShaderSampler(ShaderRHI,LinearSampler.GetBaseIndex(),spoint);
 
 		AHRTraceSceneCB cbdata;
 
@@ -655,29 +676,8 @@ public:
 		cbdata.LostRayColor.Z = View.FinalPostProcessSettings.AHRLostRayColor.B;
 		cbdata.InitialDispMult = View.FinalPostProcessSettings.AHRInitialDisplacement;
 		cbdata.SamplesDispMultiplier = View.FinalPostProcessSettings.AHRSamplesDisplacement;
-
+		cbdata.RayIndex = RayIndex;
 		SetUniformBufferParameterImmediate(RHICmdList, ShaderRHI,cb,cbdata);
-
-		if(SceneVolume.IsBound())
-			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,SceneVolume.GetBaseIndex(),sceneVolumeSRV);
-		if(EmissiveVolume.IsBound())
-			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,EmissiveVolume.GetBaseIndex(),emissiveVolumeSRV);
-		if(LinearSampler.IsBound())
-			RHICmdList.SetShaderSampler(ShaderRHI,LinearSampler.GetBaseIndex(),TStaticSamplerState<SF_Trilinear,AM_Wrap,AM_Wrap,AM_Wrap>::GetRHI());
-	
-		if(ObjNormal.IsBound())
-			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,ObjNormal.GetBaseIndex(),AHREngine.ObjectNormalSRV);
-	}
-
-	void SetSamplingKernel(FRHICommandList& RHICmdList,const FTexture2DRHIRef& samplingKernelTex)
-	{
-		const FPixelShaderRHIParamRef ShaderRHI = GetPixelShader();
-
-		auto spoint = TStaticSamplerState<SF_Point,AM_Wrap,AM_Wrap,AM_Wrap>::GetRHI();
-		SetTextureParameter(RHICmdList, ShaderRHI, SamplingKernel, samPoint,spoint, samplingKernelTex);	
-
-		if(samPoint.IsBound())
-			RHICmdList.SetShaderSampler(ShaderRHI,LinearSampler.GetBaseIndex(),spoint);
 	}
 	virtual bool Serialize(FArchive& Ar)
 	{		
@@ -741,8 +741,7 @@ void FApproximateHybridRaytracer::TraceScene(FRHICommandListImmediate& RHICmdLis
 	// The dynamic grid should have both the static and dynamic data by now
 	PixelShader->SetParameters(RHICmdList, View, 
 									DynamicSceneVolume->SRV,
-									DynamicEmissiveVolume->SRV,
-									texSize);
+									DynamicEmissiveVolume->SRV );
 
 	// Trace one ray per direction, hardcoding at 6
 	for(int i = 0;i < 6;i++)
@@ -755,7 +754,7 @@ void FApproximateHybridRaytracer::TraceScene(FRHICommandListImmediate& RHICmdLis
 		RHICmdList.Clear(true, FLinearColor::Black, false, 1.0f, false, 0, FIntRect());
 
 		// Bound shader parameters
-		PixelShader->SetSamplingKernel(RHICmdList,SamplingKernel[i]);
+		PixelShader->SetSamplingKernel(RHICmdList,SamplingKernel[i],i,texSize,View);
 
 		// Draw a quad mapping scene color to the view's render target
 		DrawRectangle( 

@@ -917,7 +917,7 @@ UBlendableInterface::UBlendableInterface(const FObjectInitializer& ObjectInitial
 {
 }
 
-void DoPostProcessVolume(IInterface_PostProcessVolume* Volume, FVector ViewLocation, FSceneView* SceneView,float& minAHRSettingsVolumeDistance)
+void DoPostProcessVolume(IInterface_PostProcessVolume* Volume, FVector ViewLocation, FSceneView* SceneView,float minAHRSettingsVolumeDistance,float prevAHRSettingsPriority)
 {
 	const FPostProcessVolumeProperties VolumeProperties = Volume->GetProperties();
 
@@ -925,12 +925,10 @@ void DoPostProcessVolume(IInterface_PostProcessVolume* Volume, FVector ViewLocat
 	// Check if the volume is a AHR settings volume
 	// The scene bounds and grid res settings for AHR are taken from there
 	// If the camera is at the same distance from two volumes, the order is undefined
-	if(VolumeProperties.bDefinesAHRGridSettings && !VolumeProperties.bIsUnbound)
+	if(VolumeProperties.bDefinesAHRGridSettings && !VolumeProperties.bIsUnbound && VolumeProperties.Priority >= prevAHRSettingsPriority)
 	{
 		float DistanceToPoint = 0.0f;
-		Volume->EncompassesPoint(ViewLocation, 0.0f, &DistanceToPoint);
-
-		if (DistanceToPoint >= 0.0f && DistanceToPoint < minAHRSettingsVolumeDistance)
+		if (Volume->EncompassesPoint(ViewLocation, 0.0f, &DistanceToPoint) && DistanceToPoint >= 0.0f && DistanceToPoint < minAHRSettingsVolumeDistance)
 		{
 			SceneView->FinalPostProcessSettings.AHR_internal_SceneBounds =  VolumeProperties.AHRGridSettings.Bounds;
 			SceneView->FinalPostProcessSettings.AHR_internal_SceneOrigins = VolumeProperties.AHRGridSettings.Center;
@@ -938,6 +936,7 @@ void DoPostProcessVolume(IInterface_PostProcessVolume* Volume, FVector ViewLocat
 			SceneView->FinalPostProcessSettings.AHR_internal_initialized = true;
 
 			minAHRSettingsVolumeDistance = DistanceToPoint;
+			prevAHRSettingsPriority = VolumeProperties.Priority;
 		}
 		
 		return; // Ignore ahr bounds volumes
@@ -1048,10 +1047,12 @@ void FSceneView::StartFinalPostprocessSettings(FVector InViewLocation)
 	// Some views have no world (e.g. material preview)
 	if (World)
 	{
+		// @RyanTorant
 		float minAHRSettingsVolumeDistance = FLT_MAX*0.9f;
+		float prevAHRSettingsPriority = 0.0f;
 		for (auto VolumeIt = World->PostProcessVolumes.CreateIterator(); VolumeIt; ++VolumeIt)
 		{
-			DoPostProcessVolume(*VolumeIt, InViewLocation, this,minAHRSettingsVolumeDistance);
+			DoPostProcessVolume(*VolumeIt, InViewLocation, this,minAHRSettingsVolumeDistance,prevAHRSettingsPriority);
 		}
 	}
 }
