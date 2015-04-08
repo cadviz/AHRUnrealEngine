@@ -26,6 +26,9 @@ float4 main(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET
 	float SceneDepth = CalcSceneDepth(InUV);
 	float3 wPos = ScreenVector * SceneDepth + View.ViewOrigin.xyz;
 	float3 vlocalWPos = -to_vlocal(wPos);
+	
+	//uint2 DTid = InUV*AHRTraceCB.ScreenRes;
+	//if(DTid.x % 2 + (DTid.y % 2)*2) discard;
 
 	// Get direction
 	float3 step = normalize(float3( rand(InUV*(AHRTraceCB.RayIndex+1))*2-1,

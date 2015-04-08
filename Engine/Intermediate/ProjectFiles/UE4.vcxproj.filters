@@ -43273,5 +43273,8 @@
     <None Include="..\..\Shaders\AHRTraceSPH.usf">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="..\..\Shaders\AHRBlur.usf">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

@@ -1,0 +1,29 @@
+// @RyanTorant
+#include "Common.usf"
+#include "DeferredShadingCommon.usf"
+#include "AHRCommon.usf"
+
+Texture2D<float4> ObjNormal;
+SamplerState samLinear;
+
+Texture2D<float4> Trace0;
+Texture2D<float4> Trace1;
+Texture2D<float4> Trace2;
+Texture2D<float4> Trace3;
+Texture2D<float4> Trace4;
+Texture2D<float4> Trace5;
+
+Texture2D<float4> prevTrace0;
+Texture2D<float4> prevTrace1;
+Texture2D<float4> prevTrace2;
+Texture2D<float4> prevTrace3;
+Texture2D<float4> prevTrace4;
+Texture2D<float4> prevTrace5;
+
+#ifndef BLUR_DIRECTION
+	#define BLUR_DIRECTION float2(1,0)
+#endif
+
+float4 main(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
+{
+}

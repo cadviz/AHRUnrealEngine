@@ -193,7 +193,7 @@ private:
 	FShaderResourceParameter StaticEmissiveVolume;
 	FShaderParameter gridRes;
 };
-// I know, this is ugly. I'm lazy. Report me!
+// I know, this is ugly. I'm lazy. Sue me!
 class AHRDynamicStaticEmissiveVolumeCombine : public FGlobalShader
 {
 	DECLARE_SHADER_TYPE(AHRDynamicStaticEmissiveVolumeCombine,Global);
