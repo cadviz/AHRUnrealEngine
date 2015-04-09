@@ -784,6 +784,89 @@ void FApproximateHybridRaytracer::TraceScene(FRHICommandListImmediate& RHICmdLis
 ///
 /// Upsampling and composite
 ///
+template<uint32 mask>
+class AHRBlur : public FGlobalShader
+{
+	DECLARE_SHADER_TYPE(AHRBlur,Global)
+public:
+	static bool ShouldCache(EShaderPlatform Platform)
+	{
+		return IsFeatureLevelSupported(Platform, ERHIFeatureLevel::SM5);
+	}
+
+	static void ModifyCompilationEnvironment(EShaderPlatform Platform, FShaderCompilerEnvironment& OutEnvironment)
+	{
+		if(mask == 0)
+		{
+			OutEnvironment.SetDefine(TEXT("BLUR_MASK_X"),1u);
+			OutEnvironment.SetDefine(TEXT("BLUR_MASK_Y"),0u);
+		}
+		else if(mask == 1)
+		{
+			OutEnvironment.SetDefine(TEXT("BLUR_MASK_X"),0u);
+			OutEnvironment.SetDefine(TEXT("BLUR_MASK_Y"),1u);	
+		}
+
+		FGlobalShader::ModifyCompilationEnvironment(Platform, OutEnvironment);
+	}
+
+	AHRBlur(const ShaderMetaType::CompiledShaderInitializerType& Initializer)
+	:	FGlobalShader(Initializer)
+	{
+		DeferredParameters.Bind(Initializer.ParameterMap);
+		samLinear.Bind(Initializer.ParameterMap, TEXT("samLinear"));
+		ObjNormal.Bind(Initializer.ParameterMap,TEXT("ObjNormal"));
+		Trace.Bind(Initializer.ParameterMap,TEXT("Trace"));
+		prevTrace.Bind(Initializer.ParameterMap,TEXT("prevTrace"));
+		psize.Bind(Initializer.ParameterMap,TEXT("psize"));
+	}
+
+	AHRBlur()
+	{
+	}
+
+	virtual bool Serialize(FArchive& Ar)
+	{
+		bool bShaderHasOutdatedParameters = FGlobalShader::Serialize(Ar);
+		Ar << DeferredParameters;
+		Ar << samLinear;
+		Ar << ObjNormal;
+		Ar << Trace;
+		Ar << prevTrace;
+		Ar << psize;
+		return bShaderHasOutdatedParameters;
+	}
+	void SetParameters(FRHICommandList& RHICmdList, const FSceneView& View, FRHITexture2D* TraceTex, FRHITexture2D* prevTraceTex)
+	{
+		const FPixelShaderRHIParamRef ShaderRHI = GetPixelShader();
+		FGlobalShader::SetParameters(RHICmdList, ShaderRHI,View);
+		DeferredParameters.Set(RHICmdList, ShaderRHI, View);
+
+		if(NormalTex.IsBound())
+			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,NormalTex.GetBaseIndex(),AHREngine.ObjectNormalSRV);
+		if(LinearSampler.IsBound())
+			RHICmdList.SetShaderSampler(ShaderRHI,LinearSampler.GetBaseIndex(),TStaticSamplerState<SF_Trilinear,AM_Wrap,AM_Wrap,AM_Wrap>::GetRHI());
+
+		SetTextureParameter(RHICmdList, ShaderRHI, Trace, LinearSampler,sampler, TraceTex);
+		SetTextureParameter(RHICmdList, ShaderRHI, prevTrace, LinearSampler,sampler, prevTraceTex);	
+
+		SetShaderValue(RHICmdList, ShaderRHI, psize, FVector2D(1.0f / float(TraceTex->GetSizeX()),1.0f / float(TraceTex->GetSizeY())));
+	}
+
+	FGlobalBoundShaderState& GetBoundShaderState()
+	{
+		static FGlobalBoundShaderState State;
+		return State;
+	}
+private:
+	FDeferredPixelShaderParameters DeferredParameters;
+	FShaderResourceParameter samLinear;
+	FShaderResourceParameter ObjNormal;
+	FShaderResourceParameter Trace;
+	FShaderResourceParameter prevTrace;
+	FShaderParameter psize;
+};
+/*
 class AHRBlurH : public FGlobalShader
 {
 	DECLARE_SHADER_TYPE(AHRBlurH,Global)
@@ -931,14 +1014,29 @@ private:
 	FShaderResourceParameter LinearSampler;
 	FShaderParameter BlurKernelSize;
 	FShaderParameter zMax;
-};
+};*/
 //IMPLEMENT_SHADER_TYPE(,AHRUpsamplePS,TEXT("AHRUpsample"),TEXT("PS"),SF_Pixel);
-IMPLEMENT_SHADER_TYPE(,AHRBlurH,TEXT("AHRUpsample"),TEXT("BlurH"),SF_Pixel);
-IMPLEMENT_SHADER_TYPE(,AHRBlurV,TEXT("AHRUpsample"),TEXT("BlurV"),SF_Pixel);
+//IMPLEMENT_SHADER_TYPE(,AHRBlurH,TEXT("AHRUpsample"),TEXT("BlurH"),SF_Pixel);
+//IMPLEMENT_SHADER_TYPE(,AHRBlurV,TEXT("AHRUpsample"),TEXT("BlurV"),SF_Pixel);
+
+IMPLEMENT_SHADER_TYPE(template<>,AHRBlur<0>,TEXT("AHRBlur"),TEXT("main"),SF_Pixel);
+IMPLEMENT_SHADER_TYPE(template<>,AHRBlur<1>,TEXT("AHRBlur"),TEXT("main"),SF_Pixel);
 
 void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,FViewInfo& View)
 {
-	// DEBUG!!!!!!!!!!!!!!!!!!!!
+	SCOPED_DRAW_EVENT(RHICmdList,AHRUpsample);
+
+	RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA>::GetRHI());
+	RHICmdList.SetRasterizerState(TStaticRasterizerState<FM_Solid, CM_None>::GetRHI());
+	RHICmdList.SetDepthStencilState(TStaticDepthStencilState<false, CF_Always>::GetRHI());
+
+	const auto& ___tmpTarget = GSceneRenderTargets.AHRRaytracingTarget[0]->GetRenderTargetItem().TargetableTexture->GetTexture2D();
+	FVector2D texSize(___tmpTarget->GetSizeX(),___tmpTarget->GetSizeY());
+	FIntRect SrcRect = View.ViewRect;
+	FIntRect DestRect(FIntPoint(0,0),FIntPoint(texSize.X,texSize.Y));
+
+	RHICmdList.SetViewport(SrcRect.Min.X, SrcRect.Min.Y, 0.0f,texSize.X, texSize.Y, 1.0f);
+
 	return;
 #if 0
 

@@ -78,21 +78,20 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 #endif
 	FScreenSpaceData ScreenSpaceData = GetScreenSpaceData(InUV);
 
-	float3 fcolor = Trace0.SampleLevel(samLinear,InUV,0).w +
-					Trace1.SampleLevel(samLinear,InUV,0).w +
-					Trace2.SampleLevel(samLinear,InUV,0).w +
-					Trace3.SampleLevel(samLinear,InUV,0).w +
-					Trace4.SampleLevel(samLinear,InUV,0).w +
-					Trace5.SampleLevel(samLinear,InUV,0).w ;//Trace0.SampleLevel(samLinear,InUV,0).xyz;
+	
+	float3 fcolor = Trace0.SampleLevel(samLinear,InUV,0) +
+					Trace1.SampleLevel(samLinear,InUV,0) +
+					Trace2.SampleLevel(samLinear,InUV,0) +
+					Trace3.SampleLevel(samLinear,InUV,0) +
+					Trace4.SampleLevel(samLinear,InUV,0) +
+					Trace5.SampleLevel(samLinear,InUV,0) ;//Trace0.SampleLevel(samLinear,InUV,0).xyz;
 	fcolor /= 6.0f;
 
 
 
 
 
-
-
-	
+	/*
 	float2 res;
 	Trace0.GetDimensions(res.x,res.y);
 	float2 psize = 1.0f/res;
@@ -161,14 +160,23 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 			   Trace4.SampleLevel(samLinear,InUV + 2*psize*float2(1,-1),0) +
 			   Trace5.SampleLevel(samLinear,InUV + 2*psize*float2(1,-1),0))*0.1666f;
 
-	fcolor *= 0.11111f;
+	fcolor *= 0.11111f;*/
 
 
 
 
 
+	/*
+	// After interpolation, add specular
+	float3 H = normalize( dir + ScreenVector );
+	color.rgb +=  pow(saturate(dot(normal,H)),5)
+	*/
 	
-	
+
+
+
+
+
 
 	//fcolor *= AHRCompositeCB.GIMultiplier*ScreenSpaceData.GBuffer.DiffuseColor;
 	return float4(fcolor,1);
