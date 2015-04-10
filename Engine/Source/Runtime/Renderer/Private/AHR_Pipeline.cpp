@@ -1040,7 +1040,8 @@ void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,
 		// Horizontal pass
 		FRHITexture2D * target = GSceneRenderTargets.AHRUpsampledTarget0->GetRenderTargetItem().TargetableTexture->GetTexture2D();
 		SetRenderTarget(RHICmdList, target, FTextureRHIRef());
-		PSBlur->SetParameters(RHICmdList, View,GSceneRenderTargets.AHRRaytracingTarget[i]->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D(),nullptr,1,0); // not using prev yet!
+		PSBlur->SetParameters(RHICmdList, View,GSceneRenderTargets.AHRRaytracingTarget[i]->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D(),
+											   GSceneRenderTargets.AHRUpsampledTarget1->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D(),1,0);
 
 		// Draw!
 		DrawRectangle( 
@@ -1057,7 +1058,8 @@ void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,
 		// Vertical pass
 		target = GSceneRenderTargets.AHRRaytracingTarget[i]->GetRenderTargetItem().TargetableTexture->GetTexture2D();
 		SetRenderTarget(RHICmdList, target, FTextureRHIRef());
-		PSBlur->SetParameters(RHICmdList, View,GSceneRenderTargets.AHRUpsampledTarget0->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D(),nullptr,0,1); // not using prev yet!
+		PSBlur->SetParameters(RHICmdList, View,GSceneRenderTargets.AHRUpsampledTarget0->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D(),
+											   GSceneRenderTargets.AHRUpsampledTarget1->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D(),0,1);
 
 		// Draw!
 		DrawRectangle( 
@@ -1070,6 +1072,15 @@ void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,
 			GSceneRenderTargets.GetBufferSizeXY(),
 			*VertexShader,
 			EDRF_UseTriangleOptimization);
+
+		// Copy to the prev target
+		
+		// DEBUG!!!
+		// Disabled for now
+
+		/*RHICmdList.CopyToResolveTarget(GSceneRenderTargets.AHRRaytracingTarget[i]->GetRenderTargetItem().ShaderResourceTexture,
+			                           GSceneRenderTargets.AHRUpsampledTarget1->GetRenderTargetItem().TargetableTexture,
+									   true, FResolveParams());*/
 	}
 		
 	return;
