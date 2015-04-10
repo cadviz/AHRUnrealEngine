@@ -126,6 +126,7 @@ float4 main(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET
 			//color.rgb +=  decode_R9G9B9_EXP5(EmissiveVolume.Load(vidx*4u))*pow(saturate(dot(normal,H)),5)
 
 			color.w = 1 - att;
+			break;
 		}
 
 		spos += step;
