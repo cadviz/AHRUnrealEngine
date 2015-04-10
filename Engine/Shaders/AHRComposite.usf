@@ -175,8 +175,23 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 
 
 
+	float3 fakeSky = lerp(float3(0.034,0.1,0.1),float3(0.6f, 0.875f, 0.999f),ScreenSpaceData.GBuffer.WorldNormal.z*0.5+0.5 );
+	fakeSky *= fakeSky;
+	fakeSky = lerp(fakeSky,1,0.3);
+
+	//fcolor.rgb *= AHRCompositeCB.GIMultiplier*ScreenSpaceData.GBuffer.DiffuseColor;
+	fcolor.rgb += fcolor.w*ScreenSpaceData.GBuffer.DiffuseColor*0.1f*fakeSky;
 
 
-	//fcolor *= AHRCompositeCB.GIMultiplier*ScreenSpaceData.GBuffer.DiffuseColor;
+
+
+
+	// DEBUG!!!
+	fcolor.rgb = Trace0.SampleLevel(samLinear,InUV ,0);
+
+
+
+
+
 	return float4(fcolor.rgb,1);
 }

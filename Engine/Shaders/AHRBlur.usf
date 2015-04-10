@@ -9,21 +9,23 @@ SamplerState samLinear;
 Texture2D<float4> Trace;
 Texture2D<float4> prevTrace;
 
-float2 psize;
-
-#define BLUR_DIRECTION float2(BLUR_MASK_X,BLUR_MASK_Y)
+// xy is pixel size
+// zw is blur direction
+float4 BlurData;
 
 float4 main(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 {
 	float4 fcolor = 0;
 
-	fcolor += Trace.SampleLevel(samLinear,InUV - 2*psize*BLUR_DIRECTION,0);
-	fcolor += Trace.SampleLevel(samLinear,InUV - 1*psize*BLUR_DIRECTION,0);
-	fcolor += Trace.SampleLevel(samLinear,InUV                         ,0);
-	fcolor += Trace.SampleLevel(samLinear,InUV + 1*psize*BLUR_DIRECTION,0);
-	fcolor += Trace.SampleLevel(samLinear,InUV + 2*psize*BLUR_DIRECTION,0);
+	fcolor += Trace.SampleLevel(samLinear,InUV - 3.4*BlurData.xy*BlurData.zw,0)*0.65f;
+	fcolor += Trace.SampleLevel(samLinear,InUV - 2.2*BlurData.xy*BlurData.zw,0)*0.8f;
+	fcolor += Trace.SampleLevel(samLinear,InUV - 1*BlurData.xy*BlurData.zw  ,0)*0.9f;
+	fcolor += Trace.SampleLevel(samLinear,InUV                              ,0);
+	fcolor += Trace.SampleLevel(samLinear,InUV + 1*BlurData.xy*BlurData.zw  ,0)*0.9f;
+	fcolor += Trace.SampleLevel(samLinear,InUV + 2.2*BlurData.xy*BlurData.zw,0)*0.8f;
+	fcolor += Trace.SampleLevel(samLinear,InUV + 3.4*BlurData.xy*BlurData.zw,0)*0.65f;
 
-	fcolor *= 0.2f;
+	fcolor *= 0.1754f;//0.2f;
 
 	return fcolor;
 }

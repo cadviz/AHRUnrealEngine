@@ -784,7 +784,6 @@ void FApproximateHybridRaytracer::TraceScene(FRHICommandListImmediate& RHICmdLis
 ///
 /// Upsampling and composite
 ///
-template<uint32 mask>
 class AHRBlur : public FGlobalShader
 {
 	DECLARE_SHADER_TYPE(AHRBlur,Global)
@@ -796,17 +795,6 @@ public:
 
 	static void ModifyCompilationEnvironment(EShaderPlatform Platform, FShaderCompilerEnvironment& OutEnvironment)
 	{
-		if(mask == 0)
-		{
-			OutEnvironment.SetDefine(TEXT("BLUR_MASK_X"),1u);
-			OutEnvironment.SetDefine(TEXT("BLUR_MASK_Y"),0u);
-		}
-		else if(mask == 1)
-		{
-			OutEnvironment.SetDefine(TEXT("BLUR_MASK_X"),0u);
-			OutEnvironment.SetDefine(TEXT("BLUR_MASK_Y"),1u);	
-		}
-
 		FGlobalShader::ModifyCompilationEnvironment(Platform, OutEnvironment);
 	}
 
@@ -818,7 +806,7 @@ public:
 		ObjNormal.Bind(Initializer.ParameterMap,TEXT("ObjNormal"));
 		Trace.Bind(Initializer.ParameterMap,TEXT("Trace"));
 		prevTrace.Bind(Initializer.ParameterMap,TEXT("prevTrace"));
-		psize.Bind(Initializer.ParameterMap,TEXT("psize"));
+		BlurData.Bind(Initializer.ParameterMap,TEXT("BlurData"));
 	}
 
 	AHRBlur()
@@ -833,24 +821,26 @@ public:
 		Ar << ObjNormal;
 		Ar << Trace;
 		Ar << prevTrace;
-		Ar << psize;
+		Ar << BlurData;
 		return bShaderHasOutdatedParameters;
 	}
-	void SetParameters(FRHICommandList& RHICmdList, const FSceneView& View, FRHITexture2D* TraceTex, FRHITexture2D* prevTraceTex)
+	void SetParameters(FRHICommandList& RHICmdList, const FSceneView& View, FRHITexture2D* TraceTex, FRHITexture2D* prevTraceTex, float blurXMask,float blurYMask)
 	{
 		const FPixelShaderRHIParamRef ShaderRHI = GetPixelShader();
 		FGlobalShader::SetParameters(RHICmdList, ShaderRHI,View);
 		DeferredParameters.Set(RHICmdList, ShaderRHI, View);
 
-		if(NormalTex.IsBound())
-			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,NormalTex.GetBaseIndex(),AHREngine.ObjectNormalSRV);
-		if(LinearSampler.IsBound())
-			RHICmdList.SetShaderSampler(ShaderRHI,LinearSampler.GetBaseIndex(),TStaticSamplerState<SF_Trilinear,AM_Wrap,AM_Wrap,AM_Wrap>::GetRHI());
+		auto sampler = TStaticSamplerState<SF_Trilinear,AM_Wrap,AM_Wrap,AM_Wrap>::GetRHI();
+		if(ObjNormal.IsBound())
+			RHICmdList.SetShaderResourceViewParameter(ShaderRHI,ObjNormal.GetBaseIndex(),AHREngine.ObjectNormalSRV);
+		if(samLinear.IsBound())
+			RHICmdList.SetShaderSampler(ShaderRHI,samLinear.GetBaseIndex(),sampler);
 
-		SetTextureParameter(RHICmdList, ShaderRHI, Trace, LinearSampler,sampler, TraceTex);
-		SetTextureParameter(RHICmdList, ShaderRHI, prevTrace, LinearSampler,sampler, prevTraceTex);	
+		SetTextureParameter(RHICmdList, ShaderRHI, Trace, samLinear,sampler, TraceTex);
+		SetTextureParameter(RHICmdList, ShaderRHI, prevTrace, samLinear,sampler, prevTraceTex);	
 
-		SetShaderValue(RHICmdList, ShaderRHI, psize, FVector2D(1.0f / float(TraceTex->GetSizeX()),1.0f / float(TraceTex->GetSizeY())));
+		SetShaderValue(RHICmdList, ShaderRHI, BlurData, FVector4(1.0f / float(TraceTex->GetSizeX()),1.0f / float(TraceTex->GetSizeY()),
+																 blurXMask,blurYMask));
 	}
 
 	FGlobalBoundShaderState& GetBoundShaderState()
@@ -864,7 +854,7 @@ private:
 	FShaderResourceParameter ObjNormal;
 	FShaderResourceParameter Trace;
 	FShaderResourceParameter prevTrace;
-	FShaderParameter psize;
+	FShaderParameter BlurData;
 };
 /*
 class AHRBlurH : public FGlobalShader
@@ -1019,8 +1009,9 @@ private:
 //IMPLEMENT_SHADER_TYPE(,AHRBlurH,TEXT("AHRUpsample"),TEXT("BlurH"),SF_Pixel);
 //IMPLEMENT_SHADER_TYPE(,AHRBlurV,TEXT("AHRUpsample"),TEXT("BlurV"),SF_Pixel);
 
-IMPLEMENT_SHADER_TYPE(template<>,AHRBlur<0>,TEXT("AHRBlur"),TEXT("main"),SF_Pixel);
-IMPLEMENT_SHADER_TYPE(template<>,AHRBlur<1>,TEXT("AHRBlur"),TEXT("main"),SF_Pixel);
+// Sadly can't use templates here, as for some reason switching shader causes a MASIVE slowdown
+IMPLEMENT_SHADER_TYPE(,AHRBlur,TEXT("AHRBlur"),TEXT("main"),SF_Pixel);
+
 
 void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,FViewInfo& View)
 {
@@ -1037,6 +1028,50 @@ void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,
 
 	RHICmdList.SetViewport(SrcRect.Min.X, SrcRect.Min.Y, 0.0f,texSize.X, texSize.Y, 1.0f);
 
+	// Get the shaders
+	TShaderMapRef<AHRPassVS> VertexShader(View.ShaderMap);
+	TShaderMapRef<AHRBlur> PSBlur(View.ShaderMap);
+
+	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PSBlur->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PSBlur);
+	VertexShader->SetParameters(RHICmdList,View);
+
+	for(int i = 0;i < 6;i++)
+	{
+		// Horizontal pass
+		FRHITexture2D * target = GSceneRenderTargets.AHRUpsampledTarget0->GetRenderTargetItem().TargetableTexture->GetTexture2D();
+		SetRenderTarget(RHICmdList, target, FTextureRHIRef());
+		PSBlur->SetParameters(RHICmdList, View,GSceneRenderTargets.AHRRaytracingTarget[i]->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D(),nullptr,1,0); // not using prev yet!
+
+		// Draw!
+		DrawRectangle( 
+			RHICmdList,
+			0, 0,
+			DestRect.Width(), DestRect.Height(),
+			SrcRect.Min.X, SrcRect.Min.Y, 
+			SrcRect.Width(), SrcRect.Height(),
+			DestRect.Size(),
+			GSceneRenderTargets.GetBufferSizeXY(),
+			*VertexShader,
+			EDRF_UseTriangleOptimization);
+
+		// Vertical pass
+		target = GSceneRenderTargets.AHRRaytracingTarget[i]->GetRenderTargetItem().TargetableTexture->GetTexture2D();
+		SetRenderTarget(RHICmdList, target, FTextureRHIRef());
+		PSBlur->SetParameters(RHICmdList, View,GSceneRenderTargets.AHRUpsampledTarget0->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D(),nullptr,0,1); // not using prev yet!
+
+		// Draw!
+		DrawRectangle( 
+			RHICmdList,
+			0, 0,
+			DestRect.Width(), DestRect.Height(),
+			SrcRect.Min.X, SrcRect.Min.Y, 
+			SrcRect.Width(), SrcRect.Height(),
+			DestRect.Size(),
+			GSceneRenderTargets.GetBufferSizeXY(),
+			*VertexShader,
+			EDRF_UseTriangleOptimization);
+	}
+		
 	return;
 #if 0
 
