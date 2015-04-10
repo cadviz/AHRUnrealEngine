@@ -17,6 +17,9 @@ float4 main(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET
 {
 	float4 fcolor = 0;
 
+	float SceneDepth = CalcSceneDepth(InUV);
+	float3 wPos = ScreenVector * SceneDepth + View.ViewOrigin.xyz;
+
 	fcolor += Trace.SampleLevel(samLinear,InUV - 5.49*BlurData.xy*BlurData.zw,0)*0.45f;
 	fcolor += Trace.SampleLevel(samLinear,InUV - 4.45*BlurData.xy*BlurData.zw,0)*0.5f;
 	fcolor += Trace.SampleLevel(samLinear,InUV - 3.4*BlurData.xy*BlurData.zw,0)*0.65f;
