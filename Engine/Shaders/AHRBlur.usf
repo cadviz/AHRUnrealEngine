@@ -13,13 +13,72 @@ Texture2D<float4> prevTrace;
 // zw is blur direction
 float4 BlurData;
 
+static const float g_epsilon = 0.0001f;
+
 float4 main(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 {
 	float4 fcolor = 0;
+	float w,wacc = 0;
 
-	float SceneDepth = CalcSceneDepth(InUV);
-	float3 wPos = ScreenVector * SceneDepth + View.ViewOrigin.xyz;
+	float z = CalcSceneDepth(InUV)*0.055f;
+	
+	//spos = ScreenVector * CalcSceneDepth( InUV - 5.49*BlurData.xy*BlurData.zw) + View.ViewOrigin.xyz;
+	w = 0.45f / clamp(pow(abs(CalcSceneDepth( InUV - 5.49*BlurData.xy*BlurData.zw)*0.055f - z),20),g_epsilon,1);
+	fcolor += Trace.SampleLevel(samLinear,InUV - 5.49*BlurData.xy*BlurData.zw,0)*w;
+	wacc += w;
 
+	w = 0.5f / clamp(pow(abs(CalcSceneDepth( InUV - 4.45*BlurData.xy*BlurData.zw)*0.055f - z),20),g_epsilon,1);
+	fcolor += Trace.SampleLevel(samLinear,InUV - 4.45*BlurData.xy*BlurData.zw,0)*w;
+	wacc += w;
+
+	w = 0.65f / clamp(pow(abs(CalcSceneDepth( InUV - 3.4*BlurData.xy*BlurData.zw)*0.055f - z),20),g_epsilon,1);
+	fcolor += Trace.SampleLevel(samLinear,InUV - 3.4*BlurData.xy*BlurData.zw,0)*w;
+	wacc += w;
+
+	w = 0.8f / clamp(pow(abs(CalcSceneDepth( InUV - 2.2*BlurData.xy*BlurData.zw)*0.055f - z),20),g_epsilon,1);
+	fcolor += Trace.SampleLevel(samLinear,InUV - 2.2*BlurData.xy*BlurData.zw,0)*w;
+	wacc += w*0.8f;
+
+	w = 0.9f / clamp(pow(abs(CalcSceneDepth( InUV - 1*BlurData.xy*BlurData.zw)*0.055f - z),20),g_epsilon,1);
+	fcolor += Trace.SampleLevel(samLinear,InUV - 1*BlurData.xy*BlurData.zw  ,0)*w;
+	wacc += w;
+
+	fcolor += Trace.SampleLevel(samLinear,InUV                              ,0);
+
+	w = 0.9f / clamp(pow(abs(CalcSceneDepth( InUV + 1*BlurData.xy*BlurData.zw)*0.055f - z),20),g_epsilon,1);
+	fcolor += Trace.SampleLevel(samLinear,InUV + 1*BlurData.xy*BlurData.zw  ,0)*w;
+	wacc += w;
+
+	w = 0.8f / clamp(pow(abs(CalcSceneDepth( InUV + 2.2*BlurData.xy*BlurData.zw)*0.055f - z),20),g_epsilon,1);
+	fcolor += Trace.SampleLevel(samLinear,InUV + 2.2*BlurData.xy*BlurData.zw,0)*w;
+	wacc += w*0.8f;
+
+	w = 0.65f / clamp(pow(abs(CalcSceneDepth( InUV + 3.4*BlurData.xy*BlurData.zw)*0.055f - z),20),g_epsilon,1);
+	fcolor += Trace.SampleLevel(samLinear,InUV + 3.4*BlurData.xy*BlurData.zw,0)*w;
+	wacc += w;
+
+	w = 0.5f / clamp(pow(abs(CalcSceneDepth( InUV + 4.45*BlurData.xy*BlurData.zw)*0.055f - z),20),g_epsilon,1);
+	fcolor += Trace.SampleLevel(samLinear,InUV + 4.45*BlurData.xy*BlurData.zw,0)*w;
+	wacc += w;
+
+	w = 0.45f / clamp(pow(abs(CalcSceneDepth( InUV + 5.49*BlurData.xy*BlurData.zw)*0.055f - z),20),g_epsilon,1);
+	fcolor += Trace.SampleLevel(samLinear,InUV + 5.49*BlurData.xy*BlurData.zw,0)*w;
+	wacc += w;
+
+
+
+	fcolor *= 1.0f / wacc;
+	//fcolor *= 0.1316f;
+
+	//fcolor += prevTrace.SampleLevel(samLinear,InUV,0);
+	//fcolor *= 0.5f;
+
+	
+
+
+
+	/*
+	// DEBUG!!!
 	fcolor += Trace.SampleLevel(samLinear,InUV - 5.49*BlurData.xy*BlurData.zw,0)*0.45f;
 	fcolor += Trace.SampleLevel(samLinear,InUV - 4.45*BlurData.xy*BlurData.zw,0)*0.5f;
 	fcolor += Trace.SampleLevel(samLinear,InUV - 3.4*BlurData.xy*BlurData.zw,0)*0.65f;
@@ -31,11 +90,12 @@ float4 main(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET
 	fcolor += Trace.SampleLevel(samLinear,InUV + 3.4*BlurData.xy*BlurData.zw,0)*0.65f;
 	fcolor += Trace.SampleLevel(samLinear,InUV + 4.45*BlurData.xy*BlurData.zw,0)*0.5f;
 	fcolor += Trace.SampleLevel(samLinear,InUV + 5.49*BlurData.xy*BlurData.zw,0)*0.45f;
+	fcolor *= 0.1316f;*/
 
-	fcolor *= 0.1316f;
 
-	//fcolor += prevTrace.SampleLevel(samLinear,InUV,0);
-	//fcolor *= 0.5f;
 
+
+
+	//fcolor = 1.0f / wacc;
 	return fcolor;
 }

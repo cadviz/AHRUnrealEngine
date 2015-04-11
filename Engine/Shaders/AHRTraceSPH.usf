@@ -80,7 +80,7 @@ float4 main(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET
 	float angleCos = saturate(dot(step,normal));
 	float dispAngleMult = sqrt(1 - angleCos*angleCos)/(angleCos + 0.01) + 1;
 
-	step = step*AHRTraceCB.VoxelScaleMult;
+	//step = step*AHRTraceCB.VoxelScaleMult;
 	float3 spos = wPos + step*AHRTraceCB.InitialDispMult*dispAngleMult;
 
 	step *= AHRTraceCB.SamplesDispMultiplier;
