@@ -78,23 +78,15 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 #endif
 	FScreenSpaceData ScreenSpaceData = GetScreenSpaceData(InUV);
 
-	float2 rUV = InUV*0.5f;
-	float4 fcolor = Trace0.SampleLevel(samLinear,rUV,0) +
-					Trace1.SampleLevel(samLinear,rUV,0) +
-					Trace2.SampleLevel(samLinear,rUV,0) +
-					Trace3.SampleLevel(samLinear,rUV,0) +
-					Trace4.SampleLevel(samLinear,rUV,0);/* +
-					Trace5.SampleLevel(samLinear,rUV,0) ;
+
+	float4 fcolor = Trace0.SampleLevel(samLinear,InUV,0) +
+					Trace1.SampleLevel(samLinear,InUV,0) +
+					Trace2.SampleLevel(samLinear,InUV,0) +
+					Trace3.SampleLevel(samLinear,InUV,0) +
+					Trace4.SampleLevel(samLinear,InUV,0);/* +
+					Trace5.SampleLevel(samLinear,InUV,0) ;
 	fcolor /= 6.0f;*/
 	fcolor *= 0.2f;
-
-
-
-
-	 fcolor = Trace0.SampleLevel(samLinear,InUV,0);
-
-
-
 
 	/*
 	// After interpolation, add specular
@@ -109,8 +101,8 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 	fakeSky *= fakeSky;
 	fakeSky = lerp(fakeSky,1,0.3);
 
-	//fcolor.rgb *= AHRCompositeCB.GIMultiplier*ScreenSpaceData.GBuffer.DiffuseColor;
-	//fcolor.rgb += fcolor.w*ScreenSpaceData.GBuffer.DiffuseColor*0.1f*fakeSky;
+	fcolor.rgb *= AHRCompositeCB.GIMultiplier*ScreenSpaceData.GBuffer.DiffuseColor;
+	fcolor.rgb += fcolor.w*ScreenSpaceData.GBuffer.DiffuseColor*0.1f*fakeSky;
 
-	return float4(fcolor.rgb,1);
+	return max(float4(fcolor.rgb,1),0); // prevent the shader from outputting negative lighting
 }
