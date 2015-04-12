@@ -46,6 +46,7 @@ public:
 		currentLightIDX = 0;
 		prevShadowRes.X = -1;
 		prevShadowRes.Y = -1;
+		screenResChanged = false;
 	}
 
 	// Main pipeline functions
@@ -54,6 +55,7 @@ public:
 	void TraceScene(FRHICommandListImmediate& RHICmdList,FViewInfo& View);
 	void Upsample(FRHICommandListImmediate& RHICmdList,FViewInfo& View);
 	void Composite(FRHICommandListImmediate& RHICmdList,FViewInfo& View);
+	void SignalWindowResize(){ screenResChanged = true; }
 
 	// Data functions
 	void UpdateSettings(); // Resizes the grid if needed
@@ -76,6 +78,7 @@ public:
 
 	FShaderResourceViewRHIRef ObjectNormalSRV;
 private:
+	bool screenResChanged;
 	FRWBufferByteAddress** currentVolume; // ptr-to-ptr to remember people that this is JUST AN UTILITY! IT IS NOT THE ACTUAL VOLUME!
 	FRWBufferByteAddress** currentEmissiveVolume;
 

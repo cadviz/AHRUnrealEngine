@@ -452,8 +452,9 @@ public:
 	// Format is R16G16B16A16_FLOAT, or PF_FloatRGBA in Epic's dictionary...
 	TRefCountPtr<IPooledRenderTarget> AHRRaytracingTarget[6];
 	TRefCountPtr<IPooledRenderTarget> AHRUpsampledTarget0;
-	TRefCountPtr<IPooledRenderTarget> AHRUpsampledTarget1; 
-	TRefCountPtr<IPooledRenderTarget> AHRDownsampledNormal;
+	TRefCountPtr<IPooledRenderTarget> AHRUpsampledTarget1;
+	TRefCountPtr<IPooledRenderTarget> AHRPerPixelTracingKernel[5];
+	TRefCountPtr<IPooledRenderTarget> AHRPerPixelInterpolationKernel[5];
 
 	// GBuffer: Geometry Buffer rendered in base pass for deferred shading, only available between AllocGBufferTargets() and FreeGBufferTargets()
 	TRefCountPtr<IPooledRenderTarget> GBufferA;

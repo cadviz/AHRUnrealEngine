@@ -149,8 +149,8 @@ FIntPoint FSceneRenderTargets::ComputeDesiredSize(const FSceneViewFamily& ViewFa
 	// @RyanTorant
 	// Only resize to fit supported on AHR. Other modes mess up the targets
 	// TODO: Fix this!
-	if(UseApproximateHybridRaytracingRT(ViewFamily.GetFeatureLevel()) && ViewFamily.FamilySizeX > 256 && ViewFamily.FamilySizeY > 256)
-		SceneTargetsSizingMethod = RequestedSize;
+	//if(UseApproximateHybridRaytracingRT(ViewFamily.GetFeatureLevel()) && ViewFamily.FamilySizeX > 256 && ViewFamily.FamilySizeY > 256)
+		//SceneTargetsSizingMethod = RequestedSize;
 
 	switch (SceneTargetsSizingMethod)
 	{
@@ -388,6 +388,23 @@ void FSceneRenderTargets::AllocAHRTargets()
 
 	GRenderTargetPool.FindFreeElement(Desc, AHRUpsampledTarget0, TEXT("AHRUpsampledTarget0"));
 	GRenderTargetPool.FindFreeElement(Desc, AHRUpsampledTarget1, TEXT("AHRUpsampledTarget1"));
+
+	// Create the kernel textures
+	FPooledRenderTargetDesc Desc2(FPooledRenderTargetDesc::Create2DDesc(BufferSize/2, PF_A2B10G10R10, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
+	GRenderTargetPool.FindFreeElement(Desc2, AHRPerPixelTracingKernel[0], TEXT("AHRPerPixelTracingKernel0"));
+	GRenderTargetPool.FindFreeElement(Desc2, AHRPerPixelTracingKernel[1], TEXT("AHRPerPixelTracingKernel1"));
+	GRenderTargetPool.FindFreeElement(Desc2, AHRPerPixelTracingKernel[2], TEXT("AHRPerPixelTracingKernel2"));
+	GRenderTargetPool.FindFreeElement(Desc2, AHRPerPixelTracingKernel[3], TEXT("AHRPerPixelTracingKernel3"));
+	GRenderTargetPool.FindFreeElement(Desc2, AHRPerPixelTracingKernel[4], TEXT("AHRPerPixelTracingKernel4"));
+
+	GRenderTargetPool.FindFreeElement(Desc2, AHRPerPixelInterpolationKernel[0], TEXT("AHRPerPixelInterpolationKernel0"));
+	GRenderTargetPool.FindFreeElement(Desc2, AHRPerPixelInterpolationKernel[1], TEXT("AHRPerPixelInterpolationKernel1"));
+	GRenderTargetPool.FindFreeElement(Desc2, AHRPerPixelInterpolationKernel[2], TEXT("AHRPerPixelInterpolationKernel2"));
+	GRenderTargetPool.FindFreeElement(Desc2, AHRPerPixelInterpolationKernel[3], TEXT("AHRPerPixelInterpolationKernel3"));
+	GRenderTargetPool.FindFreeElement(Desc2, AHRPerPixelInterpolationKernel[4], TEXT("AHRPerPixelInterpolationKernel4"));
+
+	// Fill the kernel textures
+	AHREngine.SignalWindowResize();
 }
 
 void FSceneRenderTargets::AllocSceneColor()
@@ -823,7 +840,7 @@ void FSceneRenderTargets::ResolveGBufferSurfaces(FRHICommandList& RHICmdList, co
 		RHICmdList.CopyToResolveTarget(GSceneRenderTargets.GBufferC->GetRenderTargetItem().TargetableTexture, GSceneRenderTargets.GBufferC->GetRenderTargetItem().ShaderResourceTexture, true, FResolveParams(ResolveRect));
 		RHICmdList.CopyToResolveTarget(GSceneRenderTargets.GBufferD->GetRenderTargetItem().TargetableTexture, GSceneRenderTargets.GBufferD->GetRenderTargetItem().ShaderResourceTexture, true, FResolveParams(ResolveRect));
 		// @RyanTorant
-		RHICmdList.CopyToResolveTarget(GSceneRenderTargets.GBufferF->GetRenderTargetItem().TargetableTexture, GSceneRenderTargets.GBufferD->GetRenderTargetItem().ShaderResourceTexture, true, FResolveParams(ResolveRect));
+		RHICmdList.CopyToResolveTarget(GSceneRenderTargets.GBufferF->GetRenderTargetItem().TargetableTexture, GSceneRenderTargets.GBufferF->GetRenderTargetItem().ShaderResourceTexture, true, FResolveParams(ResolveRect));
 		if (bAllowStaticLighting)
 		{
 			RHICmdList.CopyToResolveTarget(GSceneRenderTargets.GBufferE->GetRenderTargetItem().TargetableTexture, GSceneRenderTargets.GBufferE->GetRenderTargetItem().ShaderResourceTexture, true, FResolveParams(ResolveRect));

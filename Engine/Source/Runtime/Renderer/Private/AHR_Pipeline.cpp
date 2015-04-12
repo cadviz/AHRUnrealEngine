@@ -6,6 +6,8 @@
 #include "SceneFilterRendering.h"
 #include "AHR_Voxelization.h"
 #include "math.h"
+#include "random"
+
 //#include "../Public/AHRGlobalSignal.h"
 
 //std::atomic<unsigned int> AHRGlobalSignal_RebuildGrids;
@@ -50,6 +52,22 @@ IMPLEMENT_SHADER_TYPE(,AHRPassVS,TEXT("AHRComposite"),TEXT("VS"),SF_Vertex);
 
 FCriticalSection cs;
 
+uint32 wang_hash(uint32 seed)
+{
+	seed = (seed ^ 61) ^ (seed >> 16);
+	seed *= 9;
+	seed = seed ^ (seed >> 4);
+	seed *= 0x27d4eb2d;
+	seed = seed ^ (seed >> 15);
+	return seed;
+}
+
+template<typename T,typename R>
+T randReal(T Min, T Max,R rng)
+{
+	uniform_real_distribution<T> dist(Min, Max);
+	return dist(rng);
+}
 
 void  FApproximateHybridRaytracer::StartFrame(FViewInfo& View)
 {	
@@ -100,6 +118,18 @@ void  FApproximateHybridRaytracer::StartFrame(FViewInfo& View)
 		}
 
 		prevShadowRes = shadowRes;
+	}
+
+	// If the screen res changed, rebuild kernels
+	if(screenResChanged)
+	{
+		for(int n = 0;n < 5;n++)
+		{
+
+		}
+
+
+		screenResChanged = false;
 	}
 }
 
@@ -723,11 +753,19 @@ void FApproximateHybridRaytracer::TraceScene(FRHICommandListImmediate& RHICmdLis
 
 	// Draw a full screen quad into the half res target
 	const auto& ___tmpTarget = GSceneRenderTargets.AHRRaytracingTarget[0]->GetRenderTargetItem().TargetableTexture->GetTexture2D();
-	FVector2D texSize(___tmpTarget->GetSizeX(),___tmpTarget->GetSizeY());
-	FIntRect SrcRect = View.ViewRect;
-	FIntRect DestRect(FIntPoint(0,0),FIntPoint(texSize.X,texSize.Y));
+	FVector2D texSize(View.Family->FamilySizeX,View.Family->FamilySizeY);//(___tmpTarget->GetSizeX(),___tmpTarget->GetSizeY());
+	//FIntRect SrcRect = View.ViewRect;
+	//FIntRect DestRect(FIntPoint(0,0),FIntPoint(texSize.X/2,texSize.Y/2));
+	
+	FIntRect SrcRect = View.ViewRect / 2;
+	// Viewport size not even also causes issue
+	FIntRect DestRect = FIntRect::DivideAndRoundUp(SrcRect, 2);
+	auto DestSize = GSceneRenderTargets.AHRRaytracingTarget[0]->GetDesc().Extent;
+	auto SrcSize = GSceneRenderTargets.GBufferA->GetDesc().Extent;
 
-	RHICmdList.SetViewport(SrcRect.Min.X, SrcRect.Min.Y, 0.0f,texSize.X, texSize.Y, 1.0f);
+	RHICmdList.SetViewport(0, 0, 0.0f, DestSize.X, DestSize.Y, 1.0f );
+
+	//RHICmdList.SetViewport(SrcRect.Min.X, SrcRect.Min.Y, 0.0f,texSize.X, texSize.Y, 1.0f);
 	RHICmdList.SetRasterizerState(TStaticRasterizerState<FM_Solid, CM_None>::GetRHI());
 	RHICmdList.SetDepthStencilState(TStaticDepthStencilState<false, CF_Always>::GetRHI());
 
@@ -757,14 +795,14 @@ void FApproximateHybridRaytracer::TraceScene(FRHICommandListImmediate& RHICmdLis
 		PixelShader->SetSamplingKernel(RHICmdList,SamplingKernel[i],i,texSize,View);
 
 		// Draw a quad mapping scene color to the view's render target
-		DrawRectangle( 
+		DrawRectangle(
 			RHICmdList,
-			0, 0,
+			DestRect.Min.X, DestRect.Min.Y,
 			DestRect.Width(), DestRect.Height(),
-			SrcRect.Min.X, SrcRect.Min.Y, 
+			SrcRect.Min.X, SrcRect.Min.Y,
 			SrcRect.Width(), SrcRect.Height(),
-			DestRect.Size(),
-			GSceneRenderTargets.GetBufferSizeXY(),
+			DestSize,
+			SrcSize,
 			*VertexShader,
 			EDRF_UseTriangleOptimization);
 	}
@@ -1015,6 +1053,7 @@ IMPLEMENT_SHADER_TYPE(,AHRBlur,TEXT("AHRBlur"),TEXT("main"),SF_Pixel);
 
 void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,FViewInfo& View)
 {
+	return;
 	SCOPED_DRAW_EVENT(RHICmdList,AHRUpsample);
 
 	RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA>::GetRHI());
@@ -1332,7 +1371,8 @@ void FApproximateHybridRaytracer::Composite(FRHICommandListImmediate& RHICmdList
 
 
 	// Set the viewport, raster state and depth stencil
-	RHICmdList.SetViewport(View.ViewRect.Min.X, View.ViewRect.Min.Y, 0.0f, View.ViewRect.Max.X, View.ViewRect.Max.Y, 1.0f);
+	FIntRect DestRect(View.ViewRect.Min,FIntPoint(View.Family->FamilySizeX,View.Family->FamilySizeY));
+	RHICmdList.SetViewport(DestRect.Min.X,DestRect.Min.Y,0.0f,DestRect.Max.X,DestRect.Max.Y,1.0f);
 	//RHICmdList.SetViewport(0, 0, 0.0f,ResX, ResY, 1.0f);
 	RHICmdList.SetRasterizerState(TStaticRasterizerState<FM_Solid, CM_None>::GetRHI());
 	RHICmdList.SetDepthStencilState(TStaticDepthStencilState<false, CF_Always>::GetRHI());
@@ -1350,10 +1390,10 @@ void FApproximateHybridRaytracer::Composite(FRHICommandListImmediate& RHICmdList
 	DrawRectangle( 
 				RHICmdList,
 				0, 0,
+				DestRect.Width(), DestRect.Height(),
+				DestRect.Min.X, DestRect.Min.Y, 
 				View.ViewRect.Width(), View.ViewRect.Height(),
-				View.ViewRect.Min.X, View.ViewRect.Min.Y, 
-				View.ViewRect.Width(), View.ViewRect.Height(),
-				View.ViewRect.Size(),
+				DestRect.Size(),
 				GSceneRenderTargets.GetBufferSizeXY(),
 				*VertexShader,
 				EDRF_UseTriangleOptimization);

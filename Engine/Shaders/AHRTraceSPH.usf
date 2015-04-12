@@ -23,7 +23,7 @@ SamplerState samPoint;
 
 float4 main(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 {
-	float SceneDepth = CalcSceneDepth(InUV);
+	float SceneDepth = CalcSceneDepth(InUV*2.0f);
 	float3 wPos = ScreenVector * SceneDepth + View.ViewOrigin.xyz;
 	float3 vlocalWPos = -to_vlocal(wPos);
 	
@@ -50,7 +50,7 @@ float4 main(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET
 
 
 	// Generate tangent frame
-	float3 normal = normalize(ObjNormal.SampleLevel(samLinear,InUV,0).xyz*2 - 1);
+	float3 normal = normalize(ObjNormal.SampleLevel(samLinear,InUV*2.0f,0).xyz*2 - 1);
 	float3 tangent,bitangent;
 	FindBestAxisVectors(normal ,tangent,bitangent);
 	/*float3 tmpVec = normalize(float3( rand(InUV*(AHRTraceCB.RayIndex+48))*2-1,
@@ -75,6 +75,8 @@ float4 main(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET
 	
 	//step = normalize(mul(step, tTangentFrame));
 	//step = normalize(-reflect(-normalize(ScreenVector), normal));
+	//step = normalize(-reflect(-normalize(ScreenVector), GetScreenSpaceData(InUV*2).GBuffer.WorldNormal));
+	
 	//float spec = pow(1.0f - saturate(dot(normal,normalize(-reflect(-normalize(ScreenVector), normal)))),20.0f)*10.0f;
 	
 	float angleCos = saturate(dot(step,normal));
