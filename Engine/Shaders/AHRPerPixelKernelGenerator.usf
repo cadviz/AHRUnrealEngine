@@ -36,8 +36,8 @@ void tracingKernel(uint3 DTid : SV_DispatchThreadID)
 		step.y *= DTid.y % 2 ? -1 : 1;
 	}*/
 	
-	step.x *= DTid.x % 2 ? -1 : 1;
-	step.y *= DTid.y % 2 ? -1 : 1;
+	step.x *= lerp(-1,1,DTid.x % 2);		
+	step.y *= lerp(-1,1,DTid.y % 2);
 
 	kernelTex[DTid.xy] = float4(step*0.5+0.5,1.0f);
 }

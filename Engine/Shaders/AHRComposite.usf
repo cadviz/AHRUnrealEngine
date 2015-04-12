@@ -101,8 +101,8 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 	fakeSky *= fakeSky;
 	fakeSky = lerp(fakeSky,1,0.3);
 
-	fcolor.rgb *= AHRCompositeCB.GIMultiplier*ScreenSpaceData.GBuffer.DiffuseColor;
-	fcolor.rgb += fcolor.w*ScreenSpaceData.GBuffer.DiffuseColor*0.1f*fakeSky;
+	//fcolor.rgb *= AHRCompositeCB.GIMultiplier*ScreenSpaceData.GBuffer.DiffuseColor;
+	//fcolor.rgb += fcolor.w*ScreenSpaceData.GBuffer.DiffuseColor*0.1f*fakeSky;
 
 	return max(float4(fcolor.rgb,1),0); // prevent the shader from outputting negative lighting
 }
