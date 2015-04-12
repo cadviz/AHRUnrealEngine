@@ -17,7 +17,7 @@ void tracingKernel(uint3 DTid : SV_DispatchThreadID)
 	step.xy = normalize(step.xy)*rng.GetRandomFloat(0,1.732f); // 1.732f = tan(pi/3), limiting the cone to an aperture of 120 degrees (or a pi/3 half angle)
 	step = normalize(step);
 	
-	/*if(RayIndex == 2)
+	if(RayIndex == 2)
 	{
 		step.x *= -1;
 	}
@@ -34,10 +34,7 @@ void tracingKernel(uint3 DTid : SV_DispatchThreadID)
 	{
 		step.x *= DTid.x % 2 ? -1 : 1;
 		step.y *= DTid.y % 2 ? -1 : 1;
-	}*/
-	
-	step.x *= lerp(-1,1,DTid.x % 2);		
-	step.y *= lerp(-1,1,DTid.y % 2);
+	}
 
 	kernelTex[DTid.xy] = float4(step*0.5+0.5,1.0f);
 }
