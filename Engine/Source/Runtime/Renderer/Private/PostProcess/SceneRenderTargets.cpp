@@ -147,10 +147,10 @@ FIntPoint FSceneRenderTargets::ComputeDesiredSize(const FSceneViewFamily& ViewFa
 	FIntPoint DesiredBufferSize = FIntPoint::ZeroValue;
 
 	// @RyanTorant
-	// Only resize to fit supported on AHR. Other modes mess up the targets
-	// TODO: Fix this!
-	//if(UseApproximateHybridRaytracingRT(ViewFamily.GetFeatureLevel()) && ViewFamily.FamilySizeX > 256 && ViewFamily.FamilySizeY > 256)
-		//SceneTargetsSizingMethod = RequestedSize;
+	// FIX ME!!
+	// Only RequestedSize supported on AHR, grow fucks up the targets
+	if(UseApproximateHybridRaytracingRT(CurrentFeatureLevel))
+		SceneTargetsSizingMethod = RequestedSize;
 
 	switch (SceneTargetsSizingMethod)
 	{
@@ -390,7 +390,7 @@ void FSceneRenderTargets::AllocAHRTargets()
 	GRenderTargetPool.FindFreeElement(Desc, AHRUpsampledTarget1, TEXT("AHRUpsampledTarget1"));
 
 	// Create the kernel textures
-	FPooledRenderTargetDesc Desc2(FPooledRenderTargetDesc::Create2DDesc(BufferSize/2, PF_A2B10G10R10, TexCreate_None, TexCreate_RenderTargetable | TexCreate_ShaderResource, false));
+	FPooledRenderTargetDesc Desc2(FPooledRenderTargetDesc::Create2DDesc(BufferSize/2, PF_A2B10G10R10, TexCreate_None, TexCreate_UAV | TexCreate_ShaderResource, false));
 	GRenderTargetPool.FindFreeElement(Desc2, AHRPerPixelTracingKernel[0], TEXT("AHRPerPixelTracingKernel0"));
 	GRenderTargetPool.FindFreeElement(Desc2, AHRPerPixelTracingKernel[1], TEXT("AHRPerPixelTracingKernel1"));
 	GRenderTargetPool.FindFreeElement(Desc2, AHRPerPixelTracingKernel[2], TEXT("AHRPerPixelTracingKernel2"));
@@ -1442,7 +1442,7 @@ void FSceneRenderTargets::AllocateDeferredShadingPathRenderTargets()
 			}
 		}
 
-		if(UseApproximateHybridRaytracingRT(CurrentFeatureLevel) && BufferSize.X > 256 && BufferSize.Y > 256)
+		if(UseApproximateHybridRaytracingRT(CurrentFeatureLevel))
 			AllocAHRTargets();
 	}
 }

@@ -581,6 +581,7 @@
   <ItemGroup>
     <None Include="..\..\Shaders\AHRBlur.usf" />
     <None Include="..\..\Shaders\AHREmissiveConvolution.usf" />
+    <None Include="..\..\Shaders\AHRPerPixelKernelGenerator.usf" />
     <None Include="..\..\Shaders\AHRTraceSPH.usf" />
     <None Include="F:\UnrealEngineVersions\release\UnrealEngine\Engine\Saved\UnrealBuildTool\BuildConfiguration.Schema.xsd" />
     <None Include="F:\UnrealEngineVersions\release\UnrealEngine\Engine\Programs\UnrealBuildTool\BuildConfiguration.xml" />

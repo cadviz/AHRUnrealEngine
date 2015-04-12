@@ -3016,7 +3016,7 @@ bool FDeferredShadingSceneRenderer::RenderReflectiveShadowMaps(FRHICommandListIm
 #if 0
 		// @RyanTorant
 		// If we are using AHR, we can assume LPVs are disabled
-		if (UseApproximateHybridRaytracingRT(FeatureLevel) && Views[0].Family->FamilySizeX > 256 && Views[0].Family->FamilySizeY > 256) // bypass aux. views
+		if (UseApproximateHybridRaytracingRT(FeatureLevel))
 		{
 			// Only the first shadow gets rendered and pushed to the ahr engine.
 			// This is because i'm still unsure how to handle multiple shadows on the tracing side
@@ -3319,7 +3319,6 @@ bool FDeferredShadingSceneRenderer::RenderProjectedShadows(FRHICommandListImmedi
 
 			// @RyanTorant
 			bool injectIntoAHR = UseApproximateHybridRaytracingRT(FeatureLevel) && 
-								 Views[0].Family->FamilySizeX > 256 && Views[0].Family->FamilySizeY > 256 && 
 								 ViewFamily.EngineShowFlags.GlobalIllumination && 
 								 LightSceneInfo->Proxy->NeedsLPVInjection();
 			if(injectIntoAHR)

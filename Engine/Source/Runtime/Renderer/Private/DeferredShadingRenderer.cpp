@@ -633,9 +633,9 @@ void FDeferredShadingSceneRenderer::Render(FRHICommandListImmediate& RHICmdList)
 	GSceneRenderTargets.Allocate(ViewFamily);
 
 	// @RyanTorant
-	if(UseApproximateHybridRaytracingRT(FeatureLevel) && Views[0].Family->FamilySizeX > 256 && Views[0].Family->FamilySizeY > 256) // bypass aux. views
+	if(UseApproximateHybridRaytracingRT(FeatureLevel))
 	{
-		AHREngine.StartFrame(Views[0]);
+		AHREngine.StartFrame(RHICmdList,Views[0]);
 
 		// Rebuild the AHR grids if the size have changed BEFORE we do anything else
 		AHREngine.UpdateSettings();
@@ -646,7 +646,7 @@ void FDeferredShadingSceneRenderer::Render(FRHICommandListImmediate& RHICmdList)
 
 	// @RyanTorant
 	// Store all the primitives that need to be voxelized
-	if(UseApproximateHybridRaytracingRT(FeatureLevel) && Views[0].Family->FamilySizeX > 256 && Views[0].Family->FamilySizeY > 256) // bypass aux. views
+	if(UseApproximateHybridRaytracingRT(FeatureLevel))
 	{
 		for(auto primitive : Scene->Primitives)
 		{
@@ -665,11 +665,6 @@ void FDeferredShadingSceneRenderer::Render(FRHICommandListImmediate& RHICmdList)
 
 	// Find the visible primitives.
 	InitViews(RHICmdList);
-
-	// After this point we have the PrimitivesToVoxelize array filled, so we can start voxelization
-	// For now (29/10/2014) both static and dynamic objects get voxelized on the same pass.
-	if(UseApproximateHybridRaytracingRT(FeatureLevel) && Views[0].Family->FamilySizeX > 256 && Views[0].Family->FamilySizeY > 256) // bypass aux. views
-		AHREngine.VoxelizeScene(RHICmdList,Views[0]);
 
 	if (GRHIThread)
 	{
@@ -881,6 +876,11 @@ void FDeferredShadingSceneRenderer::Render(FRHICommandListImmediate& RHICmdList)
 		QUICK_SCOPE_CYCLE_COUNTER(STAT_OcclusionSubmittedFence_Dispatch);
 		OcclusionSubmittedFence = FRHICommandListExecutor::RHIThreadFence();
 	}
+
+	// After this point we have the PrimitivesToVoxelize array filled, so we can start voxelization
+	// Trying to delay this as much as possible, to be sure that all the objects are properly set up
+	if(UseApproximateHybridRaytracingRT(FeatureLevel))
+		AHREngine.VoxelizeScene(RHICmdList,Views[0]);
 
 	// Render lighting.
 	if (ViewFamily.EngineShowFlags.Lighting

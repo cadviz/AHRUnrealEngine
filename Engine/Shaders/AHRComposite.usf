@@ -89,6 +89,13 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 	fcolor *= 0.2f;
 
 
+
+
+	 fcolor = Trace0.SampleLevel(samLinear,InUV,0);
+
+
+
+
 	/*
 	// After interpolation, add specular
 	float3 H = normalize( dir + ScreenVector );

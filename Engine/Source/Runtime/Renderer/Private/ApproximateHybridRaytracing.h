@@ -50,7 +50,7 @@ public:
 	}
 
 	// Main pipeline functions
-	void StartFrame(FViewInfo& View);
+	void StartFrame(FRHICommandListImmediate& RHICmdList,FViewInfo& View);
 	void VoxelizeScene(FRHICommandListImmediate& RHICmdList,FViewInfo& View);
 	void TraceScene(FRHICommandListImmediate& RHICmdList,FViewInfo& View);
 	void Upsample(FRHICommandListImmediate& RHICmdList,FViewInfo& View);

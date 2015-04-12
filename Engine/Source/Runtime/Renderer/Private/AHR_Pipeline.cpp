@@ -18,6 +18,7 @@
 using namespace std;
 
 // Using a full screen quad at every stage instead of a cs as the targets are already setted for a quad. Also, not using groupshared memory.
+template<int _dummy>
 class AHRPassVS : public FGlobalShader
 {
 	DECLARE_SHADER_TYPE(AHRPassVS,Global);
@@ -48,7 +49,10 @@ public:
 	// End FShader Interface
 private:
 };
-IMPLEMENT_SHADER_TYPE(,AHRPassVS,TEXT("AHRComposite"),TEXT("VS"),SF_Vertex);
+
+
+IMPLEMENT_SHADER_TYPE(template<>,AHRPassVS<0>,TEXT("AHRComposite"),TEXT("VS"),SF_Vertex);
+IMPLEMENT_SHADER_TYPE(template<>,AHRPassVS<1>,TEXT("AHRTraceSPH"),TEXT("VS"),SF_Vertex);
 
 FCriticalSection cs;
 
@@ -69,8 +73,83 @@ T randReal(T Min, T Max,R rng)
 	return dist(rng);
 }
 
-void  FApproximateHybridRaytracer::StartFrame(FViewInfo& View)
+inline uint32 fceil(uint32 a,uint32 b)
+{
+	return (a + b - 1u)/b;
+}
+
+class AHRPerPixelTracingKernelGenerator : public FGlobalShader
+{
+	DECLARE_SHADER_TYPE(AHRPerPixelTracingKernelGenerator,Global);
+
+public:
+
+	static bool ShouldCache(EShaderPlatform Platform)
+	{
+		return RHISupportsComputeShaders(Platform);
+	}
+
+	static void ModifyCompilationEnvironment( EShaderPlatform Platform, FShaderCompilerEnvironment& OutEnvironment )
+	{
+		FGlobalShader::ModifyCompilationEnvironment( Platform, OutEnvironment );
+	}
+
+	/** Default constructor. */
+	AHRPerPixelTracingKernelGenerator()
+	{
+	}
+
+	/** Initialization constructor. */
+	explicit AHRPerPixelTracingKernelGenerator( const ShaderMetaType::CompiledShaderInitializerType& Initializer )
+		: FGlobalShader(Initializer)
+	{
+		kernelTex.Bind( Initializer.ParameterMap, TEXT("kernelTex") );
+		RayIndex.Bind( Initializer.ParameterMap, TEXT("RayIndex") );
+	}
+
+	/** Serialization. */
+	virtual bool Serialize( FArchive& Ar ) override
+	{
+		bool bShaderHasOutdatedParameters = FGlobalShader::Serialize( Ar );
+		Ar << kernelTex;
+		Ar << RayIndex;
+		return bShaderHasOutdatedParameters;
+	}
+
+	/**
+	 * Set parameters for this shader.
+	 */
+	
+	void SetParameters(FRHICommandList& RHICmdList, FUnorderedAccessViewRHIParamRef kernelTexUAV,uint32 rayIndex)
+	{
+		FComputeShaderRHIParamRef ComputeShaderRHI = GetComputeShader();
+
+		if ( kernelTex.IsBound() )
+			RHICmdList.SetUAVParameter(ComputeShaderRHI, kernelTex.GetBaseIndex(),kernelTexUAV );
+
+		SetShaderValue(RHICmdList, ComputeShaderRHI, RayIndex, rayIndex );
+	}
+
+	/**
+	 * Unbinds any buffers that have been bound.
+	 */
+	void UnbindBuffers(FRHICommandList& RHICmdList)
+	{
+		FComputeShaderRHIParamRef ComputeShaderRHI = GetComputeShader();
+		if ( kernelTex.IsBound() )
+			RHICmdList.SetUAVParameter(ComputeShaderRHI, kernelTex.GetBaseIndex(), FUnorderedAccessViewRHIParamRef());
+	}
+
+private:
+	FShaderResourceParameter kernelTex;
+	FShaderParameter RayIndex;
+};
+IMPLEMENT_SHADER_TYPE(,AHRPerPixelTracingKernelGenerator,TEXT("AHRPerPixelKernelGenerator"),TEXT("tracingKernel"),SF_Compute);
+
+void  FApproximateHybridRaytracer::StartFrame(FRHICommandListImmediate& RHICmdList,FViewInfo& View)
 {	
+	SCOPED_DRAW_EVENT(RHICmdList,AHRStartFrame);
+
 	// Check if the bounds are valid
 	if(View.FinalPostProcessSettings.AHR_internal_initialized)
 	{
@@ -125,7 +204,14 @@ void  FApproximateHybridRaytracer::StartFrame(FViewInfo& View)
 	{
 		for(int n = 0;n < 5;n++)
 		{
+			TShaderMapRef<AHRPerPixelTracingKernelGenerator> tracingKernelGenCS(GetGlobalShaderMap(View.GetFeatureLevel()));
+			RHICmdList.SetComputeShader(tracingKernelGenCS->GetComputeShader());
+			tracingKernelGenCS->SetParameters(RHICmdList, GSceneRenderTargets.AHRPerPixelTracingKernel[n]->GetRenderTargetItem().UAV,n+1);
 
+			auto size = GSceneRenderTargets.AHRPerPixelTracingKernel[n]->GetDesc().Extent;
+			DispatchComputeShader(RHICmdList, *tracingKernelGenCS,fceil((uint32)size.X,16u), fceil((uint32)size.X,16u), 1);
+
+			tracingKernelGenCS->UnbindBuffers(RHICmdList);
 		}
 
 
@@ -392,9 +478,12 @@ private:
 	FShaderParameter gridRes;
 };
 
+
+
 IMPLEMENT_SHADER_TYPE(,AHRDynamicStaticVolumeCombine,TEXT("AHRDynamicStaticVolumeCombine"),TEXT("mainBinary"),SF_Compute);
 IMPLEMENT_SHADER_TYPE(,AHRDynamicStaticEmissiveVolumeCombine,TEXT("AHRDynamicStaticVolumeCombine"),TEXT("mainEmissive"),SF_Compute);
 IMPLEMENT_SHADER_TYPE(,AHREmissiveConvolution,TEXT("AHREmissiveConvolution"),TEXT("main"),SF_Compute);
+
 
 //std::mutex cs;
 //pthread_mutex_t Mutex;
@@ -566,10 +655,6 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 
 	for(auto e : View.PrimitivesElementsToVoxelize)
 	{
-		/*bool isInstanced = false;
-		for(auto meshElement : e.Mesh->Elements) isInstanced |= meshElement.NumInstances > 1;
-		if(isInstanced) break;*/
-
 		FAHRVoxelizerDrawingPolicyFactory::DrawDynamicMesh(RHICmdList, View, FAHRVoxelizerDrawingPolicyFactory::ContextType(), *e.Mesh, false, true, e.PrimitiveSceneProxy, e.Mesh->BatchHitProxyId);
 	}
 
@@ -578,7 +663,7 @@ void FApproximateHybridRaytracer::VoxelizeScene(FRHICommandListImmediate& RHICmd
 	TShaderMapRef<AHREmissiveConvolution> blurCS(GetGlobalShaderMap(View.GetFeatureLevel()));
 	RHICmdList.SetComputeShader(blurCS->GetComputeShader());
 	blurCS->SetParameters(RHICmdList, DynamicEmissiveVolume->UAV,DynamicSceneVolume->SRV,FIntVector(gridSettings.SliceSize.X/2,gridSettings.SliceSize.Y/2,gridSettings.SliceSize.Z/2));
-	DispatchComputeShader(RHICmdList, *blurCS, gridSettings.SliceSize.X/16u, gridSettings.SliceSize.Y/16u, gridSettings.SliceSize.Z/16u);
+	DispatchComputeShader(RHICmdList, *blurCS, gridSettings.SliceSize.X/8u, gridSettings.SliceSize.Y/8u, gridSettings.SliceSize.Z/4u);
 	blurCS->UnbindBuffers(RHICmdList);*/
 
 	// New frame, new starting idx
@@ -654,7 +739,6 @@ public:
 						const FShaderResourceViewRHIRef& emissiveVolumeSRV )
 	{
 		FRHIResourceCreateInfo CreateInfo;
-		static auto dummyTexture = RHICreateTexture2D(1,1,PF_ShadowDepth,1,1,TexCreate_ShaderResource,CreateInfo);
 
 		const FPixelShaderRHIParamRef ShaderRHI = GetPixelShader();
 		FGlobalShader::SetParameters(RHICmdList, ShaderRHI,View);
@@ -753,24 +837,22 @@ void FApproximateHybridRaytracer::TraceScene(FRHICommandListImmediate& RHICmdLis
 
 	// Draw a full screen quad into the half res target
 	const auto& ___tmpTarget = GSceneRenderTargets.AHRRaytracingTarget[0]->GetRenderTargetItem().TargetableTexture->GetTexture2D();
-	FVector2D texSize(View.Family->FamilySizeX,View.Family->FamilySizeY);//(___tmpTarget->GetSizeX(),___tmpTarget->GetSizeY());
+	//FVector2D texSize(View.Family->FamilySizeX,View.Family->FamilySizeY);//(___tmpTarget->GetSizeX(),___tmpTarget->GetSizeY());
 	//FIntRect SrcRect = View.ViewRect;
 	//FIntRect DestRect(FIntPoint(0,0),FIntPoint(texSize.X/2,texSize.Y/2));
 	
-	FIntRect SrcRect = View.ViewRect / 2;
+	FIntRect SrcRect = FIntRect(View.ViewRect.Min,FIntPoint(View.Family->FamilySizeX,View.Family->FamilySizeY))/2;//View.ViewRect/2;
 	// Viewport size not even also causes issue
 	FIntRect DestRect = FIntRect::DivideAndRoundUp(SrcRect, 2);
-	auto DestSize = GSceneRenderTargets.AHRRaytracingTarget[0]->GetDesc().Extent;
-	auto SrcSize = GSceneRenderTargets.GBufferA->GetDesc().Extent;
 
-	RHICmdList.SetViewport(0, 0, 0.0f, DestSize.X, DestSize.Y, 1.0f );
+	RHICmdList.SetViewport(0, 0, 0.0f, DestRect.Max.X, DestRect.Max.Y, 1.0f );
 
 	//RHICmdList.SetViewport(SrcRect.Min.X, SrcRect.Min.Y, 0.0f,texSize.X, texSize.Y, 1.0f);
 	RHICmdList.SetRasterizerState(TStaticRasterizerState<FM_Solid, CM_None>::GetRHI());
 	RHICmdList.SetDepthStencilState(TStaticDepthStencilState<false, CF_Always>::GetRHI());
 
 	// Get the shaders
-	TShaderMapRef<AHRPassVS> VertexShader(View.ShaderMap);
+	TShaderMapRef<AHRPassVS<1>> VertexShader(View.ShaderMap);
 	TShaderMapRef<AHRTraceScenePS> PixelShader(View.ShaderMap);
 
 	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PixelShader->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PixelShader);
@@ -782,7 +864,7 @@ void FApproximateHybridRaytracer::TraceScene(FRHICommandListImmediate& RHICmdLis
 									DynamicEmissiveVolume->SRV );
 
 	// Trace one ray per direction, hardcoding at 6
-	for(int i = 0;i < 6;i++)
+	for(int i = 0;i < 5;i++)
 	{
 		// Set the viewport, raster state , depth stencil and render target
 		const auto& target = GSceneRenderTargets.AHRRaytracingTarget[i]->GetRenderTargetItem().TargetableTexture->GetTexture2D();
@@ -792,17 +874,17 @@ void FApproximateHybridRaytracer::TraceScene(FRHICommandListImmediate& RHICmdLis
 		RHICmdList.Clear(true, FLinearColor::Black, false, 1.0f, false, 0, FIntRect());
 
 		// Bound shader parameters
-		PixelShader->SetSamplingKernel(RHICmdList,SamplingKernel[i],i,texSize,View);
+		PixelShader->SetSamplingKernel(RHICmdList,GSceneRenderTargets.AHRPerPixelTracingKernel[i]->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D(),i,FVector2D(DestRect.Max.X,DestRect.Max.Y),View);
 
 		// Draw a quad mapping scene color to the view's render target
 		DrawRectangle(
 			RHICmdList,
-			DestRect.Min.X, DestRect.Min.Y,
+			0.0f, 0.0f,
 			DestRect.Width(), DestRect.Height(),
-			SrcRect.Min.X, SrcRect.Min.Y,
+			DestRect.Min.X, DestRect.Min.Y, 
 			SrcRect.Width(), SrcRect.Height(),
-			DestSize,
-			SrcSize,
+			DestRect.Size(),
+			GSceneRenderTargets.GetBufferSizeXY(),
 			*VertexShader,
 			EDRF_UseTriangleOptimization);
 	}
@@ -1068,7 +1150,7 @@ void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,
 	RHICmdList.SetViewport(SrcRect.Min.X, SrcRect.Min.Y, 0.0f,texSize.X, texSize.Y, 1.0f);
 
 	// Get the shaders
-	TShaderMapRef<AHRPassVS> VertexShader(View.ShaderMap);
+	TShaderMapRef<AHRPassVS<0>> VertexShader(View.ShaderMap);
 	TShaderMapRef<AHRBlur> PSBlur(View.ShaderMap);
 
 	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PSBlur->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PSBlur);
@@ -1378,12 +1460,14 @@ void FApproximateHybridRaytracer::Composite(FRHICommandListImmediate& RHICmdList
 	RHICmdList.SetDepthStencilState(TStaticDepthStencilState<false, CF_Always>::GetRHI());
 
 	// Get the shaders
-	TShaderMapRef<AHRPassVS> VertexShader(View.ShaderMap);
+	TShaderMapRef<AHRPassVS<0>> VertexShader(View.ShaderMap);
 	TShaderMapRef<AHRCompositePS> PixelShader(View.ShaderMap);
 
 	// Bound shader parameters
 	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PixelShader->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PixelShader);
 	VertexShader->SetParameters(RHICmdList,View);
+	float scalingX = float(View.Family->FamilySizeX) / float(GSceneRenderTargets.GetBufferSizeXY().X);
+	float scalingY = float(View.Family->FamilySizeY) / float(GSceneRenderTargets.GetBufferSizeXY().Y);
 	PixelShader->SetParameters(RHICmdList, View);
 
 	// Draw!
