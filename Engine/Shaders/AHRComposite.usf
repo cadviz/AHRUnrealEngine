@@ -85,30 +85,41 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 #endif
 	FScreenSpaceData ScreenSpaceData = GetScreenSpaceData(InUV);
 
+	float3 fcolor = 0;
 	float3 n = ScreenSpaceData.GBuffer.WorldNormal;
-	float3 idir =  normalize(reflect(-normalize(ScreenVector), n));
-	float4 fcolor = Trace0.SampleLevel(samLinear,InUV,0)*pow(saturate(dot(Kernel0.SampleLevel(samLinear,InUV,0)*2-1,idir)),lerp(0.1f,10,ScreenSpaceData.GBuffer.Roughness)) +
-					Trace1.SampleLevel(samLinear,InUV,0)*pow(saturate(dot(Kernel1.SampleLevel(samLinear,InUV,0)*2-1,idir)),lerp(0.1f,10,ScreenSpaceData.GBuffer.Roughness)) +
-					Trace2.SampleLevel(samLinear,InUV,0)*pow(saturate(dot(Kernel2.SampleLevel(samLinear,InUV,0)*2-1,idir)),lerp(0.1f,10,ScreenSpaceData.GBuffer.Roughness)) +
-					Trace3.SampleLevel(samLinear,InUV,0)*pow(saturate(dot(Kernel3.SampleLevel(samLinear,InUV,0)*2-1,idir)),lerp(0.1f,10,ScreenSpaceData.GBuffer.Roughness)) +
-					Trace4.SampleLevel(samLinear,InUV,0)*pow(saturate(dot(Kernel4.SampleLevel(samLinear,InUV,0)*2-1,idir)),lerp(0.1f,10,ScreenSpaceData.GBuffer.Roughness)) ;
-	//fcolor *= 0.2f;
+	float3 rdir = normalize(-reflect(-normalize(ScreenVector), n));
 
-	/*
-	// After interpolation, add specular
-	float3 H = normalize( dir + ScreenVector );
-	color.rgb +=  pow(saturate(dot(normal,H)),5)
-	*/
-	
+	float3 normal = normalize(ObjNormal.SampleLevel(samLinear,InUV,0).xyz*2 - 1);
+	float3 tangent,bitangent;
+	FindBestAxisVectors(normal ,tangent,bitangent);
 
+	float4 c0 = Trace0.SampleLevel(samLinear,InUV,0);
+	float4 c1 = Trace1.SampleLevel(samLinear,InUV,0);
+	float4 c2 = Trace2.SampleLevel(samLinear,InUV,0);
+	float4 c3 = Trace3.SampleLevel(samLinear,InUV,0);
+	float4 c4 = Trace4.SampleLevel(samLinear,InUV,0);
+	float4 c5 = Trace5.SampleLevel(samLinear,InUV,0); // perfect reflection (normal mapped)
 
+	float3 r0 = Kernel0.SampleLevel(samLinear,InUV,0)*2-1;
+	float3 r1 = Kernel0.SampleLevel(samLinear,InUV,0)*2-1;
+	float3 r2 = Kernel0.SampleLevel(samLinear,InUV,0)*2-1;
+	float3 r3 = Kernel0.SampleLevel(samLinear,InUV,0)*2-1;
+	float3 r4 = Kernel0.SampleLevel(samLinear,InUV,0)*2-1;
 
-	float3 fakeSky = lerp(float3(0.034,0.1,0.1),float3(0.6f, 0.875f, 0.999f),ScreenSpaceData.GBuffer.WorldNormal.z*0.5+0.5 );
-	fakeSky *= fakeSky;
-	fakeSky = lerp(fakeSky,1,0.3);
+	// Orientate
+	r0 =  normalize(r0.x * bitangent + (r0.y * tangent + (r0.z * normal)));
+	r1 =  normalize(r1.x * bitangent + (r1.y * tangent + (r1.z * normal)));
+	r2 =  normalize(r2.x * bitangent + (r2.y * tangent + (r2.z * normal)));
+	r3 =  normalize(r3.x * bitangent + (r3.y * tangent + (r3.z * normal)));
+	r4 =  normalize(r4.x * bitangent + (r4.y * tangent + (r4.z * normal)));
 
-	//fcolor.rgb *= AHRCompositeCB.GIMultiplier*ScreenSpaceData.GBuffer.DiffuseColor;
-	//fcolor.rgb += fcolor.w*ScreenSpaceData.GBuffer.DiffuseColor*0.1f*fakeSky;
+	float4 diff = c0*pow(saturate(dot(r0,n)),3.5) + c1*pow(saturate(dot(r1,n)),3.5)  + c2*pow(saturate(dot(r2,n)),3.5)  + c3*pow(saturate(dot(r3,n)),3.5)  + c4*pow(saturate(dot(r4,n)),3.5) ;
+	float3 spec = c0*pow(saturate(dot(r0,rdir)),3.5) + c1*pow(saturate(dot(r1,rdir)),3.5)  + c2*pow(saturate(dot(r2,rdir)),3.5)  + c3*pow(saturate(dot(r3,rdir)),3.5)  + c4*pow(saturate(dot(r4,rdir)),3.5) ;
+
+	fcolor = diff + pow(spec,lerp(0.63f,3.5f,pow(ScreenSpaceData.GBuffer.Roughness,0.75f)))*1.75f + diff.w*0.075f;
+
+	fcolor.rgb *= max(AHRCompositeCB.GIMultiplier*ScreenSpaceData.GBuffer.DiffuseColor,0.05f);
+
 
 	return max(float4(fcolor.rgb,1),0); // prevent the shader from outputting negative lighting
 }

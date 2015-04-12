@@ -146,6 +146,76 @@ private:
 };
 IMPLEMENT_SHADER_TYPE(,AHRPerPixelTracingKernelGenerator,TEXT("AHRPerPixelKernelGenerator"),TEXT("tracingKernel"),SF_Compute);
 
+template<int _dummy>
+class AHRPerPixelInterpolationKernelGenerator : public FGlobalShader
+{
+	DECLARE_SHADER_TYPE(AHRPerPixelInterpolationKernelGenerator,Global);
+
+public:
+
+	static bool ShouldCache(EShaderPlatform Platform)
+	{
+		return RHISupportsComputeShaders(Platform);
+	}
+
+	static void ModifyCompilationEnvironment( EShaderPlatform Platform, FShaderCompilerEnvironment& OutEnvironment )
+	{
+		FGlobalShader::ModifyCompilationEnvironment( Platform, OutEnvironment );
+	}
+
+	/** Default constructor. */
+	AHRPerPixelInterpolationKernelGenerator()
+	{
+	}
+
+	/** Initialization constructor. */
+	explicit AHRPerPixelInterpolationKernelGenerator( const ShaderMetaType::CompiledShaderInitializerType& Initializer )
+		: FGlobalShader(Initializer)
+	{
+		kernelTex.Bind( Initializer.ParameterMap, TEXT("kernelTex") );
+		traceKernelTex.Bind( Initializer.ParameterMap, TEXT("traceKernelTex") );
+	}
+
+	/** Serialization. */
+	virtual bool Serialize( FArchive& Ar ) override
+	{
+		bool bShaderHasOutdatedParameters = FGlobalShader::Serialize( Ar );
+		Ar << kernelTex;
+		Ar << traceKernelTex;
+		return bShaderHasOutdatedParameters;
+	}
+
+	/**
+	 * Set parameters for this shader.
+	 */
+	
+	void SetParameters(FRHICommandList& RHICmdList, FUnorderedAccessViewRHIParamRef kernelTexUAV,FTextureRHIParamRef traceKernelTexSRV)
+	{
+		FComputeShaderRHIParamRef ComputeShaderRHI = GetComputeShader();
+
+		if ( kernelTex.IsBound() )
+			RHICmdList.SetUAVParameter(ComputeShaderRHI, kernelTex.GetBaseIndex(),kernelTexUAV );
+
+		SetTextureParameter(RHICmdList, ComputeShaderRHI, traceKernelTex, traceKernelTexSRV);
+	}
+
+	/**
+	 * Unbinds any buffers that have been bound.
+	 */
+	void UnbindBuffers(FRHICommandList& RHICmdList)
+	{
+		FComputeShaderRHIParamRef ComputeShaderRHI = GetComputeShader();
+		if ( kernelTex.IsBound() )
+			RHICmdList.SetUAVParameter(ComputeShaderRHI, kernelTex.GetBaseIndex(), FUnorderedAccessViewRHIParamRef());
+	}
+
+private:
+	FShaderResourceParameter kernelTex;
+	FShaderResourceParameter traceKernelTex;
+};
+IMPLEMENT_SHADER_TYPE(template<>,AHRPerPixelInterpolationKernelGenerator<0>,TEXT("AHRPerPixelKernelGenerator"),TEXT("interpKernel_H"),SF_Compute);
+IMPLEMENT_SHADER_TYPE(template<>,AHRPerPixelInterpolationKernelGenerator<1>,TEXT("AHRPerPixelKernelGenerator"),TEXT("interpKernel_V"),SF_Compute);
+
 void  FApproximateHybridRaytracer::StartFrame(FRHICommandListImmediate& RHICmdList,FViewInfo& View)
 {	
 	SCOPED_DRAW_EVENT(RHICmdList,AHRStartFrame);
@@ -204,6 +274,7 @@ void  FApproximateHybridRaytracer::StartFrame(FRHICommandListImmediate& RHICmdLi
 	{
 		for(int n = 0;n < 5;n++)
 		{
+			// Build the tracing kernel
 			TShaderMapRef<AHRPerPixelTracingKernelGenerator> tracingKernelGenCS(GetGlobalShaderMap(View.GetFeatureLevel()));
 			RHICmdList.SetComputeShader(tracingKernelGenCS->GetComputeShader());
 			tracingKernelGenCS->SetParameters(RHICmdList, GSceneRenderTargets.AHRPerPixelTracingKernel[n]->GetRenderTargetItem().UAV,n+1);
@@ -212,6 +283,25 @@ void  FApproximateHybridRaytracer::StartFrame(FRHICommandListImmediate& RHICmdLi
 			DispatchComputeShader(RHICmdList, *tracingKernelGenCS,fceil((uint32)size.X,16u), fceil((uint32)size.X,16u), 1);
 
 			tracingKernelGenCS->UnbindBuffers(RHICmdList);
+
+			// Blur the tracing kernel to use it to interpolate
+			TShaderMapRef<AHRPerPixelInterpolationKernelGenerator<0>> interpolationKernelGenCS_H(GetGlobalShaderMap(View.GetFeatureLevel()));
+			RHICmdList.SetComputeShader(interpolationKernelGenCS_H->GetComputeShader());
+			interpolationKernelGenCS_H->SetParameters(RHICmdList, GSceneRenderTargets.AHRPerPixelInterpolationKernel[n]->GetRenderTargetItem().UAV,GSceneRenderTargets.AHRPerPixelTracingKernel[n]->GetRenderTargetItem().ShaderResourceTexture);
+
+			size = GSceneRenderTargets.AHRPerPixelInterpolationKernel[n]->GetDesc().Extent;
+			DispatchComputeShader(RHICmdList, *interpolationKernelGenCS_H,fceil((uint32)size.X,16u), fceil((uint32)size.X,16u), 1);
+
+			interpolationKernelGenCS_H->UnbindBuffers(RHICmdList);
+
+			TShaderMapRef<AHRPerPixelInterpolationKernelGenerator<1>> interpolationKernelGenCS_V(GetGlobalShaderMap(View.GetFeatureLevel()));
+			RHICmdList.SetComputeShader(interpolationKernelGenCS_V->GetComputeShader());
+			interpolationKernelGenCS_V->SetParameters(RHICmdList, GSceneRenderTargets.AHRPerPixelInterpolationKernel[n]->GetRenderTargetItem().UAV,GSceneRenderTargets.AHRPerPixelTracingKernel[n]->GetRenderTargetItem().ShaderResourceTexture);
+
+			size = GSceneRenderTargets.AHRPerPixelInterpolationKernel[n]->GetDesc().Extent;
+			DispatchComputeShader(RHICmdList, *interpolationKernelGenCS_V,fceil((uint32)size.X,16u), fceil((uint32)size.X,16u), 1);
+
+			interpolationKernelGenCS_V->UnbindBuffers(RHICmdList);
 		}
 
 
@@ -1392,11 +1482,11 @@ public:
 		SetTextureParameter(RHICmdList, ShaderRHI, Trace4, LinearSampler,sampler, GSceneRenderTargets.AHRRaytracingTarget[4]->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D());	
 		SetTextureParameter(RHICmdList, ShaderRHI, Trace5, LinearSampler,sampler, GSceneRenderTargets.AHRRaytracingTarget[5]->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D());	
 
-		SetTextureParameter(RHICmdList, ShaderRHI, Kernel0, LinearSampler,sampler, GSceneRenderTargets.AHRPerPixelTracingKernel[0]->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D());	
-		SetTextureParameter(RHICmdList, ShaderRHI, Kernel1, LinearSampler,sampler, GSceneRenderTargets.AHRPerPixelTracingKernel[1]->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D());	
-		SetTextureParameter(RHICmdList, ShaderRHI, Kernel2, LinearSampler,sampler, GSceneRenderTargets.AHRPerPixelTracingKernel[2]->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D());	
-		SetTextureParameter(RHICmdList, ShaderRHI, Kernel3, LinearSampler,sampler, GSceneRenderTargets.AHRPerPixelTracingKernel[3]->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D());	
-		SetTextureParameter(RHICmdList, ShaderRHI, Kernel4, LinearSampler,sampler, GSceneRenderTargets.AHRPerPixelTracingKernel[4]->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D());	
+		SetTextureParameter(RHICmdList, ShaderRHI, Kernel0, LinearSampler,sampler, GSceneRenderTargets.AHRPerPixelInterpolationKernel[0]->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D());	
+		SetTextureParameter(RHICmdList, ShaderRHI, Kernel1, LinearSampler,sampler, GSceneRenderTargets.AHRPerPixelInterpolationKernel[1]->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D());	
+		SetTextureParameter(RHICmdList, ShaderRHI, Kernel2, LinearSampler,sampler, GSceneRenderTargets.AHRPerPixelInterpolationKernel[2]->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D());	
+		SetTextureParameter(RHICmdList, ShaderRHI, Kernel3, LinearSampler,sampler, GSceneRenderTargets.AHRPerPixelInterpolationKernel[3]->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D());	
+		SetTextureParameter(RHICmdList, ShaderRHI, Kernel4, LinearSampler,sampler, GSceneRenderTargets.AHRPerPixelInterpolationKernel[4]->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D());	
 
 		if(LinearSampler.IsBound())
 			RHICmdList.SetShaderSampler(ShaderRHI,LinearSampler.GetBaseIndex(),sampler);

@@ -38,3 +38,45 @@ void tracingKernel(uint3 DTid : SV_DispatchThreadID)
 
 	kernelTex[DTid.xy] = float4(step*0.5+0.5,1.0f);
 }
+
+Texture2D<float4> traceKernelTex;
+
+[numthreads(16, 16, 1)]
+void interpKernel_H(uint3 DTid : SV_DispatchThreadID)
+{
+	float3 fdir = 0;
+
+	fdir += traceKernelTex[DTid.xy + uint2(-5,0)]*0.45f;
+	fdir += traceKernelTex[DTid.xy + uint2(-4,0)]*0.5f;
+	fdir += traceKernelTex[DTid.xy + uint2(-3,0)]*0.65f;
+	fdir += traceKernelTex[DTid.xy + uint2(-2,0)]*0.8f;
+	fdir += traceKernelTex[DTid.xy + uint2(-1,0)]*0.9f;
+	fdir += traceKernelTex[DTid.xy              ];
+	fdir += traceKernelTex[DTid.xy + uint2( 1,0)]*0.9f;
+	fdir += traceKernelTex[DTid.xy + uint2( 2,0)]*0.8f;
+	fdir += traceKernelTex[DTid.xy + uint2( 3,0)]*0.65f;
+	fdir += traceKernelTex[DTid.xy + uint2( 4,0)]*0.5f;
+	fdir += traceKernelTex[DTid.xy + uint2( 5,0)]*0.45f;
+
+	kernelTex[DTid.xy] = float4(normalize(fdir)*0.5+0.5,1.0f);
+}
+
+[numthreads(16, 16, 1)]
+void interpKernel_V(uint3 DTid : SV_DispatchThreadID)
+{
+	float3 fdir = 0;
+
+	fdir += traceKernelTex[DTid.xy + uint2(0,-5)]*0.45f;
+	fdir += traceKernelTex[DTid.xy + uint2(0,-4)]*0.5f;
+	fdir += traceKernelTex[DTid.xy + uint2(0,-3)]*0.65f;
+	fdir += traceKernelTex[DTid.xy + uint2(0,-2)]*0.8f;
+	fdir += traceKernelTex[DTid.xy + uint2(0,-1)]*0.9f;
+	fdir += traceKernelTex[DTid.xy              ];
+	fdir += traceKernelTex[DTid.xy + uint2(0,1)]*0.9f;
+	fdir += traceKernelTex[DTid.xy + uint2(0,2)]*0.8f;
+	fdir += traceKernelTex[DTid.xy + uint2(0,3)]*0.65f;
+	fdir += traceKernelTex[DTid.xy + uint2(0,4)]*0.5f;
+	fdir += traceKernelTex[DTid.xy + uint2(0,5)]*0.45f;
+
+	kernelTex[DTid.xy] = float4(normalize(fdir)*0.5+0.5,1.0f);
+}
