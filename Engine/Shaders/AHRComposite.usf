@@ -26,6 +26,13 @@ Texture2D<float4> Trace3;
 Texture2D<float4> Trace4;
 Texture2D<float4> Trace5;
 
+Texture2D<float4> Kernel0;
+Texture2D<float4> Kernel1;
+Texture2D<float4> Kernel2;
+Texture2D<float4> Kernel3;
+Texture2D<float4> Kernel4;
+
+
 float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 {
 #if 0
@@ -78,15 +85,14 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 #endif
 	FScreenSpaceData ScreenSpaceData = GetScreenSpaceData(InUV);
 
-
-	float4 fcolor = Trace0.SampleLevel(samLinear,InUV,0) +
-					Trace1.SampleLevel(samLinear,InUV,0) +
-					Trace2.SampleLevel(samLinear,InUV,0) +
-					Trace3.SampleLevel(samLinear,InUV,0) +
-					Trace4.SampleLevel(samLinear,InUV,0);/* +
-					Trace5.SampleLevel(samLinear,InUV,0) ;
-	fcolor /= 6.0f;*/
-	fcolor *= 0.2f;
+	float3 n = ScreenSpaceData.GBuffer.WorldNormal;
+	float3 idir =  normalize(reflect(-normalize(ScreenVector), n));
+	float4 fcolor = Trace0.SampleLevel(samLinear,InUV,0)*pow(saturate(dot(Kernel0.SampleLevel(samLinear,InUV,0)*2-1,idir)),lerp(0.1f,10,ScreenSpaceData.GBuffer.Roughness)) +
+					Trace1.SampleLevel(samLinear,InUV,0)*pow(saturate(dot(Kernel1.SampleLevel(samLinear,InUV,0)*2-1,idir)),lerp(0.1f,10,ScreenSpaceData.GBuffer.Roughness)) +
+					Trace2.SampleLevel(samLinear,InUV,0)*pow(saturate(dot(Kernel2.SampleLevel(samLinear,InUV,0)*2-1,idir)),lerp(0.1f,10,ScreenSpaceData.GBuffer.Roughness)) +
+					Trace3.SampleLevel(samLinear,InUV,0)*pow(saturate(dot(Kernel3.SampleLevel(samLinear,InUV,0)*2-1,idir)),lerp(0.1f,10,ScreenSpaceData.GBuffer.Roughness)) +
+					Trace4.SampleLevel(samLinear,InUV,0)*pow(saturate(dot(Kernel4.SampleLevel(samLinear,InUV,0)*2-1,idir)),lerp(0.1f,10,ScreenSpaceData.GBuffer.Roughness)) ;
+	//fcolor *= 0.2f;
 
 	/*
 	// After interpolation, add specular

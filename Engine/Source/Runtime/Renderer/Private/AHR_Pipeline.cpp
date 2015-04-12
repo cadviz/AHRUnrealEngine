@@ -1357,6 +1357,12 @@ public:
 		Trace3.Bind(Initializer.ParameterMap, TEXT("Trace3"));
 		Trace4.Bind(Initializer.ParameterMap, TEXT("Trace4"));
 		Trace5.Bind(Initializer.ParameterMap, TEXT("Trace5"));
+
+		Kernel0.Bind(Initializer.ParameterMap, TEXT("Kernel0"));
+		Kernel1.Bind(Initializer.ParameterMap, TEXT("Kernel1"));
+		Kernel2.Bind(Initializer.ParameterMap, TEXT("Kernel2"));
+		Kernel3.Bind(Initializer.ParameterMap, TEXT("Kernel3"));
+		Kernel4.Bind(Initializer.ParameterMap, TEXT("Kernel4"));
 	}
 
 	AHRCompositePS()
@@ -1386,6 +1392,12 @@ public:
 		SetTextureParameter(RHICmdList, ShaderRHI, Trace4, LinearSampler,sampler, GSceneRenderTargets.AHRRaytracingTarget[4]->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D());	
 		SetTextureParameter(RHICmdList, ShaderRHI, Trace5, LinearSampler,sampler, GSceneRenderTargets.AHRRaytracingTarget[5]->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D());	
 
+		SetTextureParameter(RHICmdList, ShaderRHI, Kernel0, LinearSampler,sampler, GSceneRenderTargets.AHRPerPixelTracingKernel[0]->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D());	
+		SetTextureParameter(RHICmdList, ShaderRHI, Kernel1, LinearSampler,sampler, GSceneRenderTargets.AHRPerPixelTracingKernel[1]->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D());	
+		SetTextureParameter(RHICmdList, ShaderRHI, Kernel2, LinearSampler,sampler, GSceneRenderTargets.AHRPerPixelTracingKernel[2]->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D());	
+		SetTextureParameter(RHICmdList, ShaderRHI, Kernel3, LinearSampler,sampler, GSceneRenderTargets.AHRPerPixelTracingKernel[3]->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D());	
+		SetTextureParameter(RHICmdList, ShaderRHI, Kernel4, LinearSampler,sampler, GSceneRenderTargets.AHRPerPixelTracingKernel[4]->GetRenderTargetItem().ShaderResourceTexture->GetTexture2D());	
+
 		if(LinearSampler.IsBound())
 			RHICmdList.SetShaderSampler(ShaderRHI,LinearSampler.GetBaseIndex(),sampler);
 	}
@@ -1405,6 +1417,12 @@ public:
 		Ar << Trace4;
 		Ar << Trace5;
 
+		Ar << Kernel0;
+		Ar << Kernel1;
+		Ar << Kernel2;
+		Ar << Kernel3;
+		Ar << Kernel4;
+
 		return bShaderHasOutdatedParameters;
 	}
 
@@ -1420,12 +1438,8 @@ private:
 	FShaderResourceParameter LinearSampler;
 	FShaderResourceParameter ObjNormal;
 
-	FShaderResourceParameter Trace0;
-	FShaderResourceParameter Trace1;
-	FShaderResourceParameter Trace2;
-	FShaderResourceParameter Trace3;
-	FShaderResourceParameter Trace4;
-	FShaderResourceParameter Trace5;
+	FShaderResourceParameter Trace0,Trace1,Trace2,Trace3,Trace4,Trace5;
+	FShaderResourceParameter Kernel0,Kernel1,Kernel2,Kernel3,Kernel4;
 
 	TShaderUniformBufferParameter<AHRCompositeCB> cb;
 };
