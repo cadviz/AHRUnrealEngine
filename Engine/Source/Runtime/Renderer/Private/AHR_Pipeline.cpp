@@ -287,19 +287,19 @@ void  FApproximateHybridRaytracer::StartFrame(FRHICommandListImmediate& RHICmdLi
 			// Blur the tracing kernel to use it to interpolate
 			TShaderMapRef<AHRPerPixelInterpolationKernelGenerator<0>> interpolationKernelGenCS_H(GetGlobalShaderMap(View.GetFeatureLevel()));
 			RHICmdList.SetComputeShader(interpolationKernelGenCS_H->GetComputeShader());
-			interpolationKernelGenCS_H->SetParameters(RHICmdList, GSceneRenderTargets.AHRPerPixelInterpolationKernel[n]->GetRenderTargetItem().UAV,GSceneRenderTargets.AHRPerPixelTracingKernel[n]->GetRenderTargetItem().ShaderResourceTexture);
+			interpolationKernelGenCS_H->SetParameters(RHICmdList, GSceneRenderTargets.AHRPerPixelInterpolationKernel_tmp->GetRenderTargetItem().UAV,GSceneRenderTargets.AHRPerPixelTracingKernel[n]->GetRenderTargetItem().ShaderResourceTexture);
 
-			size = GSceneRenderTargets.AHRPerPixelInterpolationKernel[n]->GetDesc().Extent;
-			DispatchComputeShader(RHICmdList, *interpolationKernelGenCS_H,fceil((uint32)size.X,16u), fceil((uint32)size.X,16u), 1);
+			size = GSceneRenderTargets.AHRPerPixelInterpolationKernel_tmp->GetDesc().Extent;
+			DispatchComputeShader(RHICmdList, *interpolationKernelGenCS_H,fceil((uint32)size.X,16u), fceil((uint32)size.Y,16u), 1);
 
 			interpolationKernelGenCS_H->UnbindBuffers(RHICmdList);
 
 			TShaderMapRef<AHRPerPixelInterpolationKernelGenerator<1>> interpolationKernelGenCS_V(GetGlobalShaderMap(View.GetFeatureLevel()));
 			RHICmdList.SetComputeShader(interpolationKernelGenCS_V->GetComputeShader());
-			interpolationKernelGenCS_V->SetParameters(RHICmdList, GSceneRenderTargets.AHRPerPixelInterpolationKernel[n]->GetRenderTargetItem().UAV,GSceneRenderTargets.AHRPerPixelTracingKernel[n]->GetRenderTargetItem().ShaderResourceTexture);
+			interpolationKernelGenCS_V->SetParameters(RHICmdList, GSceneRenderTargets.AHRPerPixelInterpolationKernel[n]->GetRenderTargetItem().UAV,GSceneRenderTargets.AHRPerPixelInterpolationKernel_tmp->GetRenderTargetItem().ShaderResourceTexture);
 
 			size = GSceneRenderTargets.AHRPerPixelInterpolationKernel[n]->GetDesc().Extent;
-			DispatchComputeShader(RHICmdList, *interpolationKernelGenCS_V,fceil((uint32)size.X,16u), fceil((uint32)size.X,16u), 1);
+			DispatchComputeShader(RHICmdList, *interpolationKernelGenCS_V,fceil((uint32)size.X,16u), fceil((uint32)size.Y,16u), 1);
 
 			interpolationKernelGenCS_V->UnbindBuffers(RHICmdList);
 		}

@@ -125,7 +125,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 	float reflCoeff = pow(1.0f - saturate(dot(normal,objRefl)),15*(ScreenSpaceData.GBuffer.Roughness+1)) + 0.18f*pow(1-ScreenSpaceData.GBuffer.Roughness,12);
 
 	fcolor = lerp(fcolor,c5.rgb,reflCoeff);
-	
+
 	// Finish
 	return max(float4(fcolor.rgb,1),0); // prevent the shader from outputting negative lighting
 }

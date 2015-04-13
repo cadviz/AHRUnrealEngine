@@ -455,6 +455,7 @@ public:
 	TRefCountPtr<IPooledRenderTarget> AHRUpsampledTarget1;
 	TRefCountPtr<IPooledRenderTarget> AHRPerPixelTracingKernel[5];
 	TRefCountPtr<IPooledRenderTarget> AHRPerPixelInterpolationKernel[5];
+	TRefCountPtr<IPooledRenderTarget> AHRPerPixelInterpolationKernel_tmp;
 
 	// GBuffer: Geometry Buffer rendered in base pass for deferred shading, only available between AllocGBufferTargets() and FreeGBufferTargets()
 	TRefCountPtr<IPooledRenderTarget> GBufferA;

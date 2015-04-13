@@ -402,6 +402,7 @@ void FSceneRenderTargets::AllocAHRTargets()
 	GRenderTargetPool.FindFreeElement(Desc2, AHRPerPixelInterpolationKernel[2], TEXT("AHRPerPixelInterpolationKernel2"));
 	GRenderTargetPool.FindFreeElement(Desc2, AHRPerPixelInterpolationKernel[3], TEXT("AHRPerPixelInterpolationKernel3"));
 	GRenderTargetPool.FindFreeElement(Desc2, AHRPerPixelInterpolationKernel[4], TEXT("AHRPerPixelInterpolationKernel4"));
+	GRenderTargetPool.FindFreeElement(Desc2, AHRPerPixelInterpolationKernel_tmp, TEXT("AHRPerPixelInterpolationKernel4"));
 
 	// Fill the kernel textures
 	AHREngine.SignalWindowResize();
