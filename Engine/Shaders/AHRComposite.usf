@@ -87,7 +87,7 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 
 	float3 fcolor = 0;
 	float3 n = ScreenSpaceData.GBuffer.WorldNormal;
-	float3 rdir = normalize(-reflect(-normalize(ScreenVector), n));
+	float3 rdir = normalize(-reflect(-ScreenVector, n));
 
 	float3 normal = normalize(ObjNormal.SampleLevel(samLinear,InUV,0).xyz*2 - 1);
 	float3 tangent,bitangent;
@@ -117,9 +117,15 @@ float4 PS(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1) : SV_TARGET0
 	float3 spec = c0*pow(saturate(dot(r0,rdir)),3.5) + c1*pow(saturate(dot(r1,rdir)),3.5)  + c2*pow(saturate(dot(r2,rdir)),3.5)  + c3*pow(saturate(dot(r3,rdir)),3.5)  + c4*pow(saturate(dot(r4,rdir)),3.5) ;
 
 	fcolor = diff + pow(spec,lerp(0.63f,3.5f,pow(ScreenSpaceData.GBuffer.Roughness,0.75f)))*1.75f + diff.w*0.075f;
+	fcolor.rgb *= AHRCompositeCB.GIMultiplier*max(ScreenSpaceData.GBuffer.DiffuseColor,0.05f);
 
-	fcolor.rgb *= max(AHRCompositeCB.GIMultiplier*ScreenSpaceData.GBuffer.DiffuseColor,0.05f);
+	// Now mix with reflection
+	float3 objRefl = normalize(-reflect(-ScreenVector, normal));
 
+	float reflCoeff = pow(1.0f - saturate(dot(normal,objRefl)),15*(ScreenSpaceData.GBuffer.Roughness+1)) + 0.18f*pow(1-ScreenSpaceData.GBuffer.Roughness,12);
 
+	fcolor = lerp(fcolor,c5.rgb,reflCoeff);
+	
+	// Finish
 	return max(float4(fcolor.rgb,1),0); // prevent the shader from outputting negative lighting
 }

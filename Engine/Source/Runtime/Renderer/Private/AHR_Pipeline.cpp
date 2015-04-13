@@ -787,6 +787,7 @@ BEGIN_UNIFORM_BUFFER_STRUCT(AHRTraceSceneCB,)
 END_UNIFORM_BUFFER_STRUCT(AHRTraceSceneCB)
 IMPLEMENT_UNIFORM_BUFFER_STRUCT(AHRTraceSceneCB,TEXT("AHRTraceCB"));
 
+template<int _dummy>
 class AHRTraceScenePS : public FGlobalShader
 {
 	DECLARE_SHADER_TYPE(AHRTraceScenePS,Global)
@@ -918,7 +919,8 @@ private:
 
 	FShaderResourceParameter ObjNormal;
 };
-IMPLEMENT_SHADER_TYPE(,AHRTraceScenePS,TEXT("AHRTraceSPH"),TEXT("main"),SF_Pixel);
+IMPLEMENT_SHADER_TYPE(template<>,AHRTraceScenePS<0>,TEXT("AHRTraceSPH"),TEXT("main"),SF_Pixel);
+IMPLEMENT_SHADER_TYPE(template<>,AHRTraceScenePS<1>,TEXT("AHRTraceSPH"),TEXT("traceReflections"),SF_Pixel);
 
 void FApproximateHybridRaytracer::TraceScene(FRHICommandListImmediate& RHICmdList,FViewInfo& View)
 {
@@ -943,7 +945,8 @@ void FApproximateHybridRaytracer::TraceScene(FRHICommandListImmediate& RHICmdLis
 
 	// Get the shaders
 	TShaderMapRef<AHRPassVS<1>> VertexShader(View.ShaderMap);
-	TShaderMapRef<AHRTraceScenePS> PixelShader(View.ShaderMap);
+	TShaderMapRef<AHRTraceScenePS<0>> PixelShader(View.ShaderMap);
+	TShaderMapRef<AHRTraceScenePS<1>> PixelShaderRefl(View.ShaderMap);
 
 	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PixelShader->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PixelShader);
 	VertexShader->SetParameters(RHICmdList,View);
@@ -953,10 +956,12 @@ void FApproximateHybridRaytracer::TraceScene(FRHICommandListImmediate& RHICmdLis
 									DynamicSceneVolume->SRV,
 									DynamicEmissiveVolume->SRV );
 
-	// Trace one ray per direction, hardcoding at 6
+	// Trace one ray per direction, hardcoding at 5 + reflection
 	for(int i = 0;i < 5;i++)
 	{
-		// Set the viewport, raster state , depth stencil and render target
+		SCOPED_DRAW_EVENT(RHICmdList,AHRTraceScene_diffuse);
+
+		// Set the render target
 		const auto& target = GSceneRenderTargets.AHRRaytracingTarget[i]->GetRenderTargetItem().TargetableTexture->GetTexture2D();
 		SetRenderTarget(RHICmdList, target, FTextureRHIRef());
 		
@@ -978,16 +983,39 @@ void FApproximateHybridRaytracer::TraceScene(FRHICommandListImmediate& RHICmdLis
 			*VertexShader,
 			EDRF_UseTriangleOptimization);
 	}
-	/*DrawRectangle( 
-		RHICmdList,
-		0, 0,
-		ResX/2, ResY/2,
-		0, 0, 
-		ResX, ResY,
-		FIntPoint(ResX/2,ResY/2),
-		GSceneRenderTargets.GetBufferSizeXY(),
-		*VertexShader,
-		EDRF_UseTriangleOptimization);*/
+
+	{
+		SCOPED_DRAW_EVENT(RHICmdList,AHRTraceScene_reflection);
+
+		// Trace reflections
+		SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PixelShaderRefl->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PixelShaderRefl);
+		// The dynamic grid should have both the static and dynamic data by now
+		PixelShaderRefl->SetParameters(RHICmdList, View, 
+										DynamicSceneVolume->SRV,
+										DynamicEmissiveVolume->SRV );
+
+		// Set the render target
+		const auto& target = GSceneRenderTargets.AHRRaytracingTarget[5]->GetRenderTargetItem().TargetableTexture->GetTexture2D();
+		SetRenderTarget(RHICmdList, target, FTextureRHIRef());
+		
+		// Clear the target before drawing
+		RHICmdList.Clear(true, FLinearColor::Black, false, 1.0f, false, 0, FIntRect());
+
+		// Bound shader parameters
+		PixelShaderRefl->SetSamplingKernel(RHICmdList,FTexture2DRHIRef(),-1,FVector2D(DestRect.Max.X,DestRect.Max.Y),View);
+
+		// Draw a quad mapping scene color to the view's render target
+		DrawRectangle(
+				RHICmdList,
+				0.0f, 0.0f,
+				DestRect.Width(), DestRect.Height(),
+				DestRect.Min.X, DestRect.Min.Y, 
+				SrcRect.Width(), SrcRect.Height(),
+				DestRect.Size(),
+				GSceneRenderTargets.GetBufferSizeXY(),
+				*VertexShader,
+				EDRF_UseTriangleOptimization);
+	}
 }
 
 
@@ -1246,7 +1274,8 @@ void FApproximateHybridRaytracer::Upsample(FRHICommandListImmediate& RHICmdList,
 	SetGlobalBoundShaderState(RHICmdList, View.FeatureLevel, PSBlur->GetBoundShaderState(),  GFilterVertexDeclaration.VertexDeclarationRHI, *VertexShader, *PSBlur);
 	VertexShader->SetParameters(RHICmdList,View);
 
-	for(int i = 0;i < 6;i++)
+	// The reflection buffer is not blurred
+	for(int i = 0;i < 5;i++)
 	{
 		// Horizontal pass
 		FRHITexture2D * target = GSceneRenderTargets.AHRUpsampledTarget0->GetRenderTargetItem().TargetableTexture->GetTexture2D();
@@ -1543,8 +1572,8 @@ void FApproximateHybridRaytracer::Composite(FRHICommandListImmediate& RHICmdList
 	// Only one view at a time for now (1/11/2014)
 
 	// Set additive blending
-	//RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_One, BO_Add, BF_One, BF_One>::GetRHI());
-	RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_Zero, BO_Add, BF_One, BF_Zero>::GetRHI());
+	RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_One, BO_Add, BF_One, BF_One>::GetRHI());
+	//RHICmdList.SetBlendState(TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_Zero, BO_Add, BF_One, BF_Zero>::GetRHI());
 
 	// add gi and multiply scene color by ao
 	// final = gi + ao*direct

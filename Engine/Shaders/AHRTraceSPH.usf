@@ -135,7 +135,7 @@ float4 traceReflections(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1)
 	uint2 DTid = floor(InUV*2*AHRTraceCB.ScreenRes);
 
 	float3 normal = normalize(ObjNormal.SampleLevel(samLinear,InUV,0).xyz*2 - 1);
-	float3 step = normalize(-reflect(-normalize(ScreenVector), GetScreenSpaceData(InUV).GBuffer.WorldNormal));
+	float3 step = normalize(-reflect(-ScreenVector, GetScreenSpaceData(InUV).GBuffer.WorldNormal));
 	
 	float angleCos = saturate(dot(step,normal));
 	float dispAngleMult = sqrt(1 - angleCos*angleCos)/(angleCos + 0.01) + 1;
@@ -160,6 +160,7 @@ float4 traceReflections(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1)
 		if( local.x > 1 || local.x < 0 ||
 			local.y > 1 || local.y < 0 ||
 			local.z > 1 || local.z < 0)
+			//|| i == AHRTraceCB.DiffuseSamplesCount) // <--- FAKE!!!
 		{
 			// Here we could intersect the ray with the sky sphere and take that color...
 			color += float4(AHRTraceCB.LostRayColor,0);
@@ -188,8 +189,8 @@ float4 traceReflections(float2 InUV : TEXCOORD0,float3 ScreenVector : TEXCOORD1)
 			color.w = 1 - att;
 			break;
 		}
-		float t = RANDOM_AM * wang_hash(i+ (AHRTraceCB.RayIndex+1)*(DTid.x%8 + (DTid.y%8)*8) );
-		spos += step*lerp(0.25,4,t);
+		float t = RANDOM_AM * wang_hash(i + (DTid.x%8 + (DTid.y%8)*8) );
+		spos += step*lerp(0.5,2,t);
 	}
 
 	return color;
